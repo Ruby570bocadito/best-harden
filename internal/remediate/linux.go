@@ -34,13 +34,20 @@ func init() {
 
 // Rutas de los ficheros drop-in que gestiona Bastion. Son variables para
 // poder redirigirlas en los tests.
+//
+// El drop-in de sysctl se llama 99-zz-bastion.conf para cargarse el ÚLTIMO
+// (systemd-sysctl y "sysctl --system" ordenan por nombre todos los
+// directorios; /etc/sysctl.conf llega como 99-sysctl.conf): así un valor
+// contrario en otro fichero no deshace el ajuste al reiniciar. Las versiones
+// anteriores usaban 60-bastion.conf; sus instantáneas guardan esa ruta.
 var (
-	sysctlDropIn  = "/etc/sysctl.d/60-bastion.conf"
-	procSys       = "/proc/sys"
-	sshdConfig    = "/etc/ssh/sshd_config"
-	sshdDropIn    = "/etc/ssh/sshd_config.d/00-bastion.conf"
-	modprobeDir   = "/etc/modprobe.d"
-	sudoersDropIn = "/etc/sudoers.d/00-bastion"
+	sysctlDropIn       = "/etc/sysctl.d/99-zz-bastion.conf"
+	sysctlLegacyDropIn = "/etc/sysctl.d/60-bastion.conf"
+	procSys            = "/proc/sys"
+	sshdConfig         = "/etc/ssh/sshd_config"
+	sshdDropIn         = "/etc/ssh/sshd_config.d/00-bastion.conf"
+	modprobeDir        = "/etc/modprobe.d"
+	sudoersDropIn      = "/etc/sudoers.d/00-bastion"
 )
 
 const dropInHeader = "# Gestionado por Bastion (bastion harden). Para deshacer: bastion rollback\n"
@@ -110,7 +117,19 @@ func writeAtomic(path string, content []byte, mode fs.FileMode, uid, gid int) er
 		return err
 	}
 	tmp := path + ".bastion-tmp"
-	if err := os.WriteFile(tmp, content, mode); err != nil {
+	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(content)
+	if err == nil {
+		err = f.Sync() // a disco antes de renombrar: un corte no deja el fichero vacío
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		os.Remove(tmp)
 		return err
 	}
 	if err := os.Chmod(tmp, mode); err != nil {
@@ -211,7 +230,20 @@ func (sysctlSet) Capture(_ context.Context, p probes.Params) (State, error) {
 	if err != nil {
 		return nil, err
 	}
-	return State{"runtime": strings.Join(strings.Fields(string(b)), " "), "file": map[string]any(file)}, nil
+	return State{"runtime": strings.Join(strings.Fields(string(b)), " "), "file": map[string]any(file), "path": sysctlDropIn}, nil
+}
+
+// sysctlFileOf devuelve el drop-in que se capturó en before (las instantáneas
+// antiguas no lo guardan: era 60-bastion.conf). Solo admite los dos de Bastion.
+func sysctlFileOf(before State) (string, error) {
+	p, _ := before["path"].(string)
+	switch p {
+	case "":
+		return sysctlLegacyDropIn, nil
+	case sysctlDropIn, sysctlLegacyDropIn:
+		return p, nil
+	}
+	return "", fmt.Errorf("drop-in de sysctl desconocido en la instantánea: %q", p)
 }
 
 func (sysctlSet) Describe(p probes.Params, before State) string {
@@ -241,7 +273,11 @@ func (sysctlSet) Restore(_ context.Context, p probes.Params, before State) error
 		return nil
 	}
 	if f, ok := before["file"].(map[string]any); ok {
-		if err := restoreFile(sysctlDropIn, State(f)); err != nil {
+		path, err := sysctlFileOf(before)
+		if err != nil {
+			return err
+		}
+		if err := restoreFile(path, State(f)); err != nil {
 			return err
 		}
 	}

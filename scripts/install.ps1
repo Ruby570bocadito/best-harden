@@ -17,9 +17,11 @@
    -NoScan              no lanzar el primer escaneo
    -NoOpen              no abrir el informe HTML al terminar
    -Force               reinstalar aunque ya esté en la última versión
-   -Local <archivo>     instalar desde un .zip local (sin conexión)
+   -Local <archivo>     instalar desde un .zip local (sin conexión; necesita
+                        checksums.txt en la misma carpeta)
+   -Insecure            con -Local, instalar aunque no haya checksums.txt
    -Repo <owner/nombre> repositorio de GitHub
-   -ReleasesUrl <url>   espejo interno de releases
+   -ReleasesUrl <url>   espejo interno de releases (https://…)
    -Uninstall [-Purge]  desinstalar (con -Purge borra también config e informes)
 
  Variables equivalentes: BASTION_VERSION, BASTION_NO_SCAN=1, BASTION_REPO,
@@ -38,7 +40,8 @@ param(
     [switch]$NoOpen,
     [switch]$Force,
     [switch]$Uninstall,
-    [switch]$Purge
+    [switch]$Purge,
+    [switch]$Insecure
 )
 
 function Install-Bastion {
@@ -51,8 +54,18 @@ function Install-Bastion {
     } catch { }
 
     $ScriptUrl  = "https://raw.githubusercontent.com/$Repo/main/scripts/install.ps1"
+    if ($Repo -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') { throw "Repositorio no válido: $Repo (formato owner/nombre)" }
     if (-not $ReleasesUrl) { $ReleasesUrl = "https://github.com/$Repo/releases" }
     $ReleasesUrl = $ReleasesUrl.TrimEnd('/')
+    # Las sumas viajan por el mismo canal que el binario: sin TLS no
+    # protegerían de nada. HTTP solo hacia el propio equipo (pruebas).
+    if ($ReleasesUrl -notmatch '^https://' -and $ReleasesUrl -notmatch '^http://(127\.0\.0\.1|localhost)(:\d+)?(/|$)') {
+        throw "La dirección de releases debe usar https:// ($ReleasesUrl)"
+    }
+    if ($Version -ne 'latest') { $Version = ConvertTo-BastionTag $Version }
+    # El proceso elevado arranca en otra carpeta: una ruta relativa dejaría
+    # de apuntar al archivo.
+    if ($Local) { $Local = (Resolve-Path -LiteralPath $Local -ErrorAction Stop).Path }
     $InstallDir = Join-Path $env:ProgramFiles 'Bastion'
     $Exe        = Join-Path $InstallDir 'bastion.exe'
     $DataDir    = Join-Path $env:ProgramData 'Bastion'
@@ -63,22 +76,27 @@ function Install-Bastion {
     $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     if (-not $isAdmin) {
         Write-Step 'Se necesitan permisos de administrador: se abrirá una ventana elevada (UAC)'
+        # Cada valor va entre comillas simples con las suyas duplicadas, y la
+        # orden completa viaja codificada (-EncodedCommand): una ruta o un
+        # valor con comillas o espacios no puede romperla ni inyectar código.
         $flags = @()
-        if ($Version -ne 'latest') { $flags += "-Version '$Version'" }
-        if ($Local)       { $flags += "-Local '$Local'" }
-        if ($ReleasesUrl -ne "https://github.com/$Repo/releases") { $flags += "-ReleasesUrl '$ReleasesUrl'" }
+        if ($Version -ne 'latest') { $flags += '-Version ' + (ConvertTo-PSLiteral $Version) }
+        if ($Local)       { $flags += '-Local ' + (ConvertTo-PSLiteral $Local) }
+        if ($ReleasesUrl -ne "https://github.com/$Repo/releases") { $flags += '-ReleasesUrl ' + (ConvertTo-PSLiteral $ReleasesUrl) }
         if ($NoScan)      { $flags += '-NoScan' }
         if ($NoOpen)      { $flags += '-NoOpen' }
         if ($Force)       { $flags += '-Force' }
         if ($Uninstall)   { $flags += '-Uninstall' }
         if ($Purge)       { $flags += '-Purge' }
-        $flags += "-Repo '$Repo'"
+        if ($Insecure)    { $flags += '-Insecure' }
+        $flags += '-Repo ' + (ConvertTo-PSLiteral $Repo)
         if ($PSCommandPath) {
-            $cmd = "& '$PSCommandPath' $($flags -join ' ')"
+            $cmd = '& ' + (ConvertTo-PSLiteral $PSCommandPath) + ' ' + ($flags -join ' ')
         } else {
-            $cmd = "& ([scriptblock]::Create((Invoke-RestMethod '$ScriptUrl'))) $($flags -join ' ')"
+            $cmd = '& ([scriptblock]::Create((Invoke-RestMethod ' + (ConvertTo-PSLiteral $ScriptUrl) + '))) ' + ($flags -join ' ')
         }
-        Start-Process -FilePath (Get-PowerShellExe) -Verb RunAs -ArgumentList @('-NoProfile', '-NoExit', '-Command', $cmd)
+        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cmd))
+        Start-Process -FilePath (Get-PowerShellExe) -Verb RunAs -ArgumentList @('-NoProfile', '-NoExit', '-EncodedCommand', $encoded)
         return
     }
 
@@ -104,15 +122,17 @@ function Install-Bastion {
         if ($Local) {
             Write-Step "Instalación sin conexión desde $Local"
             if (-not (Test-Path $Local)) { throw "No existe $Local" }
-            Copy-Item $Local $zip
-            $sums = Join-Path (Split-Path -Parent (Resolve-Path $Local)) 'checksums.txt'
-            if (Test-Path $sums) { Test-Checksum -File $zip -Asset $asset -Sums (Get-Content $sums -Raw) }
-            else { Write-Warn 'No hay checksums.txt junto al archivo: no se puede verificar la integridad' }
+            Copy-Item -LiteralPath $Local $zip
+            $sums = Join-Path (Split-Path -Parent $Local) 'checksums.txt'
+            if (Test-Path -LiteralPath $sums) { Test-Checksum -File $zip -Asset $asset -Sums (Get-Content -LiteralPath $sums -Raw) }
+            elseif ($Insecure) { Write-Warn 'No hay checksums.txt junto al archivo: se instala SIN verificar la integridad (-Insecure)' }
+            else { throw 'No hay checksums.txt junto al archivo: descárgalo de la misma release para verificarlo (o usa -Insecure bajo tu responsabilidad)' }
         } else {
             if ($Version -eq 'latest') {
                 Write-Step "Buscando la última versión en $ReleasesUrl"
                 $Version = ([string](Invoke-RestMethod -UseBasicParsing "$ReleasesUrl/latest/download/version.txt")).Trim()
                 if (-not $Version) { throw 'version.txt vacío' }
+                $Version = ConvertTo-BastionTag $Version
             }
             if ($current -and ($current.TrimStart('v') -eq $Version.TrimStart('v')) -and -not $Force) {
                 Write-Ok "Bastion $Version ya está instalado y actualizado"
@@ -134,13 +154,24 @@ function Install-Bastion {
             if (-not $new) { throw 'El archivo no contiene bastion.exe' }
             New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
             # Un ejecutable en uso no se puede sobrescribir pero sí renombrar.
-            if (Test-Path $Exe) {
-                Remove-Item "$Exe.old" -Force -ErrorAction SilentlyContinue
-                Move-Item $Exe "$Exe.old" -Force
+            # Si la copia falla, se recupera el anterior: nunca queda la
+            # instalación sin bastion.exe.
+            $hadOld = Test-Path -LiteralPath $Exe
+            if ($hadOld) {
+                Remove-Item -LiteralPath "$Exe.old" -Force -ErrorAction SilentlyContinue
+                Move-Item -LiteralPath $Exe "$Exe.old" -Force
             }
-            Copy-Item $new.FullName $Exe -Force
+            try {
+                Copy-Item -LiteralPath $new.FullName $Exe -Force
+            } catch {
+                if ($hadOld) {
+                    Remove-Item -LiteralPath $Exe -Force -ErrorAction SilentlyContinue
+                    Move-Item -LiteralPath "$Exe.old" $Exe -Force
+                }
+                throw "No se pudo copiar bastion.exe en $InstallDir (se mantiene la versión anterior): $($_.Exception.Message)"
+            }
             Unblock-File $Exe -ErrorAction SilentlyContinue
-            Remove-Item "$Exe.old" -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath "$Exe.old" -Force -ErrorAction SilentlyContinue
             Write-Ok "Instalado en $Exe ($(& $Exe version --short))"
             Add-ToMachinePath $InstallDir
         }
@@ -163,6 +194,18 @@ function Install-Bastion {
         Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
         try { [Console]::OutputEncoding = $prevEncoding } catch { }
     }
+}
+
+function ConvertTo-PSLiteral([string]$s) {
+    # Cadena literal de PowerShell: entre comillas simples, sin expansión.
+    return "'" + ($s -replace "'", "''") + "'"
+}
+
+function ConvertTo-BastionTag([string]$v) {
+    # vX.Y.Z[-pre] (acepta 0.2.0); nada más, porque va en las URLs.
+    $t = 'v' + $v.Trim().TrimStart('v')
+    if ($t -notmatch '^v\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$') { throw "Versión no válida: $v (ejemplo: v0.3.2)" }
+    return $t
 }
 
 function Get-PowerShellExe {
@@ -261,4 +304,9 @@ try {
     Write-Host ''
     Write-Host "  [ERROR] $($_.Exception.Message)" -ForegroundColor Red
     Write-Host ''
+    # Código de salida 1 para la automatización. Con "irm | iex" no hay
+    # fichero de script y exit cerraría la ventana del usuario: solo se
+    # deja $LASTEXITCODE.
+    $global:LASTEXITCODE = 1
+    if ($PSCommandPath) { exit 1 }
 }

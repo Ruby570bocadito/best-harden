@@ -160,6 +160,8 @@ rationale: Un registro dedicado facilita auditar el uso de privilegios.
 category: Autenticación
 severity: low
 platforms: [linux]
+# sudo-rs no admite "Defaults logfile" (visudo lo rechaza) y registra en el journal.
+requires: [sudo-classic]
 profiles: [linux-server-l1]
 references:
   nist: [AU-2, AU-12]

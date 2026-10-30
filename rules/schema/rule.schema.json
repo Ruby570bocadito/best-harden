@@ -19,7 +19,7 @@
     },
     "requires": {
       "description": "Etiquetas que el equipo debe tener TODAS; si falta alguna, la regla aparece como 'no aplica'.",
-      "type": "array", "items": { "enum": ["windows-joined"] }
+      "type": "array", "items": { "enum": ["windows-joined", "sudo-classic"] }
     },
     "profiles": { "type": "array", "minItems": 1, "items": { "type": "string" } },
     "references": {
@@ -43,12 +43,30 @@
         "gpo": { "type": "string" },
         "commands": { "type": "string" },
         "breaking_risk": { "enum": ["none", "low", "medium", "high"] },
-        "reboot_required": { "type": "boolean" }
+        "reboot_required": { "type": "boolean" },
+        "safety": {
+          "description": "remote-access: el cambio puede cortar el acceso remoto (SSH, RDP) y se aplica con dead-man switch.",
+          "enum": ["remote-access"]
+        },
+        "actions": {
+          "description": "Cambios tipados que aplica 'bastion harden'. Los parámetros de cada tipo los valida 'bastion rules lint'. Ver docs/05-remediacion-segura.md.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/action" }
+        }
       }
     },
     "impact": { "type": "string" }
   },
   "$defs": {
+    "action": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": ["registry.set", "secpol.set", "auditpol.set", "service.config", "defender.asr", "defender.pref", "firewall.remote_address", "sysctl.set", "sshd.set", "kmod.block", "systemd.disable", "file.mode", "file.kv_set", "sudoers.defaults"]
+        }
+      }
+    },
     "check": {
       "type": "object",
       "oneOf": [

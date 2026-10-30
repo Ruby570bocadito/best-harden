@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path"
@@ -116,8 +117,10 @@ func (registrySet) Capture(_ context.Context, p probes.Params) (State, error) {
 					v, _, _ := k.GetIntegerValue(name)
 					entry["type"], entry["value"] = map[uint32]string{registry.DWORD: "DWORD", registry.QWORD: "QWORD"}[typ], strconv.FormatUint(v, 10)
 				case registry.SZ, registry.EXPAND_SZ:
+					// GetStringValue no expande las variables: se guarda el
+					// texto literal y el tipo exacto para restaurarlo igual.
 					v, _, _ := k.GetStringValue(name)
-					entry["type"], entry["value"] = "SZ", v
+					entry["type"], entry["value"] = map[uint32]string{registry.SZ: "SZ", registry.EXPAND_SZ: "EXPAND_SZ"}[typ], v
 				default:
 					k.Close()
 					return nil, fmt.Errorf("%s\\%s es de un tipo que Bastion no restaura (%d)", sub, name, typ)
@@ -157,9 +160,14 @@ func setRegValue(sub, name, typ string, value any) error {
 			return fmt.Errorf("valor %v no numérico", value)
 		}
 		if typ == "DWORD" {
+			if n > math.MaxUint32 {
+				return fmt.Errorf("valor %d no cabe en un DWORD", n)
+			}
 			return k.SetDWordValue(name, uint32(n))
 		}
 		return k.SetQWordValue(name, n)
+	case "EXPAND_SZ":
+		return k.SetExpandStringValue(name, fmt.Sprint(value))
 	default:
 		return k.SetStringValue(name, fmt.Sprint(value))
 	}
@@ -171,7 +179,7 @@ func (registrySet) Apply(_ context.Context, p probes.Params) error {
 		return err
 	}
 	value := p.String("value")
-	if n, err := intParam(p, "value"); err == nil && regValueType(p) != "SZ" {
+	if n, err := intParam(p, "value"); err == nil && (regValueType(p) == "DWORD" || regValueType(p) == "QWORD") {
 		value = strconv.FormatInt(n, 10)
 	}
 	for _, sub := range targets {
@@ -440,12 +448,34 @@ func (serviceConfig) Restore(_ context.Context, p probes.Params, before State) e
 		return err
 	}
 	if running, _ := before["running"].(bool); running {
-		s, done, err := openService(name, windows.SERVICE_START)
+		return startService(name)
+	}
+	return nil
+}
+
+// startService arranca un servicio. Si se está deteniendo (Apply acaba de
+// pedirle que pare) espera a que termine; si ya está en marcha, no es error.
+func startService(name string) error {
+	s, done, err := openService(name, windows.SERVICE_START|windows.SERVICE_QUERY_STATUS)
+	if err != nil {
+		return err
+	}
+	defer done()
+	for deadline := time.Now().Add(30 * time.Second); ; {
+		st, err := s.Query()
 		if err != nil {
 			return err
 		}
-		defer done()
-		return s.Start()
+		if st.State == svc.Running || st.State == svc.StartPending {
+			return nil
+		}
+		if st.State == svc.Stopped || !time.Now().Before(deadline) {
+			break
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	if err := s.Start(); err != nil && !errors.Is(err, windows.ERROR_SERVICE_ALREADY_RUNNING) {
+		return err
 	}
 	return nil
 }

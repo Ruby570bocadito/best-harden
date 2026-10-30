@@ -4,6 +4,7 @@ package platform
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -20,32 +21,39 @@ func detect(info *Info) {
 		info.Name = "Linux"
 		info.Tags = []string{"linux"}
 	}
+	if sudo, err := filepath.EvalSymlinks("/usr/bin/sudo"); err == nil && sudoClassic(sudo) {
+		info.Tags = append(info.Tags, "sudo-classic")
+	}
 	if b, err := os.ReadFile("/proc/sys/kernel/osrelease"); err == nil {
 		info.Kernel = strings.TrimSpace(string(b))
 	}
-	info.Container = isContainer()
+	info.Container = InContainer()
 	info.Role = "server"
 	if isGraphical() {
 		info.Role = "workstation"
 	}
 }
 
-func isContainer() bool {
+// InContainer detecta si Bastion se ejecuta dentro de un contenedor (los
+// controles del kernel pertenecen entonces al host). Lo usan también los
+// probes.
+func InContainer() bool {
 	for _, f := range []string{"/.dockerenv", "/run/.containerenv"} {
 		if _, err := os.Stat(f); err == nil {
 			return true
 		}
 	}
-	if b, err := os.ReadFile("/proc/1/cgroup"); err == nil {
-		s := string(b)
-		return strings.Contains(s, "docker") || strings.Contains(s, "kubepods") || strings.Contains(s, "containerd")
+	read := func(p string) string {
+		b, _ := os.ReadFile(p)
+		return string(b)
 	}
-	return false
+	// /proc/1/environ solo es legible como root; sin él quedan los demás.
+	return containerSignals(read("/proc/1/cgroup"), read("/proc/self/mountinfo"), read("/proc/1/environ"))
 }
 
 // isGraphical considera estación de trabajo un equipo cuyo destino por
-// defecto de systemd es graphical.target.
+// defecto de systemd es graphical.target: el que fija el administrador en
+// /etc o, si no lo ha cambiado, el de la distribución.
 func isGraphical() bool {
-	target, err := os.Readlink("/etc/systemd/system/default.target")
-	return err == nil && strings.Contains(target, "graphical")
+	return graphicalTarget(os.Readlink)
 }

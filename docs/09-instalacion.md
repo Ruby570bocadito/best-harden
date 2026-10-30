@@ -22,9 +22,10 @@ curl -fsSL https://raw.githubusercontent.com/Ruby570bocadito/bastion/main/script
 | `--version <tag>` | `BASTION_VERSION` | Versión concreta (por defecto, la última) |
 | `--no-scan` | `BASTION_NO_SCAN=1` | No lanzar el primer escaneo |
 | `--force` | | Reinstalar aunque ya esté actualizado |
-| `--local <archivo.tar.gz>` | | Instalar sin conexión. Si hay un `checksums.txt` al lado, se verifica |
+| `--local <archivo.tar.gz>` | | Instalar sin conexión. Necesita el `checksums.txt` de la release en la misma carpeta (se verifica) |
+| `--insecure` | | Con `--local`, instalar aunque falte `checksums.txt` (sin verificar) |
 | `--repo <owner/repo>` | `BASTION_REPO` | Repositorio de GitHub |
-| `--releases-url <url>` | `BASTION_RELEASES_URL` | Espejo interno de releases |
+| `--releases-url <url>` | `BASTION_RELEASES_URL` | Espejo interno de releases (`https://`; `http://` solo hacia `127.0.0.1` o `localhost`, para pruebas) |
 | `--prefix <dir>` | `BASTION_PREFIX` | Directorio del binario (por defecto `/usr/local/bin`) |
 | `--uninstall [--purge]` | | Desinstalar; `--purge` borra también configuración e informes |
 
@@ -66,12 +67,13 @@ Con parámetros:
 | `-NoScan` | `BASTION_NO_SCAN=1` | No lanzar el primer escaneo |
 | `-NoOpen` | | No abrir el informe HTML al terminar |
 | `-Force` | | Reinstalar aunque esté actualizado |
-| `-Local <archivo.zip>` | | Instalar sin conexión |
+| `-Local <archivo.zip>` | | Instalar sin conexión (necesita `checksums.txt` en la misma carpeta) |
+| `-Insecure` | | Con `-Local`, instalar aunque falte `checksums.txt` |
 | `-Repo <owner/repo>` | `BASTION_REPO` | Repositorio de GitHub |
-| `-ReleasesUrl <url>` | `BASTION_RELEASES_URL` | Espejo interno |
+| `-ReleasesUrl <url>` | `BASTION_RELEASES_URL` | Espejo interno (`https://`) |
 | `-Uninstall [-Purge]` | | Desinstalar |
 
-Qué hace: activa TLS 1.2 (Windows PowerShell 5.1), detecta la arquitectura (AMD64/ARM64), descarga y verifica `bastion_windows_<arch>.zip`, instala en `C:\Program Files\Bastion\bastion.exe` (renombrando el anterior si está en uso), lo añade al `PATH` del sistema, ejecuta `bastion init` (crea `C:\ProgramData\Bastion` con ACL solo para Administradores y SYSTEM) y lanza `bastion scan --save --open`.
+Qué hace: activa TLS 1.2 (Windows PowerShell 5.1), detecta la arquitectura (AMD64/ARM64), descarga y verifica `bastion_windows_<arch>.zip`, instala en `C:\Program Files\Bastion\bastion.exe` (renombrando el anterior si está en uso), lo añade al `PATH` del sistema, ejecuta `bastion init` (crea `C:\ProgramData\Bastion` con ACL solo para Administradores y SYSTEM) y lanza `bastion scan --save --open`. Si falla, termina con código 1 (salvo con `irm | iex`, donde solo fija `$LASTEXITCODE` para no cerrar la ventana) y, si no pudo copiar el nuevo `bastion.exe`, recupera el anterior.
 
 Compatible con Windows PowerShell 5.1 y PowerShell 7. Los mensajes evitan símbolos que la consola clásica no puede mostrar.
 
@@ -112,14 +114,16 @@ https://mirror.interno/bastion/
     └── bastion_windows_arm64.zip
 ```
 
-Y úsalo en el instalador (`--releases-url` / `-ReleasesUrl`), en la variable `BASTION_RELEASES_URL` o en `config.yaml`:
+El espejo debe servirse por **HTTPS**: las sumas SHA-256 llegan por el mismo canal que los binarios y, sin TLS, quien intercepte la conexión podría cambiar ambos. Bastion y los instaladores rechazan `http://` salvo hacia el propio equipo (`127.0.0.1`, `localhost`), para pruebas.
+
+Úsalo en el instalador (`--releases-url` / `-ReleasesUrl`), en `bastion update --releases-url`, en `config.yaml` o en la variable `BASTION_RELEASES_URL`. Con privilegios, Bastion ignora `BASTION_RELEASES_URL`, `BASTION_REPO` y `BASTION_HOME` salvo con `--trust-env`: en Windows cualquier programa del usuario puede fijarlas (`HKCUnvironment`) y la consola de administrador las hereda.
 
 ```yaml
 update:
   releases_url: https://mirror.interno/bastion
 ```
 
-Sin ningún servidor: copia el archivo y su `checksums.txt` y usa `--local` / `-Local`.
+Sin ningún servidor: copia el archivo y su `checksums.txt` a la misma carpeta y usa `--local` / `-Local` (sin `checksums.txt` se niega; `--insecure` / `-Insecure` lo permite sin verificar).
 
 ## Actualizar
 
@@ -127,13 +131,14 @@ Sin ningún servidor: copia el archivo y su `checksums.txt` y usa `--local` / `-
 sudo bastion update                    # descarga, verifica y reemplaza
 sudo bastion update --check            # solo comprobar
 sudo bastion update --version v0.3.2   # una versión concreta (también para volver atrás); avisa si aún no está publicada
+sudo bastion update --releases-url https://mirror.interno/bastion/releases   # desde un espejo
 ```
 
 Las reglas oficiales van dentro del binario: al actualizar Bastion se actualizan también las reglas.
 
 Justo después de publicar una versión, GitHub puede seguir anunciando la anterior como "última" durante unos minutos (caché). `--version` no depende de eso.
 
-En Windows, `C:\Program Files\Bastion` solo lo puede modificar un administrador. Si ejecutas `bastion update` en una ventana normal, Bastion lo detecta antes de descargar nada y abre una ventana de administrador (aviso de UAC) que termina la actualización y espera a que pulses Intro. En Linux, sin root, te pide repetir con `sudo`.
+En Windows, `C:\Program Files\Bastion` solo lo puede modificar un administrador. Si ejecutas `bastion update` en una ventana normal, Bastion lo detecta antes de descargar nada y abre una ventana de administrador (aviso de UAC) que termina la actualización y espera a que pulses Intro; la ventana original espera a que termine y devuelve su código de salida. El origen (repositorio o espejo) se le pasa en la orden: el proceso elevado no hereda las variables de la consola. En Linux, sin root, te pide repetir con `sudo`.
 
 ## Rutas
 
@@ -145,7 +150,9 @@ En Windows, `C:\Program Files\Bastion` solo lo puede modificar un administrador.
 | Informes | `/var/lib/bastion/reports/` | `C:\ProgramData\Bastion\reports\` |
 | Instantáneas (fase 2) | `/var/lib/bastion/snapshots/` | `C:\ProgramData\Bastion\snapshots\` |
 
-`BASTION_HOME` sustituye la configuración y los datos por un único directorio (útil en desarrollo).
+`BASTION_HOME` sustituye la configuración y los datos por un único directorio (útil en desarrollo). Con privilegios solo se usa con `--trust-env`.
+
+Con privilegios, Bastion comprueba que solo los administradores (o root) puedan modificar la carpeta de configuración, `config.yaml`, `exceptions.yaml` y `rules.d`. Si no es así (por ejemplo, porque otro usuario creó la carpeta antes), ignora esos ficheros y avisa; los comandos que escriben (y `bastion init`) apartan los ficheros no fiables como `*.no-confiable-<fecha>` y restablecen los permisos.
 
 ## Desinstalar
 

@@ -27,6 +27,7 @@ type ConsoleOptions struct {
 
 // Console escribe el resumen del escaneo para humanos.
 func Console(w io.Writer, rep *engine.Report, o ConsoleOptions) {
+	w = SafeWriter(w) // datos del sistema auditado: sin secuencias de escape
 	s := o.Style
 	line := s.Dim(strings.Repeat("─", 72))
 	host := rep.Host
@@ -100,8 +101,15 @@ func Console(w io.Writer, rep *engine.Report, o ConsoleOptions) {
 	case sc.Errors > 0:
 		partial = s.Dim(" (parcial: hay errores)")
 	}
-	fmt.Fprintf(w, "  %s  %s %s  %s%s\n", s.Bold("POSTURA"), gradeColor(s.Bold(fmt.Sprintf("%3d/100", sc.Value))),
-		gradeColor(s.Bold(sc.Grade)), bar(s, sc.Value, 36), partial)
+	if sc.Scored {
+		fmt.Fprintf(w, "  %s  %s %s  %s%s\n", s.Bold("POSTURA"), gradeColor(s.Bold(fmt.Sprintf("%3d/100", sc.Value))),
+			gradeColor(s.Bold(sc.Grade)), bar(s, sc.Value, 36), partial)
+	} else {
+		// Ningún control evaluado (todo sin privilegios, con error o no
+		// aplicable): un 0/100 sería engañoso.
+		fmt.Fprintf(w, "  %s    %s  %s\n", s.Bold("POSTURA"), s.Yellow(s.Bold("—")),
+			s.Yellow("sin evaluar: ningún control se ha podido evaluar"))
+	}
 	counts := []string{
 		s.Green(fmt.Sprintf(Sym("✓")+" %d superados", sc.Passed)),
 		s.Red(fmt.Sprintf(Sym("✗")+" %d fallidos", sc.Failed)),
@@ -324,6 +332,7 @@ func truncate(s string, n int) string {
 // scanChanges muestra los controles que han empeorado o se han corregido
 // desde el último escaneo guardado del mismo perfil.
 func scanChanges(w io.Writer, rep *engine.Report, s Style) {
+	w = SafeWriter(w)
 	ch := rep.Changes
 	if ch == nil {
 		return

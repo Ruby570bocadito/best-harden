@@ -429,20 +429,6 @@ func TestUserOwnedRules(t *testing.T) {
 	}
 }
 
-func TestParseTasklistUsers(t *testing.T) {
-	out := `"svchost.exe","1760","Services","0","12.345 KB","Unknown","NT AUTHORITY\NETWORK SERVICE","0:00:01","N/D"
-"NinjaTrader.exe","14132","Console","1","512.000 KB","Running","RBY\rafag","0:10:00","NinjaTrader"
-"System","4","Services","0","152 KB","Unknown","N/D","0:20:00","N/D"
-`
-	u := parseTasklistUsers(out)
-	if u[1760] != `NT AUTHORITY\NETWORK SERVICE` || u[14132] != `RBY\rafag` {
-		t.Errorf("usuarios: %v", u)
-	}
-	if _, ok := u[4]; ok {
-		t.Error("N/D no es un usuario")
-	}
-}
-
 func TestParseAddrs(t *testing.T) {
 	set := parseAddrs("100.127.45.81/255.255.255.255,fd7a:115c:a1e0::/48,10.0.0.1-10.0.0.9")
 	for ip, want := range map[string]bool{"100.127.45.81": true, "100.127.45.82": false, "fd7a:115c:a1e0::1": true, "10.0.0.5": true, "10.0.0.10": false} {

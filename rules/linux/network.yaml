@@ -166,6 +166,9 @@ remediation:
     printf 'net.ipv4.conf.all.rp_filter = 1\nnet.ipv4.conf.default.rp_filter = 1\n' > /etc/sysctl.d/60-bastion-rpfilter.conf
     sysctl --system
   breaking_risk: medium
+  # rp_filter estricto corta el tráfico con rutas asimétricas o varias
+  # interfaces (incluida la sesión SSH): se aplica con dead-man switch.
+  safety: remote-access
   actions:
     - type: sysctl.set
       key: net.ipv4.conf.all.rp_filter
@@ -267,6 +270,9 @@ check:
 remediation:
   summary: Fijar accept_ra = 0 y configurar IPv6 de forma estática.
   breaking_risk: high
+  # Sin RA, un equipo que se administra por IPv6 con SLAAC pierde la
+  # conectividad (y la sesión SSH): se aplica con dead-man switch.
+  safety: remote-access
   actions:
     - type: sysctl.set
       key: net.ipv6.conf.all.accept_ra

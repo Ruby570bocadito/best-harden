@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/Ruby570bocadito/bastion/internal/platform"
 )
 
 func init() {
@@ -27,19 +29,18 @@ func init() {
 
 // inContainer detecta si Bastion se ejecuta dentro de un contenedor. En ese
 // caso los controles del kernel pertenecen al host y no aplican.
-func inContainer() bool {
-	for _, f := range []string{"/.dockerenv", "/run/.containerenv"} {
-		if _, err := os.Stat(f); err == nil {
-			return true
+var inContainer = platform.InContainer
+
+// sysTool devuelve la ruta absoluta de una herramienta del sistema. Nunca
+// se busca en el PATH, para que no se pueda suplantar.
+func sysTool(name string) (string, bool) {
+	for _, d := range []string{"/usr/bin", "/bin", "/usr/sbin", "/sbin"} {
+		p := filepath.Join(d, name)
+		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+			return p, true
 		}
 	}
-	if b, err := os.ReadFile("/proc/1/cgroup"); err == nil {
-		s := string(b)
-		if strings.Contains(s, "docker") || strings.Contains(s, "kubepods") || strings.Contains(s, "containerd") {
-			return true
-		}
-	}
-	return false
+	return "", false
 }
 
 // --- sysctl: parámetros del kernel en ejecución ----------------------------
@@ -292,7 +293,11 @@ func (systemdProbe) Collect(ctx context.Context, p Params) (Observation, error) 
 		return Observation{}, NotApplicable("systemd no está en ejecución en este sistema")
 	}
 	unit := p.String("unit")
-	res, err := runCmd(ctx, "systemctl", "show", "--property=LoadState,ActiveState,UnitFileState", "--", unit)
+	systemctl, ok := sysTool("systemctl")
+	if !ok {
+		return Observation{}, NotApplicable("no se encontró systemctl")
+	}
+	res, err := runCmd(ctx, systemctl, "show", "--property=LoadState,ActiveState,UnitFileState", "--", unit)
 	if err != nil {
 		return Observation{}, err
 	}
@@ -364,8 +369,8 @@ func (packageProbe) Collect(ctx context.Context, p Params) (Observation, error) 
 		return Observation{}, err
 	}
 	name := p.String("name")
-	if _, err := os.Stat("/usr/bin/dpkg-query"); err == nil {
-		res, err := runCmd(ctx, "dpkg-query", "-W", "-f=${db:Status-Abbrev}|${Version}", "--", name)
+	if dpkg, ok := sysTool("dpkg-query"); ok {
+		res, err := runCmd(ctx, dpkg, "-W", "-f=${db:Status-Abbrev}|${Version}", "--", name)
 		if err != nil {
 			return Observation{}, err
 		}
@@ -373,8 +378,8 @@ func (packageProbe) Collect(ctx context.Context, p Params) (Observation, error) 
 		installed := res.ExitCode == 0 && strings.HasPrefix(status, "ii")
 		return pkgObs("dpkg "+name, installed, ver), nil
 	}
-	if _, err := os.Stat("/usr/bin/rpm"); err == nil {
-		res, err := runCmd(ctx, "rpm", "-q", "--qf", "%{VERSION}-%{RELEASE}", "--", name)
+	if rpm, ok := sysTool("rpm"); ok {
+		res, err := runCmd(ctx, rpm, "-q", "--qf", "%{VERSION}-%{RELEASE}", "--", name)
 		if err != nil {
 			return Observation{}, err
 		}

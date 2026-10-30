@@ -9,9 +9,11 @@ Bastion se ejecuta como **SYSTEM/root** en equipos críticos. Para un atacante e
 | Bastion como herramienta de ejecución remota (C2) | Servidor comprometido que envía comandos | **No existe** la capacidad de ejecutar comandos arbitrarios ([ADR-0004](adr/0004-sin-ejecucion-arbitraria.md)) |
 | Paquete de reglas malicioso | Regla que intenta ejecutar código | Reglas declarativas; los probes usan comandos fijos; `ps` solo admite una lista blanca |
 | Secuestro de binarios | `PATH` manipulado para suplantar `secedit` o `powershell` | Rutas absolutas `%SystemRoot%\System32\...` en Windows |
-| Actualización manipulada | Mirror comprometido o MITM | HTTPS + verificación SHA-256 obligatoria; atestación de procedencia SLSA verificable con `gh attestation verify` (🔜 verificación en el propio `update`) |
+| Actualización manipulada | Mirror comprometido o MITM | HTTPS obligatorio (también en las redirecciones; `http://` solo hacia el propio equipo) + verificación SHA-256; con privilegios se ignoran `BASTION_RELEASES_URL`/`BASTION_REPO`/`BASTION_HOME` salvo con `--trust-env`; atestación de procedencia SLSA verificable con `gh attestation verify` (🔜 verificación en el propio `update`) |
 | XSS en el informe | Valor hostil leído del sistema (p. ej. una línea de `sudoers`) | JSON escapado, `textContent`, CSP con nonce |
 | Lectura de datos sensibles | Informes y configuración legibles por cualquiera | Directorios con permisos restringidos a root / Administradores+SYSTEM |
+| Configuración plantada | Otro usuario crea `%ProgramData%Bastion` o `config.yaml` antes que el administrador | Con privilegios se comprueban propietario y DACL (o modo) de la carpeta, `config.yaml`, `exceptions.yaml` y `rules.d`; si no son solo de administradores se ignoran, y los comandos que escriben los apartan (`*.no-confiable-<fecha>`) y restablecen los permisos |
+| Secuencias de escape en la terminal | Un proceso con un nombre con ESC u OSC 52 | La salida de consola quita los caracteres de control de los datos del sistema auditado |
 | Denegación de servicio del escaneo | Fichero enorme o probe colgado | Límite de 4 MiB por fichero, timeout de 60 s por comando, `recover` por regla |
 
 ## Controles implementados (✅)
@@ -44,7 +46,7 @@ Bastion se ejecuta como **SYSTEM/root** en equipos críticos. Para un atacante e
 - Los enlaces externos (MITRE) usan `rel="noopener noreferrer"`.
 
 ### Consola local (`bastion ui`)
-- Escucha solo en `127.0.0.1` y toda la API exige un token aleatorio de 256 bits por sesión (cabecera `X-Bastion-Token`, comparación en tiempo constante).
+- Escucha solo en `127.0.0.1` y toda la API exige un token aleatorio de 256 bits por sesión (cabecera `X-Bastion-Token`, o cookie de sesión HttpOnly y SameSite=Strict más la cabecera `X-Bastion-Request`; comparación en tiempo constante). El token solo se muestra en la terminal: el navegador se abre con un fichero local 0600 que redirige con un código de un solo uso, así que no aparece en la línea de órdenes del navegador (visible en `/proc`) ni en las URLs de la consola.
 - Rechaza cualquier `Host` que no sea de loopback (**DNS rebinding**) y las peticiones de escritura con un `Origin` ajeno; no responde a CORS, así que una web maliciosa no puede enviar el token ni leer respuestas (**CSRF**).
 - CSP con nonce y `frame-ancestors 'none'`, `nosniff`, `no-referrer`, `no-store`, COOP/CORP; datos insertados con `textContent`.
 - Solo lee y escanea: aplicar o deshacer cambios y editar excepciones sigue exigiendo la terminal. Detalle en [ADR-0008](adr/0008-consola-local.md).

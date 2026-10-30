@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -371,20 +371,52 @@ func newProfilesCmd() *cobra.Command {
 
 // ---- update ------------------------------------------------------------------
 
-// reTag valida una versión pedida con --version (v0.3.2, 0.3.2, v1.0.0-rc.1).
-var reTag = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$`)
+// planUpdate decide si instalar target sobre current y lo explica.
+// explicit indica que la versión se pidió con --version (puede ser una
+// vuelta atrás); force reinstala aunque no haga falta.
+func planUpdate(current, target string, explicit, force bool) (install bool, msg string) {
+	if !selfupdate.IsRelease(current) {
+		if force {
+			return true, fmt.Sprintf("Compilación de desarrollo (%s): se instala %s.", current, target)
+		}
+		return false, fmt.Sprintf("Esta es una compilación de desarrollo (%s): no se compara con las versiones publicadas (%s). Para sustituirla: bastion update --force", current, target)
+	}
+	cmp, _ := selfupdate.Compare(target, current)
+	switch {
+	case cmp > 0:
+		return true, fmt.Sprintf("Hay una versión nueva: %s.", target)
+	case cmp == 0 && force:
+		return true, fmt.Sprintf("Se reinstala %s.", target)
+	case cmp == 0 && explicit:
+		return false, "Ya tienes esa versión."
+	case cmp == 0:
+		return false, "Bastion está actualizado."
+	case explicit:
+		return true, fmt.Sprintf("%s es anterior a la instalada: se vuelve atrás.", target)
+	case force:
+		return true, fmt.Sprintf("Se instala %s, anterior a la instalada.", target)
+	}
+	return false, fmt.Sprintf("Bastion está actualizado (la versión instalada es posterior a la última publicada, %s).", target)
+}
 
 func newUpdateCmd() *cobra.Command {
 	var check, force, pause bool
-	var wanted string
+	var wanted, repo, releasesURL string
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "Actualizar Bastion (y su paquete de reglas) a la última versión",
 		Long: `Descarga la última release, verifica su suma SHA-256 y sustituye el binario.
 Las reglas oficiales van incrustadas en el binario, así que también se actualizan.
 
-Origen: https://github.com/<repo>/releases (configurable en config.yaml o con
-BASTION_REPO / BASTION_RELEASES_URL para usar un espejo interno).`,
+Origen: https://github.com/<repo>/releases, o un espejo interno (siempre
+HTTPS) con --releases-url, update.releases_url en config.yaml o la variable
+BASTION_RELEASES_URL. Con privilegios, las variables BASTION_RELEASES_URL y
+BASTION_REPO se ignoran salvo con --trust-env: cualquier programa del
+usuario podría fijarlas para que el administrador instale su binario.`,
+		Example: `  bastion update
+  bastion update --check
+  bastion update --version v0.3.2          # una versión concreta, también anterior
+  bastion update --releases-url https://mirror.interno/bastion/releases`,
 		RunE: func(cmd *cobra.Command, _ []string) (err error) {
 			if pause {
 				// Ventana de administrador abierta por la elevación: que no
@@ -392,7 +424,12 @@ BASTION_REPO / BASTION_RELEASES_URL para usar un espejo interno).`,
 				defer func() {
 					if err != nil {
 						fmt.Fprintln(os.Stderr, "error:", err)
-						err = &ExitError{Code: 1}
+						code := 1
+						var ee *ExitError
+						if errors.As(err, &ee) {
+							code = ee.Code
+						}
+						err = &ExitError{Code: code}
 					}
 					fmt.Print("\n  Pulsa Intro para cerrar esta ventana…")
 					_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
@@ -400,71 +437,92 @@ BASTION_REPO / BASTION_RELEASES_URL para usar un espejo interno).`,
 			}
 			cfg := loadConfig()
 			src := selfupdate.Source{
-				Repo:    firstNonEmpty(os.Getenv("BASTION_REPO"), cfg.Update.Repo, version.Repo),
-				BaseURL: firstNonEmpty(os.Getenv("BASTION_RELEASES_URL"), cfg.Update.ReleasesURL),
+				Repo:    firstNonEmpty(repo, os.Getenv("BASTION_REPO"), cfg.Update.Repo, version.Repo),
+				BaseURL: firstNonEmpty(releasesURL, os.Getenv("BASTION_RELEASES_URL"), cfg.Update.ReleasesURL),
+			}
+			if err := src.Validate(); err != nil {
+				return err
 			}
 			s := stdoutStyle()
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			defer cancel()
 			current := version.Version
-			var latest string
+			var target string
 			if wanted != "" {
 				// Versión concreta: no depende de "latest" (que GitHub cachea
 				// unos minutos tras publicar) y permite volver atrás.
-				if !reTag.MatchString(wanted) {
+				if !selfupdate.ValidTag(wanted) {
 					return fmt.Errorf("--version %q no es una versión válida (ejemplo: v0.3.2)", wanted)
 				}
-				latest = "v" + strings.TrimPrefix(wanted, "v")
-				fmt.Printf("  Versión instalada: %s · versión pedida: %s\n", current, latest)
-				if strings.TrimPrefix(latest, "v") == strings.TrimPrefix(current, "v") && !force {
-					fmt.Printf("  %s Ya tienes esa versión.\n", s.Green(report.Sym("✓")))
-					return nil
-				}
+				target = "v" + strings.TrimPrefix(wanted, "v")
+				fmt.Printf("  Versión instalada: %s · versión pedida: %s\n", current, target)
 			} else {
 				fmt.Printf("  Comprobando %s …\n", src.Base())
-				latest, err = src.Latest(ctx)
+				target, err = src.Latest(ctx)
 				if err != nil {
 					return fmt.Errorf("no se pudo consultar la última versión: %w", err)
 				}
-				fmt.Printf("  Versión instalada: %s · última publicada: %s\n", current, latest)
-				if !selfupdate.Newer(latest, current) && !force {
-					fmt.Printf("  %s Bastion está actualizado.\n", s.Green(report.Sym("✓")))
-					return nil
-				}
+				fmt.Printf("  Versión instalada: %s · última publicada: %s\n", current, target)
+			}
+			install, msg := planUpdate(current, target, wanted != "", force)
+			if !install {
+				fmt.Printf("  %s %s\n", s.Green(report.Sym("✓")), msg)
+				return nil
 			}
 			if wanted != "" {
 				// Antes de pedir la elevación: que la versión exista.
-				if err := src.Published(ctx, latest); selfupdate.IsNotFound(err) {
+				if err := src.Published(ctx, target); selfupdate.IsNotFound(err) {
 					return fmt.Errorf("la versión %s no está publicada en %s. Si acabas de crear la etiqueta, "+
-						"la release tarda unos minutos en aparecer: vuelve a intentarlo luego", latest, src.Base())
+						"la release tarda unos minutos en aparecer: vuelve a intentarlo luego", target, src.Base())
 				} else if err != nil {
-					return fmt.Errorf("no se pudo comprobar la versión %s: %w", latest, err)
+					return fmt.Errorf("no se pudo comprobar la versión %s: %w", target, err)
 				}
 			}
 			if check {
-				fmt.Printf("  %s Hay una versión nueva. Ejecuta: bastion update\n", s.Yellow(report.Sym("↑")))
+				line := "bastion update"
+				if wanted != "" {
+					line += " --version " + target
+				}
+				if force {
+					line += " --force"
+				}
+				fmt.Printf("  %s %s Para instalarla: %s\n", s.Yellow(report.Sym("↑")), msg, line)
 				return nil
 			}
+			fmt.Printf("  %s\n", msg)
 			// En Windows, Bastion vive en Program Files: sin elevar no se puede
 			// sustituir. En vez de fallar al final, se repite la actualización
-			// en una ventana de administrador (como hace el instalador).
+			// en una ventana de administrador (como hace el instalador) y se
+			// espera a que termine. El proceso elevado no hereda las variables
+			// de esta consola: el origen se le pasa explícitamente.
 			if dir, werr := selfupdate.InstallDirWritable(); werr != nil && !probes.Privileged() {
 				if !canElevate() {
 					return fmt.Errorf("no se puede escribir en %s: repite con sudo (sudo bastion update)", dir)
 				}
-				args := []string{"update", "--pause"}
-				if force {
+				args := []string{"update", "--pause", "--version", target, "--repo", src.Repo}
+				if src.BaseURL != "" {
+					args = append(args, "--releases-url", src.BaseURL)
+				}
+				if force || !selfupdate.IsRelease(current) {
 					args = append(args, "--force")
 				}
-				if wanted != "" {
-					args = append(args, "--version", latest)
+				if gf.noColor {
+					args = append(args, "--no-color")
 				}
 				fmt.Printf("  %s %s solo lo puede modificar un administrador.\n", s.Yellow("!"), dir)
 				fmt.Println("    Se abre una ventana de administrador para terminar la actualización (acepta el aviso de Windows).")
-				return relaunchElevated(args)
+				code, err := relaunchElevated(args)
+				if err != nil {
+					return err
+				}
+				if code != 0 {
+					return &ExitError{Code: code, Msg: fmt.Sprintf("la actualización en la ventana de administrador terminó con el código %d", code)}
+				}
+				fmt.Printf("  %s Actualizado a %s\n", s.Green(report.Sym("✓")), target)
+				return nil
 			}
 			fmt.Printf("  Descargando %s …\n", selfupdate.AssetName(runtimeGOOS(), runtimeGOARCH()))
-			bin, tmp, err := src.Download(ctx, latest)
+			bin, tmp, err := src.Download(ctx, target)
 			if err != nil {
 				return err
 			}
@@ -473,13 +531,15 @@ BASTION_REPO / BASTION_RELEASES_URL para usar un espejo interno).`,
 			if err := selfupdate.Apply(bin); err != nil {
 				return err
 			}
-			fmt.Printf("  %s Actualizado a %s\n", s.Green(report.Sym("✓")), latest)
+			fmt.Printf("  %s Actualizado a %s\n", s.Green(report.Sym("✓")), target)
 			return nil
 		},
 	}
 	cmd.Flags().BoolVar(&check, "check", false, "solo comprobar si hay una versión nueva")
-	cmd.Flags().BoolVar(&force, "force", false, "reinstalar aunque no haya versión nueva")
+	cmd.Flags().BoolVar(&force, "force", false, "reinstalar aunque no haya versión nueva (o sustituir una compilación de desarrollo)")
 	cmd.Flags().StringVar(&wanted, "version", "", "instalar una versión concreta (p. ej. v0.3.2), también anterior")
+	cmd.Flags().StringVar(&repo, "repo", "", "repositorio de GitHub (owner/nombre)")
+	cmd.Flags().StringVar(&releasesURL, "releases-url", "", "espejo interno de releases (https://…)")
 	cmd.Flags().BoolVar(&pause, "pause", false, "esperar a Intro al terminar (ventana abierta por la elevación)")
 	_ = cmd.Flags().MarkHidden("pause")
 	return cmd
@@ -493,6 +553,14 @@ func newInitCmd() *cobra.Command {
 		Short: "Preparar directorios y configuración (lo ejecuta el instalador)",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			selfupdate.CleanupOld()
+			if probes.Privileged() {
+				// Si las carpetas ya existían con permisos inseguros, aparta
+				// los ficheros que otro usuario pudo dejar antes de
+				// restringirlas (si no, se volverían de confianza).
+				if err := secureDataDirs(); err != nil {
+					return err
+				}
+			}
 			res, err := config.Init()
 			if err != nil {
 				return fmt.Errorf("init: %w (¿se ejecuta como administrador/root?)", err)

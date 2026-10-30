@@ -210,7 +210,7 @@ func scheduleStatus() error {
 			if len(r.Errors) > 0 {
 				changes = report.Styled("error: "+strings.Join(r.Errors, "; "), s.Red)
 			}
-			tb.Row(r.Time.Local().Format("2006-01-02 15:04"), fmt.Sprintf("%d/100", r.ScanScore), fmt.Sprintf("%d/100", r.SurfaceScore), changes)
+			tb.Row(r.Time.Local().Format("2006-01-02 15:04"), runScanText(r), fmt.Sprintf("%d/100", r.SurfaceScore), changes)
 		}
 		tb.Write(os.Stdout)
 		if last := runs[len(runs)-1]; len(last.NotifyErrors) > 0 {
@@ -249,13 +249,18 @@ func scheduleRun() error {
 		} else {
 			scanOK = true
 			run.ScanScore = rep.Score.Value
+			run.ScanUnscored = !rep.Score.Scored
 			if rep.Changes != nil {
 				regressions = rep.Changes.Regressions
 				run.Regressions = len(regressions)
 			}
 		}
 	}
-	if srep, err := analyzeSurface(ctx); err != nil {
+	if srep, err := analyzeSurface(ctx); err != nil || ctx.Err() != nil {
+		// Interrumpido: no se guarda un análisis a medias.
+		if err == nil {
+			err = ctx.Err()
+		}
 		run.Errors = append(run.Errors, "superficie: "+err.Error())
 	} else {
 		dir, userDir := attachSurfaceChanges(cfg, srep)
@@ -282,8 +287,8 @@ func scheduleRun() error {
 	}
 	run.NotifyErrors = deliver(ctx, cfg.Notify, scheduleEvent(host, run, scanOK, surfaceOK, regressions, exposure))
 	logErr := schedule.AppendRun(schedule.LogPath(config.DataDir()), run)
-	fmt.Printf("postura %d/100 · %d controles empeorados · exposición %d/100 · %d cambios que aumentan la exposición\n",
-		run.ScanScore, run.Regressions, run.SurfaceScore, run.NewExposure)
+	fmt.Printf("postura %s · %d controles empeorados · exposición %d/100 · %d cambios que aumentan la exposición\n",
+		runScanText(run), run.Regressions, run.SurfaceScore, run.NewExposure)
 	for _, e := range run.NotifyErrors {
 		fmt.Fprintln(os.Stderr, "aviso no enviado:", e)
 	}
@@ -297,4 +302,12 @@ func scheduleRun() error {
 		return fmt.Errorf("no se pudo anotar la ejecución: %w", logErr)
 	}
 	return nil
+}
+
+// runScanText es la postura de una ejecución programada para mostrarla.
+func runScanText(r schedule.Run) string {
+	if r.ScanUnscored {
+		return "sin evaluar"
+	}
+	return fmt.Sprintf("%d/100", r.ScanScore)
 }

@@ -4,6 +4,7 @@ package platform
 
 import (
 	"os"
+	"path"
 	"runtime"
 	"strings"
 )
@@ -62,7 +63,56 @@ func ParseOSRelease(text string) map[string]string {
 	return m
 }
 
+// containerSignals busca indicios de contenedor en /proc/1/cgroup (cgroup
+// v1: docker, kubepods…), /proc/1/environ (container=, que fijan podman,
+// systemd-nspawn y LXC) y el montaje de / en /proc/self/mountinfo: con
+// cgroup v2 y su propio espacio de cgroups, /proc/1/cgroup es solo "0::/",
+// pero la raíz sigue siendo un overlay del motor de contenedores.
+func containerSignals(cgroup, mountinfo, environ string) bool {
+	for _, k := range []string{"docker", "kubepods", "containerd", "libpod"} {
+		if strings.Contains(cgroup, k) {
+			return true
+		}
+	}
+	for _, kv := range strings.Split(environ, "\x00") {
+		if strings.HasPrefix(kv, "container=") {
+			return true
+		}
+	}
+	for _, line := range strings.Split(mountinfo, "\n") {
+		f := strings.Fields(line)
+		if len(f) < 5 || f[4] != "/" || !strings.Contains(line, " - overlay ") {
+			continue
+		}
+		for _, k := range []string{"/docker/", "/containers/", "containerd", "/lxc/", "buildkit"} {
+			if strings.Contains(line, k) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// graphicalTarget indica si el destino por defecto de systemd es
+// graphical.target, mirando el enlace del administrador y luego los de la
+// distribución.
+func graphicalTarget(readlink func(string) (string, error)) bool {
+	for _, p := range []string{"/etc/systemd/system/default.target", "/usr/lib/systemd/system/default.target", "/lib/systemd/system/default.target"} {
+		if target, err := readlink(p); err == nil {
+			return strings.Contains(target, "graphical")
+		}
+	}
+	return false
+}
+
 // linuxTags calcula las etiquetas a partir de ID e ID_LIKE de os-release.
+// sudoClassic indica si el binario de sudo (ruta ya resuelta) es el sudo
+// clásico y no sudo-rs, que Ubuntu instala por defecto desde 25.10 en
+// /usr/lib/cargo/bin y que no admite opciones como "Defaults logfile".
+func sudoClassic(resolved string) bool {
+	return !strings.Contains(resolved, "/cargo/") && !strings.Contains(path.Base(resolved), "sudo-rs")
+}
+
 func linuxTags(id, idLike string) []string {
 	var tags []string
 	add := func(t string) {

@@ -278,15 +278,10 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
   // textContent: nunca se interpreta como HTML.
 
   // ---- Token de la sesión ----
-  var token = "";
-  try {
-    var q = new URLSearchParams(location.search);
-    token = q.get("t") || sessionStorage.getItem("bastion-token") || "";
-    if (q.get("t")) {
-      sessionStorage.setItem("bastion-token", token);
-      history.replaceState(null, "", location.pathname + location.hash);
-    }
-  } catch (e) {}
+  // La sesión va en una cookie HttpOnly que el servidor fija al abrir la
+  // dirección de "bastion ui" (y la quita de la URL con una redirección): el
+  // script nunca ve el token. Cada petición lleva X-Bastion-Request, que una
+  // web ajena no puede añadir sin una comprobación CORS que no se concede.
 
   var SEV = {
     critical: { label: "Crítico", color: "var(--critical)", rank: 0 },
@@ -343,6 +338,10 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     (children || []).forEach(function (c) { if (c) n.appendChild(c); });
     return n;
   }
+  // scored === false: ningún control evaluado (los informes antiguos no
+  // traen el campo y siempre tienen puntuación).
+  function scored(sc) { return !!sc && sc.scored !== false; }
+  function scoreText(sc) { return scored(sc) ? sc.value + "/100" : "sin evaluar"; }
   function scoreColor(v) { return v >= 80 ? "var(--good)" : v >= 60 ? "var(--warning)" : "var(--critical)"; }
   function scoreWord(v) { return v >= 90 ? "excelente" : v >= 80 ? "buena" : v >= 70 ? "mejorable" : v >= 60 ? "débil" : "crítica"; }
   function dot(color) { return el("span", { class: "dot", style: "background:" + color }); }
@@ -386,7 +385,8 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
 
   function api(path, opts) {
     opts = opts || {};
-    return fetch(path, { method: opts.method || "GET", headers: { "X-Bastion-Token": token }, cache: "no-store" }).then(function (r) {
+    return fetch(path, { method: opts.method || "GET", headers: { "X-Bastion-Request": "1" }, credentials: "same-origin", cache: "no-store" }).then(function (r) {
+      if (r.status === 401) throw new Error("la sesión no es válida o ha caducado. Abre de nuevo la dirección que muestra \"bastion ui\" en la terminal");
       return r.json().catch(function () { return {}; }).then(function (body) {
         if (!r.ok) throw new Error(body.error || ("HTTP " + r.status));
         return body;
@@ -440,7 +440,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
       S.plan.items = null;
       return api("/api/reports").then(function (list) { S.reports = list; });
     }).then(function () {
-      toast("Escaneo completado: " + S.report.score.value + "/100");
+      toast("Escaneo completado: " + scoreText(S.report.score));
       if (S.tab === "plan") loadPlan(S.plan.wave);
     }).catch(function (e) { toast("No se pudo escanear: " + e.message); })
       .then(function () { S.scanning = false; scanBtn.disabled = false; busy(false); render(); });
@@ -537,13 +537,16 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     var r = S.report, sc = r.score, results = r.results || [];
     var color = scoreColor(sc.value), prev = previousMeta();
     var deltaEl = null;
-    if (prev) {
+    if (prev && scored(sc) && scored(prev.score)) {
       var d = sc.value - prev.score.value;
       deltaEl = el("span", { class: "delta " + (d > 0 ? "up" : d < 0 ? "down" : ""), text: (d > 0 ? "▲ +" + d : d < 0 ? "▼ " + d : "= sin cambios") + " desde el escaneo anterior" });
     }
     var hero = el("div", { class: "card hero" }, [
       el("h2", { text: "Postura de seguridad" }),
-      el("div", null, [
+      !scored(sc) ? el("div", null, [
+        el("div", { class: "hero-figure" }, [el("span", { class: "num", text: "—" }), el("span", { class: "of", text: "sin evaluar" })]),
+        el("p", { text: "Ningún control se ha podido evaluar (sin privilegios, con error o no aplicables): no hay puntuación." + (S.info && !S.info.is_admin ? " Ejecuta bastion ui con privilegios." : "") })
+      ]) : el("div", null, [
         el("div", { class: "hero-figure" }, [
           el("span", { class: "num", text: String(sc.value) }), el("span", { class: "of", text: "/ 100" }),
           el("span", { class: "grade", text: sc.grade, style: "color:" + color, title: "Calificación " + sc.grade })
@@ -625,7 +628,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
   }
 
   function trendCard() {
-    var pts = S.reports.slice(-30);
+    var pts = S.reports.filter(function (m) { return scored(m.score); }).slice(-30); // sin los escaneos sin puntuación
     var body;
     if (pts.length < 2) {
       body = el("p", { class: "empty", text: "La tendencia aparece a partir del segundo escaneo. Vuelve a escanear después de aplicar cambios para ver cómo mejora la postura." });
@@ -685,11 +688,11 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
 
   // ---- Controles (informe completo incrustado) ----
   function renderControls() {
-    var src = "/r/" + encodeURIComponent(S.reportId) + ".html?t=" + encodeURIComponent(token);
+    var src = "/r/" + encodeURIComponent(S.reportId) + ".html";
     app.appendChild(el("section", null, [
       el("div", { class: "meta", style: "margin-bottom:10px" }, [el("span", { text: "Controles del escaneo del " + fmtDate(S.report.finished_at) + ", con evidencias y remediación." }),
         el("a", { href: src, target: "_blank", rel: "noopener noreferrer", text: "Informe completo en una pestaña nueva ↗" })]),
-      el("iframe", { class: "frame", src: src + "&view=controles", title: "Controles evaluados" })
+      el("iframe", { class: "frame", src: src + "?view=controles", title: "Controles evaluados" })
     ]));
   }
 
@@ -887,11 +890,11 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     }))])]);
     var tb = el("tbody");
     rows.forEach(function (m, i) {
-      var prev = rows[i + 1], d = prev ? m.score.value - prev.score.value : null;
+      var prev = rows[i + 1], d = prev && scored(m.score) && scored(prev.score) ? m.score.value - prev.score.value : null;
       tb.appendChild(el("tr", { class: m.id === S.reportId ? "current" : null }, [
         el("td", null, [el("div", { text: fmtDate(m.finished_at) }), el("div", { class: "sub", text: "Bastion " + m.version })]),
         el("td", { text: m.profile_name || m.profile }),
-        el("td", { class: "num" }, [el("strong", { text: m.score.value + " ", style: "color:" + scoreColor(m.score.value) }), m.score.grade]),
+        el("td", { class: "num" }, scored(m.score) ? [el("strong", { text: m.score.value + " ", style: "color:" + scoreColor(m.score.value) }), m.score.grade] : ["sin evaluar"]),
         el("td", { class: "num", text: d === null ? "—" : (d > 0 ? "+" + d : String(d)), style: d > 0 ? "color:var(--good-text)" : d < 0 ? "color:var(--critical)" : null }),
         el("td", { class: "num", text: String(m.score.failed) }),
         el("td", { class: "num", text: String((m.score.skipped || 0) + (m.score.errors || 0)) }),
@@ -913,7 +916,8 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
       var b2 = el("tbody");
       S.changes.forEach(function (c) {
         b2.appendChild(el("tr", null, [el("td", { class: "mono", text: c.id }), el("td", { text: fmtDate(c.created_at) }), el("td", { text: String(c.wave) }),
-          el("td", null, [CHANGE[c.status] || c.status, c.reboot ? el("div", { class: "sub", text: "requiere reinicio" }) : null]),
+          el("td", null, [CHANGE[c.status] || c.status, c.reboot ? el("div", { class: "sub", text: "requiere reinicio" }) : null,
+            c.nothing ? el("div", { class: "sub", text: c.nothing + (c.nothing === 1 ? " control ya estaba" : " controles ya estaban") + " en su sitio al aplicar" }) : null]),
           el("td", { class: "num", text: String(c.verified) }), el("td", { class: "num", text: String(c.failed) }), el("td", { class: "num", text: String(c.rolled_back) })]));
       });
       t2.appendChild(b2);
@@ -949,11 +953,6 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
   }
 
   // ---- Arranque ----
-  if (!token) {
-    S.error = "Falta el token de la sesión. Abre la dirección completa que muestra \"bastion ui\" en la terminal.";
-    route();
-    return;
-  }
   route();
   busy(true);
   Promise.all([api("/api/state"), api("/api/reports")]).then(function (res) {

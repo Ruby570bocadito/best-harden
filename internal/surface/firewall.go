@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -53,6 +54,11 @@ type FirewallRule struct {
 	Trust string
 	// Secure indica que la regla exige autenticación IPsec.
 	Secure bool
+	// RemotePorts son los puertos de origen a los que se limita (vacío o
+	// "*" = cualquiera) y UserAuth, que solo se aplica a los usuarios
+	// autorizados (LUAuth). Con ellas la regla no cubre todo el tráfico.
+	RemotePorts string
+	UserAuth    bool
 }
 
 // Firewall es la política de entrada efectiva del Firewall de Windows.
@@ -74,6 +80,15 @@ type Firewall struct {
 
 // Linux indica si es el cortafuegos del kernel de Linux.
 func (fw *Firewall) Linux() bool { return fw.nf != nil }
+
+// Uncovered devuelve las cadenas de Linux que pueden descartar tráfico antes
+// de la entrada (prerouting, ingress, raw/mangle) y que no se evalúan.
+func (fw *Firewall) Uncovered() []string {
+	if fw == nil || fw.nf == nil {
+		return nil
+	}
+	return fw.nf.uncovered
+}
 
 // Access es el resultado de evaluar un puerto.
 type Access struct {
@@ -352,7 +367,7 @@ func ProfileNames(mask int) string {
 func (fw *Firewall) fullBlock(p Port, profile int) *FirewallRule {
 	for i := range fw.Rules {
 		r := &fw.Rules[i]
-		if r.Allow || !r.matches(p, profile) {
+		if r.Allow || !r.matches(p, profile) || !r.blocksProcess(p) {
 			continue
 		}
 		if r.unrestricted() {
@@ -365,7 +380,71 @@ func (fw *Firewall) fullBlock(p Port, profile int) *FirewallRule {
 // unrestricted indica si la regla se aplica desde cualquier dirección,
 // interfaz y dispositivo, sin exigir IPsec.
 func (r *FirewallRule) unrestricted() bool {
-	return anyAddr(r.Local) && anyAddr(r.Remote) && r.Interfaces == "" && anyIfType(r.IfTypes) && r.Trust == "" && !r.Secure
+	return anyAddr(r.Local) && anyAddr(r.Remote) && r.Interfaces == "" && anyIfType(r.IfTypes) && r.Trust == "" && !r.Secure &&
+		anyAddr(r.RemotePorts) && !r.UserAuth
+}
+
+// blocksProcess comprueba con exactitud que una regla de BLOQUEO se aplica
+// al proceso del puerto. matches compara el programa solo por el nombre del
+// fichero, lo que basta para un permiso (a lo sumo, se da por abierto algo
+// que no lo está), pero no para un bloqueo: uno para C:\Temp\node.exe no
+// cierra el node.exe de Program Files. Sin la ruta del proceso no se puede
+// saber y el bloqueo no se tiene en cuenta. Lo mismo con el servicio: en un
+// svchost compartido no se sabe cuál de sus servicios abre el puerto.
+func (r *FirewallRule) blocksProcess(p Port) bool {
+	app := strings.TrimSpace(r.App)
+	switch {
+	case app == "" || app == "*":
+	case strings.EqualFold(app, "System"):
+		if !strings.EqualFold(p.Process, "System") {
+			return false
+		}
+	default:
+		if p.Path == "" || !samePath(expandWinEnv(app, os.Getenv), p.Path) {
+			return false
+		}
+	}
+	if svc := strings.TrimSpace(r.Service); svc != "" && svc != "*" && len(p.Services) > 1 {
+		return false
+	}
+	return true
+}
+
+// samePath compara dos rutas de Windows sin distinguir mayúsculas ni el
+// tipo de barra.
+func samePath(a, b string) bool {
+	norm := func(s string) string { return strings.ReplaceAll(strings.TrimSpace(s), "/", `\`) }
+	return strings.EqualFold(norm(a), norm(b))
+}
+
+// expandWinEnv expande las variables %VAR% de una ruta de regla. Una
+// variable desconocida se deja tal cual (y la ruta no coincidirá).
+func expandWinEnv(s string, getenv func(string) string) string {
+	var b strings.Builder
+	for {
+		i := strings.IndexByte(s, '%')
+		if i < 0 {
+			break
+		}
+		j := strings.IndexByte(s[i+1:], '%')
+		if j < 0 {
+			break
+		}
+		name := s[i+1 : i+1+j]
+		v := getenv(name)
+		if v == "" && strings.EqualFold(name, "SystemRoot") {
+			v = getenv("windir")
+		}
+		b.WriteString(s[:i])
+		if v == "" {
+			b.WriteString(s[i : i+2+j])
+		} else {
+			b.WriteString(v)
+		}
+		s = s[i+2+j:]
+	}
+	b.WriteString(s)
+	return b.String()
 }
 
 // storeApp indica si es una regla de una app de la Microsoft Store. La

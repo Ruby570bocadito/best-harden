@@ -39,8 +39,9 @@ func (c *Counts) add(s Status) {
 
 // CategoryScore es la puntuación de una categoría de controles.
 type CategoryScore struct {
-	Name  string `json:"name"`
-	Value int    `json:"value"`
+	Name   string `json:"name"`
+	Value  int    `json:"value"`
+	Scored bool   `json:"scored"` // false: ningún control evaluado (Value 0)
 	Counts
 }
 
@@ -50,9 +51,12 @@ type CategoryScore struct {
 // crítico 10, alto 5, medio 3, bajo 1. Los errores, los no evaluados por
 // falta de privilegios, las excepciones vigentes y los "no aplica" no
 // cuentan; si hay errores o no evaluados la puntuación se marca como parcial.
+// Si no hay ningún control superado ni fallido (todo error, no evaluado o
+// no aplica) no hay puntuación: Scored es false, Value 0 y Grade "N/A".
 type Score struct {
 	Value      int               `json:"value"`
 	Grade      string            `json:"grade"`
+	Scored     bool              `json:"scored"`
 	Partial    bool              `json:"partial"`
 	Counts                       //
 	BySeverity map[string]Counts `json:"by_severity"`
@@ -92,11 +96,14 @@ func ComputeScore(results []Result) Score {
 		}
 		catW[r.Rule.Category] = cw
 	}
-	s.Value = pct(got, max)
+	s.Value, s.Scored = pct(got, max)
 	s.Grade = grade(s.Value)
+	if !s.Scored {
+		s.Grade = "N/A"
+	}
 	s.Partial = s.Errors > 0 || s.Skipped > 0
 	for name, c := range cats {
-		c.Value = pct(catW[name][0], catW[name][1])
+		c.Value, c.Scored = pct(catW[name][0], catW[name][1])
 		s.ByCategory = append(s.ByCategory, *c)
 	}
 	sort.Slice(s.ByCategory, func(i, j int) bool {
@@ -108,11 +115,12 @@ func ComputeScore(results []Result) Score {
 	return s
 }
 
-func pct(got, max int) int {
+// pct es el porcentaje redondeado; ok es false si no hay nada que puntuar.
+func pct(got, max int) (int, bool) {
 	if max == 0 {
-		return 100
+		return 0, false
 	}
-	return (got*100 + max/2) / max
+	return (got*100 + max/2) / max, true
 }
 
 func grade(v int) string {

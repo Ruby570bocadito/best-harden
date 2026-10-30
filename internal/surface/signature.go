@@ -29,7 +29,9 @@ func parsePSSignatures(data map[string]any) map[string]sigInfo {
 			s.status = SigUnsigned
 		case "HashMismatch":
 			s.status = SigInvalid
-		case "NotTrusted":
+		case "NotTrusted", "UnknownError":
+			// UnknownError: la firma no se puede verificar (certificado
+			// caducado sin sello de tiempo, revocado, cadena incompleta…).
 			s.status = SigUntrusted
 		default:
 			continue // formato no admitido o error al leerlo: sin dato
@@ -75,7 +77,7 @@ func parseDpkgSearch(out string) map[string]string {
 	pkgs := map[string]string{}
 	for _, l := range strings.Split(out, "\n") {
 		i := strings.Index(l, ": /")
-		if i <= 0 || strings.HasPrefix(l, "diversion ") {
+		if i <= 0 || strings.HasPrefix(l, "diversion ") || strings.HasPrefix(l, "local diversion ") {
 			continue
 		}
 		pkg := strings.TrimSpace(l[:i])
@@ -171,7 +173,7 @@ func binaryFindings(bins []*exposedBinary) []Finding {
 			out = append(out, Finding{ID: "SURF-BADSIG", Severity: rule.SevMedium, Subject: ports,
 				Title: fmt.Sprintf("%s está firmado con un certificado en el que Windows no confía (%s)", b.name, firstNonEmpty(b.signer, "firmante desconocido")),
 				Detail: fmt.Sprintf("La firma de %s no garantiza quién lo ha hecho: el certificado es propio (autofirmado), de una entidad en la que "+
-					"Windows no confía o está revocado. Acepta conexiones desde la red (%s).", b.path, ports),
+					"Windows no confía, está revocado o no se puede verificar (caducado sin sello de tiempo). Acepta conexiones desde la red (%s).", b.path, ports),
 				Fix: fmt.Sprintf("Comprueba de dónde viene el programa; si no lo reconoces, analízalo con Microsoft Defender (Start-MpScan -ScanType CustomScan -ScanPath '%s') "+
 					"y reinstálalo desde su origen oficial.", b.path)})
 		}

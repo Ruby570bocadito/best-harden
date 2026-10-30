@@ -16,6 +16,10 @@ import (
 type netfilter struct {
 	bases  []nfBase
 	chains map[string]*nfChain // clave: familia/tabla/cadena
+	// uncovered son cadenas que pueden descartar tráfico antes de la
+	// entrada (prerouting, ingress, tablas raw/mangle) y que no se evalúan:
+	// un puerto puede aparecer accesible sin estarlo.
+	uncovered []string
 }
 
 // nfBase es una cadena base del gancho input.
@@ -43,8 +47,13 @@ type nfRule struct {
 	dst      string   // direcciones de destino (como en Windows, las locales)
 	skip     bool     // no se aplica a una conexión nueva a un puerto local
 	unknown  bool     // tiene condiciones que no se evalúan
-	verdict  string   // accept, drop, jump, goto, return o "" (sigue)
-	target   string   // clave de la cadena de jump/goto
+	// flags indica que la regla mira los flags TCP (--syn, --tcp-flags,
+	// "tcp flags & …"): solo afecta a ciertos paquetes. Un bloqueo con esa
+	// condición (anti escaneo) no impide una conexión normal; un permiso
+	// sí la deja pasar (el SYN que la abre).
+	flags   bool
+	verdict string // accept, drop, jump, goto, return o "" (sigue)
+	target  string // clave de la cadena de jump/goto
 }
 
 // nfResult es el resultado de recorrer una cadena.
@@ -220,13 +229,17 @@ func (nf *netfilter) run(c *nfChain, p Port, fam string, depth int) nfResult {
 			}
 			res.addLimits(labels, r.ref)
 		case "drop":
-			if restricted || partial {
+			if restricted || partial || r.flags {
 				continue
 			}
 			res.verdict, res.rule = "drop", r.ref
 			return res
 		case "jump", "goto":
 			sub := nf.run(nf.chains[r.target], p, fam, depth+1)
+			if r.flags && sub.verdict == "drop" {
+				// Solo ciertos paquetes (anti escaneo) van a parar a un bloqueo.
+				continue
+			}
 			if restricted {
 				// Solo para parte del tráfico (una interfaz, unos orígenes). Si
 				// la subcadena a su vez solo acepta desde ciertos orígenes, esos
@@ -267,7 +280,7 @@ func (nf *netfilter) run(c *nfChain, p Port, fam string, depth int) nfResult {
 				return res
 			}
 		case "return":
-			if restricted {
+			if restricted || r.flags {
 				partial = true
 				continue
 			}
@@ -399,6 +412,7 @@ func parseNftJSON(data []byte, skipTables map[string]bool) (*netfilter, error) {
 		}
 	}
 	key := func(fam, table, name string) string { return fam + "/" + table + "/" + name }
+	pre := map[string]bool{} // cadenas de prerouting/ingress → política drop
 	for _, c := range chains {
 		if skipTables[c.Family+"/"+c.Table] {
 			continue
@@ -412,6 +426,9 @@ func parseNftJSON(data []byte, skipTables map[string]bool) (*netfilter, error) {
 			}
 			nf.bases = append(nf.bases, nfBase{family: c.Family, policy: pol, chain: ch})
 		}
+		if (c.Hook == "prerouting" || c.Hook == "ingress") && (c.Type == "" || c.Type == "filter") {
+			pre[key(c.Family, c.Table, c.Name)] = c.Policy == "drop"
+		}
 	}
 	count := map[string]int{}
 	for _, r := range rules {
@@ -419,8 +436,9 @@ func parseNftJSON(data []byte, skipTables map[string]bool) (*netfilter, error) {
 		if ch == nil {
 			continue
 		}
-		count[r.Chain]++
-		rule := nfRule{ref: fmt.Sprintf("«%s #%d»", r.Chain, count[r.Chain])}
+		ck := key(r.Family, r.Table, r.Chain)
+		count[ck]++
+		rule := nfRule{ref: fmt.Sprintf("«%s #%d»", r.Chain, count[ck])}
 		if r.Comment != "" {
 			rule.ref = "«" + r.Comment + "»"
 		}
@@ -438,6 +456,17 @@ func parseNftJSON(data []byte, skipTables map[string]bool) (*netfilter, error) {
 		}
 		ch.rules = append(ch.rules, rule)
 	}
+	// Cadenas anteriores a la entrada que descartan tráfico: no se evalúan
+	// (salvo las antisuplantación con fib, que son condiciones desconocidas).
+	for k, drop := range pre {
+		for _, r := range nf.chains[k].rules {
+			drop = drop || (r.verdict == "drop" && !r.skip && !r.unknown)
+		}
+		if drop {
+			nf.uncovered = appendOnce(nf.uncovered, "nft "+k)
+		}
+	}
+	sort.Strings(nf.uncovered)
 	return nf, nil
 }
 
@@ -569,7 +598,8 @@ func nftMatch(r *nfRule, op string, left map[string]json.RawMessage, right json.
 				r.unknown = true // fib saddr . iif oif missing (antisuplantación)
 			}
 		case "&", "|", "^":
-			// tcp flags & (…) == syn: comprobaciones de la cabecera
+			// tcp flags & (…) == syn: solo ciertos paquetes (ver flags).
+			r.flags = true
 		default:
 			r.unknown = true
 		}
@@ -711,7 +741,10 @@ func flatten(v any) []string {
 			return flatten(x["set"])
 		case x["prefix"] != nil:
 			if p, ok := x["prefix"].(map[string]any); ok {
-				return []string{fmt.Sprintf("%v/%v", flatten(p["addr"])[0], flatten(p["len"])[0])}
+				addr, n := flatten(p["addr"]), flatten(p["len"])
+				if len(addr) == 1 && len(n) == 1 {
+					return []string{addr[0] + "/" + n[0]}
+				}
 			}
 		case x["range"] != nil:
 			if r := flatten(x["range"]); len(r) == 2 {
@@ -732,6 +765,7 @@ func flatten(v any) []string {
 // iptables-save (family "ip") o ip6tables-save ("ip6").
 func (nf *netfilter) parseIptablesSave(text, family string) {
 	inFilter := false
+	table := ""
 	policies := map[string]string{}
 	count := map[string]int{}
 	key := func(name string) string { return family + "/iptables/" + name }
@@ -739,10 +773,15 @@ func (nf *netfilter) parseIptablesSave(text, family string) {
 		line = strings.TrimSpace(line)
 		switch {
 		case strings.HasPrefix(line, "*"):
-			inFilter = line == "*filter"
+			table = strings.TrimPrefix(line, "*")
+			inFilter = table == "filter"
+		case (table == "raw" || table == "mangle") && (strings.HasPrefix(line, ":PREROUTING DROP") ||
+			strings.HasPrefix(line, "-A PREROUTING ") && strings.Contains(line, " -j DROP")):
+			// Descartes antes de la entrada que no se evalúan.
+			nf.uncovered = appendOnce(nf.uncovered, family+"tables "+table+" PREROUTING")
 		case !inFilter || line == "" || strings.HasPrefix(line, "#"):
 		case line == "COMMIT":
-			inFilter = false
+			inFilter, table = false, ""
 		case strings.HasPrefix(line, ":"):
 			f := strings.Fields(line[1:])
 			if len(f) >= 2 {
@@ -835,6 +874,7 @@ func iptRule(args []string, family string) nfRule {
 			next(&i)
 			if a == "--tcp-flags" {
 				next(&i)
+				r.flags = true
 			}
 		case "-m", "--match":
 			switch m := next(&i); m {
@@ -874,7 +914,9 @@ func iptRule(args []string, family string) nfRule {
 			default:
 				r.skip = true // difusión o multidifusión
 			}
-		case "--src-type", "--set", "--update", "--rcheck", "--remove", "--rsource", "--rdest", "--limit-iface-in", "--syn":
+		case "--syn":
+			r.flags = true
+		case "--src-type", "--set", "--update", "--rcheck", "--remove", "--rsource", "--rdest", "--limit-iface-in":
 			if a == "--src-type" {
 				next(&i)
 				r.unknown = true

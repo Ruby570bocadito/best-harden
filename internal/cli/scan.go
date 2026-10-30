@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 	"github.com/Ruby570bocadito/bastion/internal/config"
 	"github.com/Ruby570bocadito/bastion/internal/engine"
 	"github.com/Ruby570bocadito/bastion/internal/platform"
+	"github.com/Ruby570bocadito/bastion/internal/probes"
 	"github.com/Ruby570bocadito/bastion/internal/report"
 	"github.com/Ruby570bocadito/bastion/internal/version"
 	"github.com/Ruby570bocadito/bastion/pkg/rule"
@@ -67,6 +69,16 @@ func runScan(f scanFlags) error {
 	if f.format != "console" && f.format != "json" {
 		return fmt.Errorf("--format debe ser console o json")
 	}
+	if f.minScore < 0 || f.minScore > 100 {
+		return fmt.Errorf("--min-score debe estar entre 0 y 100")
+	}
+	// Los ficheros de salida se comprueban antes de escanear: un error al
+	// final no debe tirar un escaneo largo ni vaciar un fichero existente.
+	for _, o := range f.outputs {
+		if err := report.CheckOutput(o); err != nil {
+			return fmt.Errorf("-o %s: %w", o, err)
+		}
+	}
 	cfg := loadConfig()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -74,6 +86,11 @@ func runScan(f scanFlags) error {
 	progress := newProgress(f.format == "console" && !f.quiet)
 	rep, err := scanReport(ctx, cfg, f.profile, f.ids, f.category, progress.update)
 	progress.done()
+	if errors.Is(err, context.Canceled) {
+		// Un escaneo interrumpido no se guarda ni se escribe: sería la base
+		// de la próxima comparación con la mayoría de controles en error.
+		return &ExitError{Code: 130, Msg: "escaneo interrumpido: no se ha guardado nada"}
+	}
 	if err != nil {
 		return err
 	}
@@ -131,8 +148,8 @@ func runScan(f scanFlags) error {
 		fmt.Fprintln(msgs)
 	}
 
-	if ctx.Err() != nil {
-		return &ExitError{Code: 130, Msg: "escaneo interrumpido"}
+	if f.minScore > 0 && !rep.Score.Scored {
+		return &ExitError{Code: 2, Msg: fmt.Sprintf("no se ha podido evaluar ningún control: no hay puntuación que comparar con --min-score %d (¿falta ejecutarlo con privilegios?)", f.minScore)}
 	}
 	if f.minScore > 0 && rep.Score.Value < f.minScore {
 		return &ExitError{Code: 2, Msg: fmt.Sprintf("puntuación %d inferior al mínimo exigido (%d)", rep.Score.Value, f.minScore)}
@@ -164,6 +181,11 @@ func scanReport(ctx context.Context, cfg config.Config, profile string, ids, cat
 	eng := engine.New()
 	eng.HostTags = info.Tags
 	results := evaluate(ctx, eng, selected, info, progress)
+	if err := ctx.Err(); err != nil {
+		// Interrumpido o caducado: los controles que quedaban saldrían como
+		// error. No se devuelve un informe para que nadie lo guarde.
+		return nil, fmt.Errorf("escaneo incompleto: %w", err)
+	}
 	finished := time.Now()
 	return &engine.Report{
 		Schema:     engine.SchemaVersion,
@@ -203,6 +225,14 @@ func attachScanChanges(cfg config.Config, rep *engine.Report) {
 // saveReport guarda el informe HTML y JSON en el directorio de informes.
 func saveReport(cfg config.Config, rep *engine.Report) (htmlPath, jsonPath, dir string, userDir bool, err error) {
 	dir, userDir = reportsDir(cfg)
+	if !userDir && probes.Privileged() {
+		// Con privilegios se escribe en la carpeta de datos: antes, que
+		// exista con sus permisos restringidos (si no, en Windows heredaría
+		// los de %ProgramData%, donde cualquier usuario crea ficheros).
+		if err := ensureDataDirs(); err != nil {
+			return "", "", dir, userDir, err
+		}
+	}
 	htmlPath, jsonPath, err = report.Save(dir, rep, cfg.Reports.Keep)
 	if err != nil {
 		return "", "", dir, userDir, fmt.Errorf("no se pudo guardar el informe en %s: %w", dir, err)
@@ -264,4 +294,13 @@ func (p *progress) done() {
 	if p.on {
 		fmt.Fprint(os.Stderr, "\r\x1b[2K")
 	}
+}
+
+// scoreLabel es la puntuación para mostrar: «72/100 C» o «— (sin evaluar)»
+// si no se pudo evaluar ningún control (un 0/100 sería engañoso).
+func scoreLabel(sc engine.Score) string {
+	if !sc.Scored {
+		return "— (sin evaluar)"
+	}
+	return fmt.Sprintf("%d/100 %s", sc.Value, sc.Grade)
 }

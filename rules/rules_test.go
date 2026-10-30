@@ -1,6 +1,8 @@
 package rules_test
 
 import (
+	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/Ruby570bocadito/bastion/internal/probes"
@@ -58,5 +60,50 @@ func TestDCInheritsServerBaseline(t *testing.T) {
 	}
 	if ids["WIN-ACC-006"] {
 		t.Error("LAPS no aplica a controladores de dominio")
+	}
+}
+
+// El esquema JSON (validación en el editor) debe admitir actions/safety y
+// conocer los mismos tipos de acción que el motor de remediación.
+func TestSchemaActionTypes(t *testing.T) {
+	b, err := os.ReadFile("schema/rule.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var s struct {
+		Properties struct {
+			Remediation struct {
+				Properties map[string]json.RawMessage `json:"properties"`
+			} `json:"remediation"`
+		} `json:"properties"`
+		Defs struct {
+			Action struct {
+				Properties struct {
+					Type struct {
+						Enum []string `json:"enum"`
+					} `json:"type"`
+				} `json:"properties"`
+			} `json:"action"`
+		} `json:"$defs"`
+	}
+	if err := json.Unmarshal(b, &s); err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range []string{"actions", "safety"} {
+		if _, ok := s.Properties.Remediation.Properties[k]; !ok {
+			t.Errorf("el esquema no declara remediation.%s", k)
+		}
+	}
+	got := map[string]bool{}
+	for _, e := range s.Defs.Action.Properties.Type.Enum {
+		got[e] = true
+	}
+	for typ := range remediate.Specs {
+		if !got[typ] {
+			t.Errorf("el esquema no conoce la acción %s", typ)
+		}
+	}
+	if len(got) != len(remediate.Specs) {
+		t.Errorf("el esquema tiene %d tipos de acción y el motor %d", len(got), len(remediate.Specs))
 	}
 }

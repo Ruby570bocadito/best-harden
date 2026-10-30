@@ -40,7 +40,7 @@ func runPS(ctx context.Context, script string, env ...string) (string, error) {
 	b, err := cmd.CombinedOutput()
 	out := string(b)
 	if !utf8.Valid(b) {
-		out = probes.DecodeText(b)
+		out = probes.DecodeConsole(b)
 	}
 	if err != nil {
 		return out, fmt.Errorf("%s: %v: %s", filepath.Base(exe), err, strings.TrimSpace(out))

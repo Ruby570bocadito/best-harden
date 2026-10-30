@@ -344,7 +344,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
   document.getElementById("print").addEventListener("click", function () { window.print(); });
 
   var h = data.host || {}, sc = data.score || {}, results = data.results || [];
-  document.title = "Bastion · " + (h.hostname || "informe") + " · " + sc.value + "/100";
+  document.title = "Bastion · " + (h.hostname || "informe") + " · " + (sc.scored === false ? "sin evaluar" : sc.value + "/100");
 
   // ---- Equipo ----
   var meta = el("div", { class: "meta" });
@@ -374,10 +374,16 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
   app.appendChild(hostSec);
 
   // ---- Héroe y KPIs ----
-  var color = scoreColor(sc.value);
+  // scored === false: ningún control evaluado (los informes antiguos no
+  // traen el campo y siempre tienen puntuación).
+  var unscored = sc.scored === false;
+  var color = unscored ? "var(--muted)" : scoreColor(sc.value);
   var hero = el("div", { class: "card hero" }, [
     el("h2", { text: "Postura de seguridad" }),
-    el("div", null, [
+    unscored ? el("div", null, [
+      el("div", { class: "hero-figure" }, [el("span", { class: "num", text: "—" }), el("span", { class: "of", text: "sin evaluar" })]),
+      el("p", { text: "Ningún control se ha podido evaluar (sin privilegios, con error o no aplicables): no hay puntuación." })
+    ]) : el("div", null, [
       el("div", { class: "hero-figure" }, [
         el("span", { class: "num", text: String(sc.value) }),
         el("span", { class: "of", text: "/ 100" }),

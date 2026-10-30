@@ -77,6 +77,9 @@ check:
 remediation:
   summary: Fijar "MaxAuthTries 4".
   breaking_risk: low
+  # Un cliente con más de 4 claves en el agente SSH recibe "Too many
+  # authentication failures": se aplica con dead-man switch.
+  safety: remote-access
   actions:
     - type: sshd.set
       key: MaxAuthTries
@@ -230,12 +233,16 @@ check:
   default: sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256
 remediation:
   summary: Eliminar los algoritmos con SHA-1 de KexAlgorithms.
+  # Sintaxis "-" (OpenSSH 7.5+): quita solo los débiles y conserva los que
+  # la versión instalada tenga por defecto (sntrup761 solo existe desde 8.5 y
+  # mlkem768x25519 desde 9.9; una lista fija rompería unas versiones y
+  # desactivaría el intercambio post-cuántico en otras).
   breaking_risk: low
   safety: remote-access
   actions:
     - type: sshd.set
       key: KexAlgorithms
-      value: 'sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256'
+      value: '-diffie-hellman-group1-sha1,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha1'
 ---
 id: LNX-SSH-010
 title: Permisos de sshd_config

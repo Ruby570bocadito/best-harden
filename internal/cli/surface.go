@@ -63,7 +63,7 @@ proceso de cada puerto.`,
 	}
 	fl := cmd.Flags()
 	fl.StringVarP(&f.format, "format", "f", "console", "salida estándar: console | json")
-	fl.StringSliceVarP(&f.outputs, "output", "o", nil, "guardar el análisis en ficheros .html (informe para compartir) o .json; se puede repetir")
+	fl.StringArrayVarP(&f.outputs, "output", "o", nil, "guardar el análisis en ficheros .html (informe para compartir) o .json; se puede repetir")
 	fl.StringVar(&f.failOn, "fail-on", "", "salir con código 2 si hay hallazgos de esta severidad o mayor: critical | high | medium | low")
 	fl.BoolVarP(&f.all, "all", "a", false, "mostrar también los servicios que solo escuchan en el propio equipo")
 	fl.BoolVar(&f.save, "save", false, "guardar el análisis (HTML y JSON) para comparar con el siguiente")
@@ -107,9 +107,17 @@ func runSurface(f surfaceFlags) error {
 			return fmt.Errorf("--fail-on debe ser critical, high, medium o low")
 		}
 	}
+	for _, o := range outputs {
+		if err := report.CheckOutput(o); err != nil {
+			return fmt.Errorf("-o %s: %w", o, err)
+		}
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	rep, err := analyzeSurface(ctx)
+	if ctx.Err() != nil {
+		return &ExitError{Code: 130, Msg: "análisis interrumpido: no se ha guardado nada"}
+	}
 	if err != nil {
 		return err
 	}
@@ -137,8 +145,9 @@ func runSurface(f surfaceFlags) error {
 			if err := report.SurfaceHTML(&buf, rep); err != nil {
 				return err
 			}
-		default:
-			return fmt.Errorf("-o admite .html o .json (%s)", output)
+		}
+		if err := os.MkdirAll(filepath.Dir(output), 0o750); err != nil {
+			return err
 		}
 		if err := os.WriteFile(output, buf.Bytes(), 0o640); err != nil {
 			return err

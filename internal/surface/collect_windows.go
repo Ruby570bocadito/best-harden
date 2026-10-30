@@ -28,7 +28,7 @@ func Collect(ctx context.Context) (Inventory, error) {
 		// Los sockets UDP en el rango dinámico (49152-65535) son de clientes:
 		// consultas DNS, descubrimiento, sesiones de escritorio remoto…
 		l := &inv.Listeners[i]
-		l.Ephemeral = l.Proto == "udp" && l.Port >= 49152
+		l.Ephemeral = l.Proto == "udp" && ephemeralUDP(l.Port, 49152, 65535)
 	}
 	if tl, err := run(ctx, probes.System32("tasklist.exe"), "/svc", "/fo", "csv", "/nh"); err == nil {
 		procs := parseTasklist(tl)
@@ -42,26 +42,18 @@ func Collect(ctx context.Context) (Inventory, error) {
 		inv.Notes = append(inv.Notes, "No se pudo asociar cada puerto con su proceso (tasklist): "+err.Error())
 	}
 	// Usuario de cada proceso: las reglas del firewall con propietario
-	// (LocalUserOwner) solo se aplican a los procesos de ese usuario.
-	if tl, err := run(ctx, probes.System32("tasklist.exe"), "/v", "/fo", "csv", "/nh"); err == nil {
-		users := parseTasklistUsers(tl)
-		sids := map[string]string{}
-		for i := range inv.Listeners {
-			l := &inv.Listeners[i]
-			u, ok := users[l.PID]
-			if !ok {
-				continue
-			}
-			l.User = u
-			sid, ok := sids[u]
-			if !ok {
-				if s, _, _, err := windows.LookupSID("", u); err == nil {
-					sid = s.String()
-				}
-				sids[u] = sid
-			}
-			l.UserSID = sid
+	// (LocalUserOwner) solo se aplican a los procesos de ese usuario. Se lee
+	// del token de cada proceso a la escucha: "tasklist /v" puede tardar
+	// minutos (consulta el título de todas las ventanas).
+	owners := map[int][2]string{}
+	for i := range inv.Listeners {
+		l := &inv.Listeners[i]
+		o, ok := owners[l.PID]
+		if !ok {
+			o[0], o[1] = processOwner(l.PID)
+			owners[l.PID] = o
 		}
+		l.User, l.UserSID = o[0], o[1]
 	}
 
 	collectSignatures(ctx, &inv)
@@ -178,6 +170,37 @@ func imagePath(pid int) string {
 	return windows.UTF16ToString(buf[:n])
 }
 
+// processOwner devuelve el usuario (DOMINIO\usuario) y el SID del
+// propietario de un proceso; vacíos si no se puede abrir su token (sin
+// privilegios, los de otros usuarios).
+func processOwner(pid int) (user, sid string) {
+	if pid <= 4 { // 0 y 4: inactivo y System
+		return "", ""
+	}
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
+	if err != nil {
+		return "", ""
+	}
+	defer windows.CloseHandle(h)
+	var tok windows.Token
+	if err := windows.OpenProcessToken(h, windows.TOKEN_QUERY, &tok); err != nil {
+		return "", ""
+	}
+	defer tok.Close()
+	tu, err := tok.GetTokenUser()
+	if err != nil {
+		return "", ""
+	}
+	sid = tu.User.Sid.String()
+	if account, domain, _, err := tu.User.Sid.LookupAccount(""); err == nil {
+		user = account
+		if domain != "" {
+			user = domain + `\` + account
+		}
+	}
+	return user, sid
+}
+
 func run(ctx context.Context, name string, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
@@ -187,5 +210,5 @@ func run(ctx context.Context, name string, args ...string) (string, error) {
 	if err := cmd.Run(); err != nil {
 		return "", err
 	}
-	return probes.DecodeText(out.Bytes()), nil
+	return probes.DecodeConsole(out.Bytes()), nil
 }

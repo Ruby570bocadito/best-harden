@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"encoding/csv"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -95,17 +97,19 @@ func parseNetstat(out string) []Listener {
 		}
 		proto := strings.ToLower(f[0])
 		var local, pidStr string
+		// El PID es siempre la última columna: así da igual que el estado
+		// venga traducido en varias palabras.
 		switch {
-		case proto == "tcp" && len(f) == 5:
+		case proto == "tcp" && len(f) >= 5:
 			if f[2] != "0.0.0.0:0" && f[2] != "[::]:0" {
 				continue
 			}
-			local, pidStr = f[1], f[4]
-		case proto == "udp" && len(f) == 4:
+			local, pidStr = f[1], f[len(f)-1]
+		case proto == "udp" && len(f) >= 4:
 			if f[2] != "*:*" {
 				continue
 			}
-			local, pidStr = f[1], f[3]
+			local, pidStr = f[1], f[len(f)-1]
 		default:
 			continue
 		}
@@ -123,6 +127,29 @@ func parseNetstat(out string) []Listener {
 	return ls
 }
 
+// readCSV lee un CSV registro a registro: una línea mal entrecomillada se
+// salta sin perder las demás (ReadAll lo descartaría todo).
+func readCSV(text string) [][]string {
+	r := csv.NewReader(strings.NewReader(text))
+	r.FieldsPerRecord = -1
+	r.LazyQuotes = true
+	var out [][]string
+	for {
+		rec, err := r.Read()
+		if err == io.EOF {
+			return out
+		}
+		if err != nil {
+			var pe *csv.ParseError
+			if errors.As(err, &pe) {
+				continue
+			}
+			return out
+		}
+		out = append(out, rec)
+	}
+}
+
 // procInfo es un proceso de Windows con sus servicios.
 type procInfo struct {
 	image    string
@@ -133,10 +160,7 @@ type procInfo struct {
 // servicios. "N/A" (o su traducción, p. ej. "N/D") significa ninguno.
 func parseTasklist(out string) map[int]procInfo {
 	m := map[int]procInfo{}
-	r := csv.NewReader(strings.NewReader(out))
-	r.FieldsPerRecord = -1
-	records, _ := r.ReadAll()
-	for _, rec := range records {
+	for _, rec := range readCSV(out) {
 		if len(rec) < 3 {
 			continue
 		}
@@ -158,45 +182,44 @@ func parseTasklist(out string) map[int]procInfo {
 	return m
 }
 
-// parseTasklistUsers interpreta "tasklist /v /fo csv /nh": devuelve el
-// usuario de cada PID (séptima columna). "N/A" o su traducción, vacío.
-func parseTasklistUsers(out string) map[int]string {
-	m := map[int]string{}
-	r := csv.NewReader(strings.NewReader(out))
-	r.FieldsPerRecord = -1
-	records, _ := r.ReadAll()
-	for _, rec := range records {
-		if len(rec) < 7 {
-			continue
-		}
-		pid, err := strconv.Atoi(strings.TrimSpace(rec[1]))
-		user := strings.TrimSpace(rec[6])
-		if err != nil || user == "" || strings.Contains(user, "/") {
-			continue
-		}
-		m[pid] = user
-	}
-	return m
-}
-
 // parseExports interpreta /etc/exports: "ruta cliente(opciones) cliente…".
+// Una ruta sin clientes se exporta a todos (exportfs avisa y usa "*"), y
+// las líneas pueden continuar en la siguiente con "\".
 func parseExports(content string) []Share {
 	var out []Share
+	var lines []string
+	cont := ""
 	sc := bufio.NewScanner(strings.NewReader(content))
 	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
+		line := sc.Text()
 		if i := strings.IndexByte(line, '#'); i >= 0 {
-			line = strings.TrimSpace(line[:i])
+			line = line[:i]
 		}
+		line = strings.TrimSpace(line)
+		if strings.HasSuffix(line, `\`) {
+			cont += strings.TrimSuffix(line, `\`) + " "
+			continue
+		}
+		lines = append(lines, cont+line)
+		cont = ""
+	}
+	if cont != "" {
+		lines = append(lines, cont)
+	}
+	for _, line := range lines {
 		f := strings.Fields(line)
 		if len(f) == 0 || !strings.HasPrefix(f[0], "/") {
 			continue
 		}
 		s := Share{Kind: "nfs", Name: f[0], Path: f[0]}
 		opts := map[string]bool{}
-		for _, client := range f[1:] {
+		clients := f[1:]
+		if len(clients) == 0 {
+			clients = []string{"*"}
+		}
+		for _, client := range clients {
 			host, o, _ := strings.Cut(client, "(")
-			if host == "" || host == "*" {
+			if worldHost(host) {
 				opts["*"] = true
 			}
 			s.Access = append(s.Access, ShareAccess{Account: firstNonEmpty(host, "*"), Right: nfsRight(o)})
@@ -214,6 +237,15 @@ func parseExports(content string) []Share {
 		out = append(out, s)
 	}
 	return out
+}
+
+// worldHost indica si un cliente de /etc/exports es cualquier equipo.
+func worldHost(h string) bool {
+	switch h {
+	case "", "*", "0.0.0.0/0", "::/0", "0/0", "0.0.0.0/0.0.0.0":
+		return true
+	}
+	return false
 }
 
 func nfsRight(opts string) string {
@@ -414,7 +446,7 @@ func parsePSFirewall(data map[string]any) *Firewall {
 			continue
 		}
 		fw.Rules = append(fw.Rules, FirewallRule{Name: str(m["N"]), Allow: num(m["A"]) == 1, Protocol: int(num(m["P"])),
-			LocalPorts: str(m["L"]), App: str(m["App"]), Service: str(m["S"]), Profiles: int(num(m["Pr"])),
+			LocalPorts: str(m["L"]), RemotePorts: str(m["RP"]), App: str(m["App"]), Service: str(m["S"]), Profiles: int(num(m["Pr"])),
 			Local: str(m["LA"]), Remote: str(m["R"]), Interfaces: str(m["I"]), IfTypes: str(m["IT"]),
 			Package: str(m["Pk"]), UserOwner: str(m["U"])})
 	}
@@ -444,7 +476,7 @@ func parseRegRule(s string) (r FirewallRule, ok bool) {
 	}
 	r.Protocol = 256 // sin Protocol, cualquiera
 	var active, in bool
-	var ports, local, remote, ifs, ifTypes, trust []string
+	var ports, rports, local, remote, ifs, ifTypes, trust []string
 	var pfn string
 	for _, f := range fields[1:] {
 		k, v, found := strings.Cut(f, "=")
@@ -469,6 +501,10 @@ func parseRegRule(s string) (r FirewallRule, ok bool) {
 			r.Profiles |= profileBits[strings.ToLower(v)]
 		case strings.HasPrefix(k, "LPort"): // LPort, LPort2_10 (IPTLSIn…), LPort2_20…
 			ports = append(ports, v)
+		case strings.HasPrefix(k, "RPort"): // RPort, RPort2_10…: puertos de origen
+			rports = append(rports, v)
+		case k == "LUAuth": // solo para ciertos usuarios locales (SDDL)
+			r.UserAuth = true
 		case k == "LA4" || k == "LA6":
 			local = append(local, v)
 		case strings.HasPrefix(k, "RA4") || strings.HasPrefix(k, "RA6"): // RA4, RA6, RA42, RA62
@@ -506,6 +542,7 @@ func parseRegRule(s string) (r FirewallRule, ok bool) {
 		r.Package = pfn
 	}
 	r.LocalPorts = strings.Join(ports, ",")
+	r.RemotePorts = strings.Join(rports, ",")
 	r.Local = strings.Join(local, ",")
 	r.Remote = strings.Join(remote, ",")
 	r.Interfaces = strings.Join(ifs, ",")

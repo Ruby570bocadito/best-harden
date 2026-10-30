@@ -46,6 +46,18 @@ Match User backup
 	}
 }
 
+func TestParseSSHDConfigAlgoPrefixes(t *testing.T) {
+	files := map[string]string{"/c": "KexAlgorithms -diffie-hellman-group1-sha1\nKexAlgorithms curve25519-sha256\nCiphers +aes128-cbc\n"}
+	read := func(p string) (string, error) { return files[p], nil }
+	m := parseSSHDConfig("/c", read, func(string) ([]string, error) { return nil, nil })
+	if _, ok := m["kexalgorithms"]; ok {
+		t.Errorf("con \"-\" debe usarse el valor por defecto, no %q (ni la segunda línea)", m["kexalgorithms"])
+	}
+	if m["ciphers"] != "aes128-cbc" {
+		t.Errorf("ciphers = %q", m["ciphers"])
+	}
+}
+
 func TestParseSSHDTest(t *testing.T) {
 	m := parseSSHDTest("port 22\npermitrootlogin without-password\nhostkey /a\nhostkey /b\n")
 	if m["permitrootlogin"] != "without-password" || m["hostkey"] != "/a,/b" {

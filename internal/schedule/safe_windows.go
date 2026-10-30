@@ -4,30 +4,43 @@ package schedule
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
-	"strings"
+
+	"github.com/Ruby570bocadito/bastion/internal/config"
 )
 
-// SafeExecutable comprueba que el ejecutable que lanzará la tarea como
-// SYSTEM esté en Program Files, que solo pueden modificar los
-// administradores. Desde Descargas o el escritorio, cualquier usuario
-// podría sustituirlo y obtener privilegios de SYSTEM. La carpeta de Windows
-// no vale: tiene subcarpetas con escritura para todos (Temp, Tasks…).
+// SafeExecutable comprueba que ningún usuario sin privilegios pueda
+// sustituir el ejecutable que lanzará la tarea como SYSTEM: el fichero y su
+// carpeta deben ser de Administradores, SYSTEM o TrustedInstaller sin
+// permisos de escritura para nadie más, y ninguna carpeta superior puede
+// permitir a otros borrarla, renombrar su contenido o cambiar sus permisos.
+//
+// Así se rechazan Descargas o el escritorio, pero también una carpeta de
+// Program Files con permisos relajados por el instalador de otro programa.
 func SafeExecutable(exe string) error {
 	p, err := filepath.Abs(exe)
 	if err != nil {
 		return err
 	}
-	low := strings.ToLower(p)
-	for _, env := range []string{"ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"} {
-		dir := os.Getenv(env)
-		if dir == "" {
-			continue
-		}
-		if prefix := strings.ToLower(strings.TrimRight(dir, `\`)) + `\`; strings.HasPrefix(low, prefix) {
+	if err := config.CheckAdminOnly(p, config.KindFile); err != nil {
+		return insecure(err)
+	}
+	dir := filepath.Dir(p)
+	if err := config.CheckAdminOnly(dir, config.KindDir); err != nil {
+		return insecure(err)
+	}
+	for {
+		parent := filepath.Dir(dir)
+		if parent == dir {
 			return nil
 		}
+		dir = parent
+		if err := config.CheckAdminOnly(dir, config.KindAncestor); err != nil {
+			return insecure(err)
+		}
 	}
-	return fmt.Errorf("%s no está en Program Files: la tarea se ejecuta como SYSTEM y cualquier usuario que pueda escribir en esa carpeta podría sustituir el ejecutable", p)
+}
+
+func insecure(err error) error {
+	return fmt.Errorf("%w: la tarea se ejecuta como SYSTEM y quien pueda modificar el ejecutable o su carpeta obtendría esos privilegios", err)
 }

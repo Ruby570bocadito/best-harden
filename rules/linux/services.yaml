@@ -22,11 +22,14 @@ remediation:
     systemctl mask avahi-daemon.socket avahi-daemon.service
   breaking_risk: low
   actions:
-    - type: systemd.disable
-      unit: avahi-daemon.socket
-      mask: true
+    # Primero el servicio y después el socket: el rollback va en orden
+    # inverso y el servicio (Requires= del socket) solo arranca si el socket
+    # ya está desenmascarado.
     - type: systemd.disable
       unit: avahi-daemon.service
+      mask: true
+    - type: systemd.disable
+      unit: avahi-daemon.socket
       mask: true
 ---
 id: LNX-SVC-002
@@ -52,11 +55,14 @@ remediation:
     systemctl mask cups.socket cups.service cups-browsed.service
   breaking_risk: low
   actions:
-    - type: systemd.disable
-      unit: cups.socket
-      mask: true
+    # Primero el servicio y después el socket: el rollback va en orden
+    # inverso y el servicio (Requires= del socket) solo arranca si el socket
+    # ya está desenmascarado.
     - type: systemd.disable
       unit: cups.service
+      mask: true
+    - type: systemd.disable
+      unit: cups.socket
       mask: true
     - type: systemd.disable
       unit: cups-browsed.service
@@ -84,11 +90,14 @@ remediation:
     systemctl mask rpcbind.socket rpcbind.service
   breaking_risk: medium
   actions:
-    - type: systemd.disable
-      unit: rpcbind.socket
-      mask: true
+    # Primero el servicio y después el socket: el rollback va en orden
+    # inverso y el servicio (Requires= del socket) solo arranca si el socket
+    # ya está desenmascarado.
     - type: systemd.disable
       unit: rpcbind.service
+      mask: true
+    - type: systemd.disable
+      unit: rpcbind.socket
       mask: true
 impact: Los montajes NFSv3 dejarán de funcionar.
 ---

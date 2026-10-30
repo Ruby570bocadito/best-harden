@@ -29,9 +29,10 @@ func (t *Table) Row(cells ...any) {
 	for i, c := range cells {
 		switch v := c.(type) {
 		case Cell:
+			v.Text = Clean(v.Text)
 			row[i] = v
 		case string:
-			row[i] = Cell{Text: v}
+			row[i] = Cell{Text: Clean(v)}
 		}
 	}
 	t.rows = append(t.rows, row)
@@ -68,5 +69,5 @@ func (t *Table) Write(w io.Writer) {
 		}
 		b.WriteString("\n")
 	}
-	_, _ = io.WriteString(w, b.String())
+	_, _ = io.WriteString(SafeWriter(w), b.String())
 }

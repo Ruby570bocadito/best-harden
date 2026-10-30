@@ -5,9 +5,15 @@
 // Seguridad (ver docs/adr/0008-consola-local.md):
 //   - Solo escucha en la interfaz de loopback (127.0.0.1).
 //   - Toda la API exige un token aleatorio de 256 bits que solo conoce
-//     quien lanzó "bastion ui" (va en la URL que se abre y se envía en la
-//     cabecera X-Bastion-Token). Otro usuario del mismo equipo puede
-//     conectarse al puerto, pero no hacer nada sin el token.
+//     quien lanzó "bastion ui": en la cabecera X-Bastion-Token (scripts) o
+//     en una cookie de sesión HttpOnly y SameSite=Strict (el navegador),
+//     acompañada de la cabecera X-Bastion-Request. La dirección con el
+//     token solo se muestra en la terminal; el navegador se abre con un
+//     fichero local 0600 que redirige con un código de un solo uso, así que
+//     el token nunca aparece en la línea de órdenes del navegador (visible
+//     para otros usuarios en /proc) ni en las URLs de la consola. Otro
+//     usuario del mismo equipo puede conectarse al puerto, pero no hacer
+//     nada sin el token.
 //   - Se rechaza cualquier cabecera Host que no sea de loopback, lo que
 //     frena los ataques de DNS rebinding, y no se responde a CORS: una web
 //     maliciosa no puede enviar la cabecera del token ni leer respuestas.
@@ -21,16 +27,22 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	_ "embed"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Ruby570bocadito/bastion/internal/engine"
@@ -79,7 +91,9 @@ type Change struct {
 	Verified   int       `json:"verified"`
 	Failed     int       `json:"failed"`
 	RolledBack int       `json:"rolled_back"`
-	Reboot     bool      `json:"reboot,omitempty"`
+	// Nothing cuenta los controles que al aplicar ya no necesitaban cambios.
+	Nothing int  `json:"nothing,omitempty"`
+	Reboot  bool `json:"reboot,omitempty"`
 }
 
 // Exception es una excepción con su vigencia calculada.
@@ -125,10 +139,32 @@ type Backend interface {
 type Server struct {
 	backend Backend
 	token   string
+	// cookie es el nombre de la cookie de sesión: lleva un resumen del
+	// token porque las cookies no distinguen puertos y puede haber dos
+	// consolas abiertas en 127.0.0.1.
+	cookie string
+	// codes son los códigos de un solo uso para abrir el navegador, con su
+	// caducidad.
+	mu    sync.Mutex
+	codes map[string]time.Time
 	// Un único escaneo, plan o análisis de superficie a la vez: todos leen
 	// el sistema entero. Un segundo escaneo se rechaza; el plan y la
 	// superficie esperan a que termine el que está en curso.
 	busy chan struct{}
+	// base es el contexto de Serve: se cancela al cerrar la consola.
+	base context.Context
+}
+
+// scanTimeout limita un escaneo lanzado desde la consola.
+const scanTimeout = 15 * time.Minute
+
+func (s *Server) baseContext() context.Context {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.base == nil {
+		return context.Background()
+	}
+	return s.base
 }
 
 func (s *Server) tryAcquire() bool {
@@ -157,11 +193,79 @@ func New(b Backend) (*Server, error) {
 	if _, err := rand.Read(t); err != nil {
 		return nil, err
 	}
-	return &Server{backend: b, token: base64.RawURLEncoding.EncodeToString(t), busy: make(chan struct{}, 1)}, nil
+	tok := base64.RawURLEncoding.EncodeToString(t)
+	sum := sha256.Sum256([]byte(tok))
+	return &Server{backend: b, token: tok, cookie: "bastion_" + hex.EncodeToString(sum[:6]),
+		codes: map[string]time.Time{}, busy: make(chan struct{}, 1)}, nil
 }
 
-// Token es el secreto de la sesión (va en la URL que se abre).
+// Token es el secreto de la sesión. Solo se muestra en la terminal.
 func (s *Server) Token() string { return s.token }
+
+// codeTTL es lo que dura un código de apertura sin usar.
+const codeTTL = 2 * time.Minute
+
+// LaunchCode crea un código de un solo uso que, en GET /?c=<código>, abre
+// una sesión en el navegador. Es lo que lleva la dirección con la que se
+// abre el navegador: aunque otro usuario la viera, ya estaría gastado.
+func (s *Server) LaunchCode() (string, error) {
+	b := make([]byte, 24)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	c := base64.RawURLEncoding.EncodeToString(b)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	for k, exp := range s.codes {
+		if now.After(exp) {
+			delete(s.codes, k)
+		}
+	}
+	s.codes[c] = now.Add(codeTTL)
+	return c, nil
+}
+
+// useCode gasta un código de apertura válido.
+func (s *Server) useCode(c string) bool {
+	if c == "" {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for k, exp := range s.codes {
+		if subtle.ConstantTimeCompare([]byte(k), []byte(c)) == 1 {
+			delete(s.codes, k)
+			return time.Now().Before(exp)
+		}
+	}
+	return false
+}
+
+// WriteLauncher escribe en una carpeta temporal privada (0700) un fichero
+// HTML (0600) que lleva al navegador a base con un código de un solo uso.
+// Se abre ese fichero en lugar de la URL: la línea de órdenes del navegador
+// solo contiene su ruta. cleanup lo borra.
+func (s *Server) WriteLauncher(base string) (path string, cleanup func(), err error) {
+	code, err := s.LaunchCode()
+	if err != nil {
+		return "", nil, err
+	}
+	dir, err := os.MkdirTemp("", "bastion-ui-")
+	if err != nil {
+		return "", nil, err
+	}
+	target := strings.TrimRight(base, "/") + "/?c=" + code
+	page := `<!doctype html><meta charset="utf-8"><meta name="referrer" content="no-referrer">` +
+		`<meta http-equiv="refresh" content="0;url=` + html.EscapeString(target) + `">` +
+		`<title>Bastion</title><p>Abriendo la consola de Bastion… <a href="` + html.EscapeString(target) + `">continuar</a></p>`
+	path = filepath.Join(dir, "bastion-ui.html")
+	if err := os.WriteFile(path, []byte(page), 0o600); err != nil {
+		os.RemoveAll(dir)
+		return "", nil, err
+	}
+	return path, func() { os.RemoveAll(dir) }, nil
+}
 
 // Listen abre el puerto en loopback (0 = uno libre al azar).
 func Listen(port int) (net.Listener, error) {
@@ -170,11 +274,14 @@ func Listen(port int) (net.Listener, error) {
 
 // Serve atiende hasta que ctx se cancela.
 func (s *Server) Serve(ctx context.Context, l net.Listener) error {
+	s.mu.Lock()
+	s.base = ctx
+	s.mu.Unlock()
 	srv := &http.Server{
 		Handler:           s.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      5 * time.Minute, // un escaneo completo en Windows tarda segundos
+		WriteTimeout:      scanTimeout + time.Minute, // la respuesta de POST /api/scan llega al terminar el escaneo
 		IdleTimeout:       2 * time.Minute,
 		MaxHeaderBytes:    32 << 10,
 	}
@@ -216,7 +323,13 @@ func (s *Server) Handler() http.Handler {
 			return nil, httpError{http.StatusConflict, "ya hay un escaneo en curso"}
 		}
 		defer s.release()
-		rep, id, err := s.backend.Scan(r.Context())
+		// El escaneo no depende de la petición: si el navegador cierra la
+		// pestaña o corta la conexión, termina igual y se guarda completo
+		// (con el contexto de la petición se guardaría un informe a medias,
+		// lleno de errores). Solo lo cancela cerrar la consola.
+		ctx, cancel := context.WithTimeout(s.baseContext(), scanTimeout)
+		defer cancel()
+		rep, id, err := s.backend.Scan(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -312,6 +425,28 @@ func (s *Server) validToken(t string) bool {
 	return t != "" && subtle.ConstantTimeCompare([]byte(t), []byte(s.token)) == 1
 }
 
+// session indica si la petición trae la cookie de sesión válida.
+func (s *Server) session(r *http.Request) bool {
+	c, err := r.Cookie(s.cookie)
+	return err == nil && s.validToken(c.Value)
+}
+
+// authAPI acepta el token en la cabecera X-Bastion-Token (scripts, curl) o
+// la cookie de sesión con la cabecera X-Bastion-Request: una web ajena no
+// puede añadir esa cabecera sin una comprobación CORS que no se concede, así
+// que la cookie sola no sirve para una petición cruzada.
+func (s *Server) authAPI(r *http.Request) bool {
+	if s.validToken(r.Header.Get("X-Bastion-Token")) {
+		return true
+	}
+	return r.Header.Get("X-Bastion-Request") == "1" && s.session(r)
+}
+
+// setSession fija la cookie de sesión del navegador.
+func (s *Server) setSession(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{Name: s.cookie, Value: s.token, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
+}
+
 type httpError struct {
 	code int
 	msg  string
@@ -323,8 +458,8 @@ func (e httpError) Error() string { return e.msg }
 func (s *Server) api(fn func(http.ResponseWriter, *http.Request) (any, error)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
-		if !s.validToken(r.Header.Get("X-Bastion-Token")) {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "token ausente o incorrecto: abre la URL que muestra \"bastion ui\""})
+		if !s.authAPI(r) {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "sesión ausente o incorrecta: abre la dirección que muestra \"bastion ui\""})
 			return
 		}
 		v, err := fn(w, r)
@@ -348,8 +483,20 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 }
 
 // handleShell sirve la aplicación. No contiene datos: los pide a la API con
-// el token, así que puede servirse sin él.
+// la sesión, así que puede servirse sin ella.
+//
+// La dirección de la terminal (?t=<token>) y la del fichero de apertura
+// (?c=<código de un solo uso>) abren la sesión: el servidor fija la cookie y
+// redirige a "/", así que el secreto no se queda en la barra de direcciones.
 func (s *Server) handleShell(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	if q.Has("t") || q.Has("c") {
+		if s.validToken(q.Get("t")) || s.useCode(q.Get("c")) {
+			s.setSession(w)
+		}
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
 	nonce := make([]byte, 18)
 	if _, err := rand.Read(nonce); err != nil {
 		http.Error(w, "error interno", http.StatusInternalServerError)
@@ -363,10 +510,12 @@ func (s *Server) handleShell(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleReportHTML sirve el informe HTML de un escaneo guardado. Va en un
-// iframe de la propia consola, así que el token llega en la URL (?t=).
+// iframe de la propia consola (o en una pestaña nueva): se autoriza con la
+// cookie de sesión, nunca con el token en la URL. La cookie es SameSite=
+// Strict y el informe solo se puede incrustar en la consola.
 func (s *Server) handleReportHTML(w http.ResponseWriter, r *http.Request) {
-	if !s.validToken(r.URL.Query().Get("t")) {
-		http.Error(w, "token ausente o incorrecto", http.StatusUnauthorized)
+	if !s.session(r) && !s.validToken(r.Header.Get("X-Bastion-Token")) {
+		http.Error(w, "sesión ausente o incorrecta: abre la dirección que muestra \"bastion ui\"", http.StatusUnauthorized)
 		return
 	}
 	id, ok := strings.CutSuffix(r.PathValue("file"), ".html")

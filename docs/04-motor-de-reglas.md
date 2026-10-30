@@ -68,6 +68,7 @@ Etiquetas adicionales de estado:
 | Etiqueta | Cuándo |
 |---|---|
 | `windows-joined` | El equipo está unido a un dominio de Active Directory o a Entra ID |
+| `sudo-classic` | El sudo instalado es el clásico, no sudo-rs (Ubuntu 25.10+), que no admite opciones como `Defaults logfile` |
 
 ### `requires`: condiciones que deben cumplirse todas
 

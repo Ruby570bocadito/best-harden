@@ -9,6 +9,80 @@
 | 4 · Defensa | 🔜 | Visibilidad, caza y contención |
 | 5 · Enterprise | 🔜 | Active Directory, escala e integraciones |
 
+## Próximos hitos
+
+Orden de trabajo concreto. Cada versión es publicable por sí sola y no
+empieza la siguiente hasta cumplir su criterio de salida.
+
+### v0.5 · Confianza (cadena de suministro y endurecimiento de Bastion)
+
+La revisión de octubre de 2026 cerró los fallos de concurrencia del
+dead-man switch, la validación de manifiestos, los permisos de la carpeta de
+datos, el HTTPS obligatorio en las actualizaciones, el token de la consola y
+los falsos «filtrado» del firewall. Queda lo que da **autenticidad**, no solo
+integridad:
+
+- [ ] Firmar las releases (cosign keyless + atestación SLSA de GitHub) y
+      verificarlo en `bastion update`, `install.sh` e `install.ps1`; hoy el
+      SHA-256 viaja por el mismo canal que el binario.
+- [ ] Firma Authenticode de `bastion.exe` (SmartScreen y AppLocker).
+- [ ] Prueba de punta a punta de los instaladores en CI contra un espejo local
+      (instalar, actualizar, `--local`, desinstalar).
+- [ ] CI: `govulncheck`, `staticcheck` y `gosec`; fuzzing (`go test -fuzz`) de
+      los parsers de netfilter, sshd_config, netstat y reglas del registro.
+- [ ] Test de concurrencia real entre el proceso de `harden` y el dead-man
+      (dos procesos, no goroutines) en Linux y Windows.
+- [ ] Cerrar la ventana residual al retirar un bloqueo abandonado entre dos
+      procesos (bloqueo del sistema: `flock` / `LockFileEx`).
+
+**Criterio de salida:** una release solo se instala si su firma y su
+procedencia se verifican; CI falla ante una vulnerabilidad conocida.
+
+### v0.6 · Auditoría sin falsos positivos
+
+- [ ] Laboratorio en CI nocturna: Windows 11, Server 2022 (miembro y DC),
+      Ubuntu 22.04/24.04/26.04, Debian 12, RHEL 9 y Alpine; los informes de
+      cada uno se comparan con un resultado esperado (golden files).
+- [ ] sudo-rs (Ubuntu 26.04 en adelante): LNX-AUTH-007 (`Defaults logfile`) no
+      es aplicable allí; detectar la implementación y adaptar las reglas de sudo.
+- [ ] Probes `rsop`/`gpo` (quién gestiona cada valor) para sustituir la
+      heurística por ruta de directiva, e Intune/MDM.
+- [ ] Probes `userrights` (SIDs legibles), `auditd_rules` y `pam`.
+- [ ] Estado `manual` para los controles que requieren revisión humana.
+- [ ] `surface`: integridad de los paquetes de los binarios a la escucha
+      (`dpkg --verify`, `rpm -V`), no solo a qué paquete pertenecen.
+- [ ] `surface`: cadenas de prerouting/ingress y *Windows Service Hardening*
+      evaluadas, no solo anotadas.
+- [ ] Mapeo verificado a CIS, STIG y ENS por versión de benchmark.
+
+**Criterio de salida:** cero falsos positivos conocidos en el laboratorio.
+
+### v0.7 · Hardening completo
+
+- [ ] `surface fix` en Linux (ufw, firewalld y nftables) con el mismo ciclo
+      instantánea → verificación → rollback → dead-man.
+- [ ] *Health checks* personalizados tras aplicar (un puerto responde, un
+      servicio sigue activo, un login SSH funciona).
+- [ ] `bastion rules new|test` con fixtures y un probe simulado, para escribir
+      reglas sin una máquina real.
+- [ ] Ampliar el catálogo hacia el objetivo (≈350 Windows / 300 Linux),
+      priorizando CIS L1 de Windows 11, Server 2022 y Ubuntu 24.04.
+
+### v1.0 · Estable
+
+- [ ] Esquemas `bastion.report/v1`, `bastion.surface/v1` y formato de reglas
+      congelados, con política de compatibilidad.
+- [ ] Paquetes nativos: MSI firmado, `.deb` y `.rpm` con repositorio.
+- [ ] Documentación de operación: recuperación ante un rollback fallido,
+      despliegue por GPO/Intune/Ansible.
+- [ ] Auditoría de seguridad externa del binario y de la consola local.
+
+### Después de v1.0
+
+Fase 3 (agente y servidor de flota) en adelante, según la tabla de arriba.
+`bastion agent` reutiliza `schedule`, `notify` y los esquemas JSON ya
+estables, así que la flota no empieza hasta que v1.0 esté publicada.
+
 ## Fase 0 · Fundaciones ✅
 
 - [x] Monorepo Go, módulo único, binario estático para Linux y Windows (amd64/arm64).
@@ -26,7 +100,7 @@
 
 ## Fase 1 · Auditoría 🚧
 
-- [ ] Ampliar el catálogo (155 hoy: 81 Windows, 74 Linux): unas 350 reglas Windows y 300 Linux ([catálogo objetivo](06-catalogo-de-controles.md#2-catálogo-objetivo-)).
+- [ ] Ampliar el catálogo (156 hoy: 82 Windows, 74 Linux): unas 350 reglas Windows y 300 Linux ([catálogo objetivo](06-catalogo-de-controles.md#2-catálogo-objetivo-)).
 - [ ] Mapeo verificado a CIS, STIG y ENS por versión de benchmark ([14](14-marcos-y-licencias.md)).
 - [ ] Probes nuevos: `userrights` (SIDs legibles), `rsop`/`gpo` (quién gestiona cada valor), `listening` (puertos), `auditd_rules`, `pam`.
 - [x] Estado `skipped`: controles sin evaluar por falta de privilegios, fuera de la puntuación.

@@ -6,7 +6,9 @@ package rule
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -229,6 +231,7 @@ var Platforms = map[string]bool{
 	"windows-member": true, "windows-dc": true, "windows-joined": true,
 	"linux": true, "linux-debian": true, "linux-ubuntu": true,
 	"linux-rhel": true, "linux-fedora": true, "linux-suse": true,
+	"sudo-classic": true,
 }
 
 var validBreakingRisk = map[string]bool{"none": true, "low": true, "medium": true, "high": true}
@@ -291,6 +294,15 @@ func (r *Rule) Validate(knownProbes map[string]bool, profiles map[string]*Profil
 			add("remediation.actions[%d]: falta type", i)
 			continue
 		}
+		if ActionOS != nil {
+			if os := ActionOS(a.Type); os != "" {
+				for _, p := range r.Platforms {
+					if platformOS(p) != os {
+						add("remediation.actions[%d] (%s): solo existe en %s y la regla es para %s", i, a.Type, os, p)
+					}
+				}
+			}
+		}
 		if validateAction != nil {
 			if err := validateAction(a); err != nil {
 				add("remediation.actions[%d] (%s): %v", i, a.Type, err)
@@ -301,6 +313,44 @@ func (r *Rule) Validate(knownProbes map[string]bool, profiles map[string]*Profil
 		errs = append(errs, e)
 	}
 	return errs
+}
+
+// ActionOS devuelve el sistema ("windows", "linux") en el que existe un tipo
+// de acción, o "" si no se sabe. Lo fija el paquete de remediación; si es
+// nil no se comprueba.
+var ActionOS func(actionType string) string
+
+// platformOS es el sistema de una etiqueta de plataforma.
+func platformOS(p string) string {
+	if strings.HasPrefix(p, "windows") {
+		return "windows"
+	}
+	if strings.HasPrefix(p, "linux") {
+		return "linux"
+	}
+	return p
+}
+
+// ProbeParams son los parámetros que admite cada probe oficial (mantener
+// sincronizado con internal/probes). Un parámetro desconocido suele ser una
+// errata (p. ej. "on_mising") que, si no, se ignoraría en silencio. Los
+// probes que no aparecen aquí (de terceros o de pruebas) no se comprueban.
+var ProbeParams = map[string][]string{
+	"file_content": {"path"},
+	"file_regex":   {"path", "pattern", "ignore_comments"},
+	"file_kv":      {"path", "key", "separator", "case_insensitive"},
+	"sysctl":       {"key"},
+	"file":         {"path"},
+	"sshd":         {"key"},
+	"kmod":         {"name"},
+	"systemd":      {"unit"},
+	"mount":        {"path"},
+	"package":      {"name"},
+	"registry":     {"path", "name"},
+	"secpol":       {"section", "key"},
+	"auditpol":     {"guid"},
+	"service":      {"name"},
+	"ps":           {"query"},
 }
 
 func validateCheck(c *Check, knownProbes map[string]bool, path string) []error {
@@ -328,16 +378,41 @@ func validateCheck(c *Check, knownProbes map[string]bool, path string) []error {
 		errs = append(errs, validateCheck(&c.Any[i], knownProbes, fmt.Sprintf("%s.any[%d]", path, i))...)
 	}
 	if c.Probe == "" {
+		// Una comprobación compuesta solo agrupa: lo demás se ignoraría.
+		if c.Op != "" || c.Expected != nil || c.HasDefault || c.OnMissing != "" || c.Each != "" || c.Field != "" || len(c.Params) > 0 {
+			add("una comprobación all/any solo admite label y sus hijos (op, expected, field, default, on_missing, each y los parámetros van en cada hijo)")
+		}
 		return errs
 	}
 	if knownProbes != nil && !knownProbes[c.Probe] {
 		add("probe %q desconocido", c.Probe)
+	}
+	if allowed, ok := ProbeParams[c.Probe]; ok {
+		for _, k := range sortedKeys(c.Params) {
+			if !contains(allowed, k) {
+				add("parámetro %q desconocido para el probe %s (admite: %s)", k, c.Probe, strings.Join(allowed, ", "))
+			}
+		}
 	}
 	if !Ops[c.Op] {
 		add("op %q inválido", c.Op)
 	}
 	if c.Op != "exists" && c.Op != "absent" && c.Expected == nil {
 		add("falta expected")
+	}
+	switch c.Op {
+	case "regex", "not_regex":
+		if _, err := regexp.Compile(fmt.Sprint(c.Expected)); err != nil {
+			add("expected no es una expresión regular válida: %v", err)
+		}
+	case "between":
+		if l, ok := c.Expected.([]any); !ok || len(l) != 2 {
+			add("between necesita expected: [mín, máx]")
+		}
+	case "mode_max":
+		if _, err := strconv.ParseUint(strings.TrimSpace(fmt.Sprint(c.Expected)), 8, 32); err != nil {
+			add("mode_max necesita permisos octales como \"0600\"")
+		}
 	}
 	switch c.OnMissing {
 	case "", "fail", "pass", "na":
@@ -351,6 +426,28 @@ func validateCheck(c *Check, knownProbes map[string]bool, path string) []error {
 	}
 	return errs
 }
+
+func sortedKeys(m map[string]any) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func contains(list []string, s string) bool {
+	for _, x := range list {
+		if x == s {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidID indica si id tiene el formato de ID de regla
+// (PLATAFORMA-CATEGORÍA-NNN: al menos tres partes de mayúsculas y dígitos).
+func ValidID(id string) bool { return validID(id) }
 
 func validID(id string) bool {
 	parts := strings.Split(id, "-")
@@ -373,6 +470,7 @@ func validID(id string) bool {
 // RequirementMessages explica por qué una regla con requires no aplica.
 var RequirementMessages = map[string]string{
 	"windows-joined": "solo aplica a equipos unidos a un dominio de Active Directory o a Entra ID",
+	"sudo-classic":   "solo aplica al sudo clásico (sudo-rs no admite esta opción y registra en el journal)",
 }
 
 // MissingRequirement devuelve el primer requisito de la regla que el equipo
