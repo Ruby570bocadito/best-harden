@@ -290,6 +290,46 @@ jobs:
           name: informe-${{ matrix.os }}
           path: report.*
 
+  # Análisis estático, vulnerabilidades conocidas en el código y sus
+  # dependencias, y una pasada corta de fuzzing de los parsers (los fallos
+  # que encuentre quedan en testdata/fuzz y se suben como artefacto).
+  analisis:
+    name: Análisis y fuzzing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - name: staticcheck (Linux y Windows)
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@v0.8.2
+          staticcheck ./...
+          GOOS=windows staticcheck ./...
+      - name: Fuzzing
+        run: |
+          set -euo pipefail
+          while read -r fn pkg; do
+            echo "::group::$fn"
+            go test -run '^$' -fuzz "^$fn\$" -fuzztime 30s "$pkg" </dev/null
+            echo "::endgroup::"
+          done <<'EOF'
+          FuzzNetfilter ./internal/surface
+          FuzzNftJSON ./internal/surface
+          FuzzWindowsFirewallRule ./internal/surface
+          FuzzParsers ./internal/surface
+          FuzzSSHDConfig ./internal/probes
+          FuzzWindowsFormats ./internal/probes
+          FuzzLoadRule ./pkg/rule
+          EOF
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: fuzz-fallos
+          path: '**/testdata/fuzz/**'
+
   scripts:
     name: Instaladores
     runs-on: windows-latest
@@ -306,12 +346,31 @@ jobs:
           $r | Format-Table -AutoSize
           if ($r | Where-Object Severity -eq 'Error') { exit 1 }
 
+  # install.sh y bastion update de punta a punta contra un espejo local:
+  # instalar, actualizar, rechazar una descarga manipulada, --local y
+  # desinstalar. En un runner limpio: la prueba usa /etc/bastion.
+  instalador-linux:
+    name: Instalador de Linux (espejo local)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - name: Compilar dos versiones
+        run: |
+          mkdir -p build
+          for v in 9.0.0 9.0.1; do
+            CGO_ENABLED=0 go build -trimpath -ldflags "-X github.com/Ruby570bocadito/bastion/internal/version.Version=$v" -o "build/bastion-$v" ./cmd/bastion
+          done
+      - run: sudo BUILD_DIR="$PWD/build" scripts/test-installer.sh
+
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - run: shellcheck scripts/install.sh
+      - run: shellcheck scripts/install.sh scripts/test-installer.sh
 
   cross:
     name: Compilación cruzada

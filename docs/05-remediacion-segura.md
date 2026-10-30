@@ -145,7 +145,7 @@ En un equipo unido a dominio, las acciones sobre claves `...\Policies\...` se ma
 
 ### Otras
 
-- **Un único hardening a la vez** (bloqueo en `snapshots/.lock`; uno abandonado durante más de 30 minutos se libera).
+- **Un único hardening a la vez** (bloqueo del sistema, `flock` o `LockFileEx`, sobre `snapshots/.lock`; si el proceso muere, el sistema lo libera).
 - Durante la ejecución se ignora `SIGHUP`: si se corta la sesión SSH, Bastion termina el cambio en curso en lugar de quedarse a medias.
 - `changes.log` registra cada evento (aplicado, sin efecto, error, deshecho, dead-man) en JSON, uno por línea.
 

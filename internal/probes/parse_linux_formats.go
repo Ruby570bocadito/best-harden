@@ -55,11 +55,16 @@ type sshdConfigReader func(path string) (string, error)
 func parseSSHDConfig(file string, read sshdConfigReader, glob func(string) ([]string, error)) map[string]string {
 	m := map[string]string{}
 	seen := map[string]bool{}
+	// Ficheros de la cadena de Include en curso: un fichero que se incluye a
+	// sí mismo (directa o indirectamente) se recorrería de forma exponencial.
+	open := map[string]bool{}
 	var walk func(p string, depth int)
 	walk = func(p string, depth int) {
-		if depth > 8 {
+		if depth > 8 || open[p] {
 			return
 		}
+		open[p] = true
+		defer delete(open, p)
 		text, err := read(p)
 		if err != nil {
 			return

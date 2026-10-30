@@ -3,7 +3,9 @@ package probes
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestParseSSHDConfig(t *testing.T) {
@@ -182,5 +184,24 @@ func TestDecodeLegacy(t *testing.T) {
 	}
 	if got := decodeText([]byte("\xef\xbb\xbfCreación")); got != "Creación" {
 		t.Errorf("UTF-8 con BOM = %q", got)
+	}
+}
+
+func TestParseSSHDConfigIncludeCycle(t *testing.T) {
+	files := map[string]string{
+		"/etc/ssh/sshd_config": strings.Repeat("Include /etc/ssh/a.conf\n", 8),
+		"/etc/ssh/a.conf":      strings.Repeat("Include /etc/ssh/sshd_config\n", 8) + "Port 2222\n",
+	}
+	read := func(p string) (string, error) { return files[p], nil }
+	glob := func(p string) ([]string, error) { return []string{p}, nil }
+	done := make(chan map[string]string, 1)
+	go func() { done <- parseSSHDConfig("/etc/ssh/sshd_config", read, glob) }()
+	select {
+	case m := <-done:
+		if m["port"] != "2222" {
+			t.Errorf("port = %q", m["port"])
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("un Include circular no debe recorrerse de forma exponencial")
 	}
 }

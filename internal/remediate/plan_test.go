@@ -460,23 +460,24 @@ func TestPolicyManagedSecpolAuditpol(t *testing.T) {
 	}
 }
 
-func TestLockStaleByPID(t *testing.T) {
+func TestLockIsExclusive(t *testing.T) {
 	st := &Store{Dir: t.TempDir()}
 	unlock, err := st.Lock()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := st.Lock(); err == nil {
-		t.Error("el bloqueo de un proceso vivo no debe poder tomarse")
+		t.Error("el bloqueo tomado no debe poder tomarse otra vez")
 	}
 	unlock()
-	// Bloqueo de un proceso que ya no existe: se toma aunque sea reciente.
-	if err := os.WriteFile(filepath.Join(st.Dir, ".lock"), []byte("2147483600 2026-01-01T00:00:00Z\n"), 0o640); err != nil {
+	// Un fichero de bloqueo que quedó en disco (proceso muerto, reinicio)
+	// no bloquea: lo que cuenta es el bloqueo del sistema.
+	if err := os.WriteFile(filepath.Join(st.Dir, ".lock"), []byte("1 2026-01-01T00:00:00Z\n"), 0o640); err != nil {
 		t.Fatal(err)
 	}
 	unlock, err = st.Lock()
 	if err != nil {
-		t.Fatalf("un bloqueo abandonado debe recuperarse: %v", err)
+		t.Fatalf("un fichero de bloqueo sin dueño no debe bloquear: %v", err)
 	}
 	unlock()
 }

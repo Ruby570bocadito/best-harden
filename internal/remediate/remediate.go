@@ -211,7 +211,7 @@ var Specs = map[string]Spec{
 			return fmt.Errorf("opción de sshd inválida")
 		}
 		if strings.ToLower(p.String("key")) == "include" || strings.ToLower(p.String("key")) == "match" {
-			return fmt.Errorf("Include y Match no se pueden gestionar")
+			return fmt.Errorf("las directivas Include y Match no se pueden gestionar")
 		}
 		return safeText(p, "value")
 	}},

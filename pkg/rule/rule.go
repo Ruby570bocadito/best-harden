@@ -309,10 +309,7 @@ func (r *Rule) Validate(knownProbes map[string]bool, profiles map[string]*Profil
 			}
 		}
 	}
-	for _, e := range validateCheck(&r.Check, knownProbes, "check") {
-		errs = append(errs, e)
-	}
-	return errs
+	return append(errs, validateCheck(&r.Check, knownProbes, "check")...)
 }
 
 // ActionOS devuelve el sistema ("windows", "linux") en el que existe un tipo

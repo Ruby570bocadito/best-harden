@@ -26,14 +26,15 @@ integridad:
       verificarlo en `bastion update`, `install.sh` e `install.ps1`; hoy el
       SHA-256 viaja por el mismo canal que el binario.
 - [ ] Firma Authenticode de `bastion.exe` (SmartScreen y AppLocker).
-- [ ] Prueba de punta a punta de los instaladores en CI contra un espejo local
-      (instalar, actualizar, `--local`, desinstalar).
-- [ ] CI: `govulncheck`, `staticcheck` y `gosec`; fuzzing (`go test -fuzz`) de
-      los parsers de netfilter, sshd_config, netstat y reglas del registro.
-- [ ] Test de concurrencia real entre el proceso de `harden` y el dead-man
-      (dos procesos, no goroutines) en Linux y Windows.
-- [ ] Cerrar la ventana residual al retirar un bloqueo abandonado entre dos
-      procesos (bloqueo del sistema: `flock` / `LockFileEx`).
+- [x] Prueba de punta a punta de `install.sh` y `bastion update` en CI contra
+      un espejo local (`scripts/test-installer.sh`). 🔜 `install.ps1`.
+- [x] CI: `govulncheck`, `staticcheck` (Linux y Windows) y fuzzing de los
+      parsers (netfilter, nft, reglas del registro, sshd_config, secedit,
+      auditpol, netstat, exports, reglas YAML). El fuzzing encontró un
+      `Include` circular de sshd que se recorría de forma exponencial.
+- [x] Bloqueos del sistema (`flock` / `LockFileEx`): el sistema los libera si
+      el proceso muere; sin bloqueos abandonados ni carreras al retirarlos.
+      Test con dos procesos reales.
 
 **Criterio de salida:** una release solo se instala si su firma y su
 procedencia se verifican; CI falla ante una vulnerabilidad conocida.
@@ -43,8 +44,8 @@ procedencia se verifican; CI falla ante una vulnerabilidad conocida.
 - [ ] Laboratorio en CI nocturna: Windows 11, Server 2022 (miembro y DC),
       Ubuntu 22.04/24.04/26.04, Debian 12, RHEL 9 y Alpine; los informes de
       cada uno se comparan con un resultado esperado (golden files).
-- [ ] sudo-rs (Ubuntu 26.04 en adelante): LNX-AUTH-007 (`Defaults logfile`) no
-      es aplicable allí; detectar la implementación y adaptar las reglas de sudo.
+- [x] sudo-rs (Ubuntu 25.10 en adelante): etiqueta `sudo-classic`;
+      LNX-AUTH-007 (`Defaults logfile`) no aplica con sudo-rs.
 - [ ] Probes `rsop`/`gpo` (quién gestiona cada valor) para sustituir la
       heurística por ruta de directiva, e Intune/MDM.
 - [ ] Probes `userrights` (SIDs legibles), `auditd_rules` y `pam`.

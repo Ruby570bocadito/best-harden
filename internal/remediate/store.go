@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -266,59 +265,44 @@ func (m *Manifest) mergeFromDisk() {
 // los tests.
 var LockWait = 15 * time.Minute
 
-// staleLockAge es la antigüedad a partir de la cual un bloqueo sin PID
-// legible se considera abandonado. Si el bloqueo tiene PID, se considera
-// abandonado solo cuando ese proceso ya no existe (sin límite de tiempo:
-// una confirmación remota o un rollback largo no lo invalidan). La
-// reutilización de PID tras un reinicio puede retener un bloqueo huérfano;
-// en ese caso el mensaje de error indica qué fichero borrar.
-const staleLockAge = 30 * time.Minute
-
-// lockStale indica si el fichero de bloqueo está abandonado.
-func lockStale(path string) bool {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return false // desapareció o no se puede leer: se reintenta
-	}
-	if f := strings.Fields(string(b)); len(f) > 0 {
-		if pid, err := strconv.Atoi(f[0]); err == nil && pid > 0 {
-			return !processAlive(pid)
-		}
-	}
-	st, err := os.Stat(path)
-	return err == nil && time.Since(st.ModTime()) > staleLockAge
-}
-
-// acquireLock crea path en exclusiva (con el PID dentro) y espera hasta wait
-// si lo tiene otro proceso vivo.
+// acquireLock toma el bloqueo del sistema sobre path (flock / LockFileEx) y
+// espera hasta wait si lo tiene otro proceso. El fichero no se borra nunca:
+// borrarlo dejaría a otro proceso con un bloqueo sobre un fichero huérfano.
+// Dentro va el PID del dueño, solo para diagnosticar.
 func acquireLock(path string, wait time.Duration) (func(), error) {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o640)
+	if err != nil {
+		return nil, err
+	}
 	deadline := time.Now().Add(wait)
 	for {
-		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o640)
-		if err == nil {
-			fmt.Fprintf(f, "%d %s\n", os.Getpid(), time.Now().Format(time.RFC3339))
-			f.Sync()
+		ok, err := tryLockFile(f)
+		if err != nil {
 			f.Close()
-			return func() { os.Remove(path) }, nil
-		}
-		if !errors.Is(err, fs.ErrExist) {
 			return nil, err
 		}
-		if lockStale(path) {
-			os.Remove(path)
-			continue
+		if ok {
+			break
 		}
 		if !time.Now().Before(deadline) {
+			f.Close()
 			return nil, errBusy
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
+	if err := f.Truncate(0); err == nil {
+		fmt.Fprintf(f, "%d %s\n", os.Getpid(), time.Now().Format(time.RFC3339))
+	}
+	return func() {
+		unlockFile(f)
+		f.Close()
+	}, nil
 }
 
 var errBusy = errors.New("bloqueo ocupado")
 
-// Lock evita dos operaciones de hardening simultáneas. Un bloqueo cuyo
-// proceso ya no existe se considera abandonado.
+// Lock evita dos operaciones de hardening simultáneas. El sistema libera el
+// bloqueo si el proceso muere.
 func (s *Store) Lock() (func(), error) {
 	if err := os.MkdirAll(s.Dir, 0o750); err != nil {
 		return nil, err
@@ -326,7 +310,7 @@ func (s *Store) Lock() (func(), error) {
 	path := filepath.Join(s.Dir, ".lock")
 	unlock, err := acquireLock(path, 0)
 	if errors.Is(err, errBusy) {
-		return nil, fmt.Errorf("hay otra operación de hardening en curso (si no es así, borra %s)", path)
+		return nil, fmt.Errorf("hay otra operación de hardening en curso (bloqueo %s)", path)
 	}
 	return unlock, err
 }
@@ -339,7 +323,7 @@ func (m *Manifest) withLock(fn func() error) error {
 	path := filepath.Join(m.dir(), ".lock")
 	unlock, err := acquireLock(path, LockWait)
 	if errors.Is(err, errBusy) {
-		return fmt.Errorf("el cambio %s está bloqueado por otro proceso (si no es así, borra %s)", m.ID, path)
+		return fmt.Errorf("el cambio %s está bloqueado por otro proceso (bloqueo %s)", m.ID, path)
 	}
 	if err != nil {
 		return err

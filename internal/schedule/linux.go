@@ -26,6 +26,7 @@ const (
 	cronPath    = "/etc/cron.d/bastion"
 )
 
+//lint:ignore U1000 lo usa New en new_linux.go; el fichero no lleva build tag para probarlo en cualquier plataforma.
 func newUnix() *unixScheduler {
 	return &unixScheduler{run: func(ctx context.Context, name string, args ...string) (string, error) {
 		ctx, cancel := context.WithTimeout(ctx, time.Minute)
