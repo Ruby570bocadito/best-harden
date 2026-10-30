@@ -342,7 +342,7 @@ jobs:
             Set-PSRepository PSGallery -InstallationPolicy Trusted
             Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
           }
-          $r = Invoke-ScriptAnalyzer -Path scripts/install.ps1 -Severity Warning,Error
+          $r = 'scripts/install.ps1', 'scripts/test-installer.ps1' | ForEach-Object { Invoke-ScriptAnalyzer -Path $_ -Severity Warning,Error }
           $r | Format-Table -AutoSize
           if ($r | Where-Object Severity -eq 'Error') { exit 1 }
 
@@ -364,6 +364,27 @@ jobs:
             CGO_ENABLED=0 go build -trimpath -ldflags "-X github.com/Ruby570bocadito/bastion/internal/version.Version=$v" -o "build/bastion-$v" ./cmd/bastion
           done
       - run: sudo BUILD_DIR="$PWD/build" scripts/test-installer.sh
+
+  # Lo mismo con install.ps1 (en Windows PowerShell 5.1) y bastion update en
+  # Windows, que sustituye el ejecutable en uso.
+  instalador-windows:
+    name: Instalador de Windows (espejo local)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - name: Compilar dos versiones
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build | Out-Null
+          foreach ($v in '9.0.0', '9.0.1') {
+            go build -trimpath -ldflags "-X github.com/Ruby570bocadito/bastion/internal/version.Version=$v" -o "build/bastion-$v.exe" ./cmd/bastion
+            if ($LASTEXITCODE -ne 0) { throw 'go build falló' }
+          }
+      - shell: pwsh
+        run: .\scripts\test-installer.ps1 -BuildDir build
 
   shellcheck:
     name: ShellCheck
