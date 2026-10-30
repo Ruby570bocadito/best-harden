@@ -59,6 +59,7 @@ const (
 	SigUntrusted = "untrusted"  // firmado con un certificado sin confianza
 	SigPackage   = "package"    // Linux: lo instala un paquete
 	SigNoPackage = "unpackaged" // Linux: no es de ningún paquete
+	SigModified  = "modified"   // Linux: de un paquete, pero no coincide con su suma
 )
 
 // Port agrupa los sockets del mismo puerto, protocolo y proceso (IPv4, IPv6
@@ -423,7 +424,7 @@ func Analyze(inv Inventory, host platform.Info, version string, now time.Time) *
 			openIDs[fmt.Sprintf("%d/%d", p.Port, p.PID)] = append(openIDs[fmt.Sprintf("%d/%d", p.Port, p.PID)], p.access.IDs...)
 		}
 		switch p.Signature {
-		case SigUnsigned, SigNoPackage, SigInvalid, SigUntrusted:
+		case SigUnsigned, SigNoPackage, SigInvalid, SigUntrusted, SigModified:
 			key := strings.ToLower(p.Path)
 			b := binIdx[key]
 			if b == nil {

@@ -837,9 +837,9 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
   function originLine(p) {
     var t = { valid: "firmado por " + (p.signer || "?"), unsigned: "sin firma digital", invalid: "firma no válida",
       untrusted: "certificado sin confianza" + (p.signer ? ": " + p.signer : ""), package: "paquete " + (p.signer || "?"),
-      unpackaged: "fuera de los paquetes" }[p.signature];
+      unpackaged: "fuera de los paquetes", modified: "modificado respecto al paquete " + (p.signer || "?") }[p.signature];
     if (!t) return null;
-    var color = p.signature === "invalid" ? "var(--critical)" : (p.signature === "unsigned" || p.signature === "untrusted" || p.signature === "unpackaged") ? "var(--serious)" : null;
+    var color = (p.signature === "invalid" || p.signature === "modified") ? "var(--critical)" : (p.signature === "unsigned" || p.signature === "untrusted" || p.signature === "unpackaged") ? "var(--serious)" : null;
     return el("div", { class: "sub", text: t, title: p.path || "", style: color ? "color:" + color : null });
   }
 

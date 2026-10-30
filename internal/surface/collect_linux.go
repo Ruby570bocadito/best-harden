@@ -170,17 +170,60 @@ func collectPackages(ctx context.Context, inv *Inventory) {
 	if owners == nil {
 		return // sin gestor de paquetes conocido
 	}
+	modified := modifiedFiles(ctx, owners)
 	for i := range inv.Listeners {
 		l := &inv.Listeners[i]
 		if l.Path == "" {
 			continue
 		}
-		if pkg, ok := owners[l.Path]; ok {
+		switch pkg, ok := owners[l.Path]; {
+		case ok && modified[l.Path]:
+			l.Signature, l.Signer = SigModified, pkg
+		case ok:
 			l.Signature, l.Signer = SigPackage, pkg
-		} else {
+		default:
 			l.Signature = SigNoPackage
 		}
 	}
+}
+
+// modifiedFiles devuelve las rutas de owners cuyo contenido ya no coincide
+// con la suma que registró su paquete (dpkg --verify o rpm -V). Ser de un
+// paquete no basta: un binario sustituido sigue «perteneciendo» a él.
+func modifiedFiles(ctx context.Context, owners map[string]string) map[string]bool {
+	var pkgs []string
+	seen := map[string]bool{}
+	for _, pkg := range owners {
+		if !seen[pkg] && !strings.HasPrefix(pkg, "snap ") {
+			seen[pkg] = true
+			pkgs = append(pkgs, pkg)
+		}
+	}
+	if len(pkgs) == 0 {
+		return nil
+	}
+	var out []byte
+	var err error
+	switch {
+	case hasTool("dpkg"):
+		out, _, err = runToolCode(ctx, "dpkg", append([]string{"--verify", "--"}, pkgs...)...)
+	case hasTool("rpm"):
+		out, _, err = runToolCode(ctx, "rpm", append([]string{"-V", "--"}, pkgs...)...)
+	default:
+		return nil
+	}
+	if err != nil {
+		return nil
+	}
+	changed := parseVerify(string(out))
+	modified := map[string]bool{}
+	for p := range owners {
+		// dpkg puede tener el fichero como /bin/x con /usr fusionado.
+		if changed[p] || changed[usrMergeAlt(p)] {
+			modified[p] = true
+		}
+	}
+	return modified
 }
 
 // exePath es la ruta del ejecutable de un proceso. Vacía si no se puede

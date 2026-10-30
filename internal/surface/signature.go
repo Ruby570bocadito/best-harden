@@ -92,6 +92,24 @@ func parseDpkgSearch(out string) map[string]string {
 	return pkgs
 }
 
+// parseVerify interpreta "dpkg --verify" y "rpm -V": una línea por fichero
+// que no coincide con lo instalado, con nueve indicadores, un atributo
+// opcional ("c" de configuración) y la ruta. El tercer indicador es "5" si
+// el contenido (la suma) ha cambiado; "missing" son ficheros que faltan.
+func parseVerify(out string) map[string]bool {
+	changed := map[string]bool{}
+	for _, l := range strings.Split(out, "\n") {
+		f := strings.Fields(l)
+		if len(f) < 2 || len(f[0]) != 9 || f[0][2] != '5' {
+			continue
+		}
+		if p := f[len(f)-1]; strings.HasPrefix(p, "/") {
+			changed[p] = true
+		}
+	}
+	return changed
+}
+
 // parseRpmQuery interpreta "rpm -qf --qf '%{NAME}\n' ruta…": una línea por
 // ruta, en el mismo orden; "file … is not owned by any package" si no es
 // de ninguno.
@@ -169,6 +187,13 @@ func binaryFindings(bins []*exposedBinary) []Finding {
 					"pero también un programa manipulado, y acepta conexiones desde la red (%s).", b.path, firstNonEmpty(b.signer, "un firmante desconocido"), ports),
 				Fix: fmt.Sprintf("Termina el proceso, analiza el fichero con Microsoft Defender (Start-MpScan -ScanType CustomScan -ScanPath '%s') "+
 					"y reinstala el programa desde su origen oficial.", b.path)})
+		case SigModified:
+			out = append(out, Finding{ID: "SURF-BADSIG", Severity: rule.SevHigh, Subject: ports,
+				Title: fmt.Sprintf("%s no coincide con el de su paquete (%s): el fichero se ha modificado", b.name, firstNonEmpty(b.signer, "?")),
+				Detail: fmt.Sprintf("La suma de %s no es la que registró el gestor de paquetes al instalar %s. Puede ser una compilación propia o un "+
+					"parche manual, pero también un binario sustituido por un atacante, y acepta conexiones desde la red (%s).", b.path, firstNonEmpty(b.signer, "el paquete"), ports),
+				Fix: fmt.Sprintf("Si no lo has cambiado tú, aísla el equipo y reinstala el paquete (apt install --reinstall %[1]s o dnf reinstall %[1]s) "+
+					"después de investigar; compruébalo con dpkg --verify %[1]s o rpm -V %[1]s.", firstNonEmpty(b.signer, "<paquete>"))})
 		case SigUntrusted:
 			out = append(out, Finding{ID: "SURF-BADSIG", Severity: rule.SevMedium, Subject: ports,
 				Title: fmt.Sprintf("%s está firmado con un certificado en el que Windows no confía (%s)", b.name, firstNonEmpty(b.signer, "firmante desconocido")),
@@ -229,6 +254,8 @@ func (p Port) Origin() (text string, warn bool) {
 		return "paquete " + firstNonEmpty(p.Signer, "?"), false
 	case SigNoPackage:
 		return "fuera de los paquetes", true
+	case SigModified:
+		return "modificado respecto al paquete " + firstNonEmpty(p.Signer, "?"), true
 	}
 	return "", false
 }

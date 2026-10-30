@@ -50,7 +50,7 @@ procedencia se verifican; CI falla ante una vulnerabilidad conocida.
       heurística por ruta de directiva, e Intune/MDM.
 - [ ] Probes `userrights` (SIDs legibles), `auditd_rules` y `pam`.
 - [ ] Estado `manual` para los controles que requieren revisión humana.
-- [ ] `surface`: integridad de los paquetes de los binarios a la escucha
+- [x] `surface`: integridad de los binarios a la escucha frente a su paquete
       (`dpkg --verify`, `rpm -V`), no solo a qué paquete pertenecen.
 - [ ] `surface`: cadenas de prerouting/ingress y *Windows Service Hardening*
       evaluadas, no solo anotadas.

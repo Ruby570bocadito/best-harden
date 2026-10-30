@@ -116,3 +116,33 @@ func TestBinaryFindings(t *testing.T) {
 		t.Fatalf("Linux: %+v", rep.Findings)
 	}
 }
+
+func TestParseVerify(t *testing.T) {
+	out := `??5??????   /usr/sbin/sshd
+??5?????? c /etc/ssh/sshd_config
+?????????   /usr/bin/a
+S.5....T.    /usr/bin/b
+missing     /usr/bin/c
+.M.......    /usr/bin/d
+`
+	got := parseVerify(out)
+	for p, want := range map[string]bool{"/usr/sbin/sshd": true, "/etc/ssh/sshd_config": true, "/usr/bin/b": true,
+		"/usr/bin/a": false, "/usr/bin/c": false, "/usr/bin/d": false} {
+		if got[p] != want {
+			t.Errorf("%s: %v, quiero %v", p, got[p], want)
+		}
+	}
+}
+
+func TestModifiedPackageFinding(t *testing.T) {
+	inv := Inventory{Listeners: []Listener{
+		{Proto: "tcp", Address: "0.0.0.0", Port: 22, Scope: ScopeNetwork, PID: 21, Process: "sshd", Path: "/usr/sbin/sshd", Signature: SigModified, Signer: "openssh-server"},
+	}}
+	rep := Analyze(inv, platform.Info{Role: "server"}, "test", time.Now())
+	if len(rep.Findings) != 1 || rep.Findings[0].ID != "SURF-BADSIG" || rep.Findings[0].Severity != rule.SevHigh {
+		t.Fatalf("binario modificado: %+v", rep.Findings)
+	}
+	if o, warn := rep.Ports[0].Origin(); !warn || o != "modificado respecto al paquete openssh-server" {
+		t.Errorf("origen: %q %v", o, warn)
+	}
+}
