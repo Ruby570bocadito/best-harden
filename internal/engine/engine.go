@@ -225,12 +225,14 @@ func (e *Engine) evalComposite(ctx context.Context, c rule.Check, children []rul
 		ev.Status = Pass
 	case !all && pass > 0:
 		ev.Status = Pass
-	case !all && fail > 0:
-		ev.Status = Fail
+	// En "any", un hijo que no se pudo evaluar podría haber cumplido: el
+	// resultado es desconocido (error / no evaluado), no un fallo.
 	case !all && errs > 0:
 		ev.Status = Error
 	case !all && skipped > 0:
 		ev.Status = Skipped
+	case !all && fail > 0:
+		ev.Status = Fail
 	default:
 		ev.Status = NA
 	}

@@ -16,9 +16,11 @@
 #    --version <tag>        versión concreta (por defecto: la última)
 #    --no-scan              no lanzar el primer escaneo
 #    --force                reinstalar aunque ya esté en la última versión
-#    --local <archivo>      instalar desde un .tar.gz local (sin conexión)
+#    --local <archivo>      instalar desde un .tar.gz local (sin conexión; necesita
+#                           checksums.txt en la misma carpeta)
+#    --insecure             con --local, instalar aunque no haya checksums.txt
 #    --repo <owner/nombre>  repositorio de GitHub
-#    --releases-url <url>   espejo interno de releases
+#    --releases-url <url>   espejo interno de releases (https://…)
 #    --prefix <dir>         directorio del binario (por defecto /usr/local/bin)
 #    --uninstall [--purge]  desinstalar (con --purge borra también config e informes)
 #
@@ -44,6 +46,7 @@ main() {
   LOCAL=""
   UNINSTALL=0
   PURGE=0
+  INSECURE=0
 
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -56,12 +59,27 @@ main() {
       --prefix)       PREFIX="${2:?falta el directorio}"; shift 2 ;;
       --uninstall)    UNINSTALL=1; shift ;;
       --purge)        PURGE=1; shift ;;
-      -h|--help)      sed -n '2,36p' "${BASH_SOURCE[0]:-/dev/null}" 2>/dev/null || true; return 0 ;;
+      --insecure)     INSECURE=1; shift ;;
+      -h|--help)      sed -n '2,33p' "${BASH_SOURCE[0]:-/dev/null}" 2>/dev/null || true; return 0 ;;
       *)              die "opción desconocida: $1" ;;
     esac
   done
   [ -n "$RELEASES_URL" ] || RELEASES_URL="https://github.com/${REPO}/releases"
   RELEASES_URL="${RELEASES_URL%/}"
+  # Las sumas viajan por el mismo canal que el binario: sin TLS no
+  # protegerían de nada. HTTP solo hacia el propio equipo (pruebas).
+  case "$RELEASES_URL" in
+    https://*|http://127.0.0.1|http://127.0.0.1[:/]*|http://localhost|http://localhost[:/]*) ;;
+    *) die "la dirección de releases debe usar https:// (${RELEASES_URL})" ;;
+  esac
+  case "$REPO" in
+    */*/*|/*|*/|*[!A-Za-z0-9_./-]*) die "repositorio no válido: ${REPO} (formato owner/nombre)" ;;
+    */*) ;;
+    *) die "repositorio no válido: ${REPO} (formato owner/nombre)" ;;
+  esac
+  if [ "$VERSION" != "latest" ]; then
+    VERSION="$(normalize_version "$VERSION")"
+  fi
   BIN="${PREFIX}/bastion"
 
   setup_colors
@@ -99,6 +117,7 @@ main() {
       VERSION="$(fetch_text "${RELEASES_URL}/latest/download/version.txt" | tr -d '[:space:]')" \
         || die "no se pudo consultar la última versión (¿hay releases publicadas en ${REPO}?)"
       [ -n "$VERSION" ] || die "version.txt vacío"
+      VERSION="$(normalize_version "$VERSION")"
     fi
     if [ -n "$CURRENT" ] && [ "${CURRENT#v}" = "${VERSION#v}" ] && [ "$FORCE" -eq 0 ]; then
       ok "Bastion ${VERSION} ya está instalado y actualizado"
@@ -143,8 +162,8 @@ banner() {
 
 step() { printf '%s==>%s %s%s%s\n' "$C" "$N" "$B" "$*" "$N"; }
 ok()   { printf '  %s✓%s %s\n' "$G" "$N" "$*"; }
-warn() { printf '  %s!%s %s\n' "$Y" "$N" "$*" >&2; }
-die()  { printf '\n  %s✗ Error:%s %s\n\n' "$R" "$N" "$*" >&2; exit 1; }
+warn() { printf '  %s!%s %s\n' "${Y:-}" "${N:-}" "$*" >&2; }
+die()  { printf '\n  %s✗ Error:%s %s\n\n' "${R:-}" "${N:-}" "$*" >&2; exit 1; }
 
 detect_arch() {
   case "$(uname -m)" in
@@ -203,9 +222,20 @@ verify_local() {
   sums="$(dirname "$1")/checksums.txt"
   if [ -f "$sums" ]; then
     check_sum "$TMP/$ASSET" "$sums"
+  elif [ "$INSECURE" -eq 1 ]; then
+    warn "no hay checksums.txt junto a $1: se instala SIN verificar la integridad (--insecure)"
   else
-    warn "no hay checksums.txt junto a $1: no se puede verificar la integridad"
+    die "no hay checksums.txt junto a $1: descárgalo de la misma release para verificar el archivo (o usa --insecure bajo tu responsabilidad)"
   fi
+}
+
+# normalize_version deja la etiqueta como vX.Y.Z[-pre] (acepta 0.2.0) y
+# rechaza cualquier otra cosa: forma parte de las URLs de descarga.
+normalize_version() {
+  local v="v${1#v}"
+  printf '%s' "$v" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' \
+    || die "versión no válida: $1 (ejemplo: v0.3.2)"
+  printf '%s' "$v"
 }
 
 install_from_archive() {

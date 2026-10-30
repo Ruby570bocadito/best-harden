@@ -17,8 +17,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
       - name: Formato
@@ -151,6 +151,15 @@ jobs:
           curl -sf -X POST -H "X-Bastion-Token: $tok" $base/api/scan | jq -e '.report.score.value >= 0'
           curl -sf -H "X-Bastion-Token: $tok" "$base/api/plan?wave=1" | jq -e 'length > 0'
           curl -sf -H "X-Bastion-Token: $tok" $base/api/reports | jq -e 'length >= 1'
+          # Navegador: la dirección de la terminal abre una sesión con cookie
+          # HttpOnly y redirige sin el token; la cookie sola no basta para la
+          # API (hace falta X-Bastion-Request) y el informe ya no acepta ?t=.
+          id=$(curl -sf -H "X-Bastion-Token: $tok" $base/api/reports | jq -r '.[-1].id')
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$base/r/$id.html?t=$tok")" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -c jar.txt "$base/?t=$tok")" = "303 $base/"
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b jar.txt $base/api/state)" = 401
+          curl -sf -b jar.txt -H 'X-Bastion-Request: 1' $base/api/state | jq -e '.hostname'
+          curl -sf -b jar.txt "$base/r/$id.html" | grep -q 'bastion-data'
           sudo kill "$pid" || true
       # Ciclo completo de hardening en la máquina desechable del runner:
       # aplicar la ola 1 debe mejorar la postura y el rollback debe dejarla
@@ -275,7 +284,7 @@ jobs:
             Remove-NetFirewallRule -Name 'Bastion-CI-Test' -ErrorAction SilentlyContinue
             foreach ($p in $profiles) { Set-NetFirewallProfile -Name $p.Name -Enabled $p.Enabled -DefaultInboundAction $p.DefaultInboundAction }
           }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: informe-${{ matrix.os }}
@@ -285,7 +294,7 @@ jobs:
     name: Instaladores
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: PSScriptAnalyzer
         shell: pwsh
         run: |
@@ -301,15 +310,15 @@ jobs:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - run: shellcheck scripts/install.sh
 
   cross:
     name: Compilación cruzada
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
       - run: |

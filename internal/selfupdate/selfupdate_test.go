@@ -106,3 +106,61 @@ func TestDownloadVerifiesChecksum(t *testing.T) {
 		t.Errorf("una versión sin publicar debe dar 404: %v", err)
 	}
 }
+
+func TestSourceValidate(t *testing.T) {
+	for _, s := range []Source{
+		{Repo: "Ruby570bocadito/bastion"},
+		{BaseURL: "https://mirror.interno/bastion/releases"},
+		{BaseURL: "http://127.0.0.1:8765"},
+		{BaseURL: "http://localhost:8765/"},
+	} {
+		if err := s.Validate(); err != nil {
+			t.Errorf("%+v: %v", s, err)
+		}
+	}
+	for _, s := range []Source{
+		{Repo: "nada"},
+		{Repo: "a/b/c"},
+		{BaseURL: "http://mirror.interno/releases"},
+		{BaseURL: "http://192.168.1.5/releases"},
+		{BaseURL: "ftp://mirror/releases"},
+		{BaseURL: "mirror/releases"},
+	} {
+		if err := s.Validate(); err == nil {
+			t.Errorf("%+v debería rechazarse", s)
+		}
+	}
+	if err := get(context.Background(), "http://example.com/x", &bytes.Buffer{}, 10); err == nil {
+		t.Error("get no debe descargar por HTTP fuera del propio equipo")
+	}
+}
+
+func TestTagsAndCompare(t *testing.T) {
+	for _, tag := range []string{"v1.2.3", "1.2.3", "v1.2.3-rc.1"} {
+		if !ValidTag(tag) {
+			t.Errorf("%s es válida", tag)
+		}
+	}
+	for _, tag := range []string{"", "v1.2", "../v1.2.3", "v1.2.3?x", "v1.2.3/../x", "latest"} {
+		if ValidTag(tag) {
+			t.Errorf("%q no es válida", tag)
+		}
+	}
+	if IsRelease("dev") || !IsRelease("v0.3.1") {
+		t.Error("IsRelease")
+	}
+	for _, c := range []struct {
+		a, b string
+		want int
+		ok   bool
+	}{
+		{"v0.3.2", "v0.3.1", 1, true},
+		{"v0.3.0", "v0.3.1", -1, true},
+		{"0.3.1", "v0.3.1", 0, true},
+		{"v0.3.1", "dev", 0, false},
+	} {
+		if got, ok := Compare(c.a, c.b); got != c.want || ok != c.ok {
+			t.Errorf("Compare(%s, %s) = %d, %v", c.a, c.b, got, ok)
+		}
+	}
+}

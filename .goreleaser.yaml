@@ -5,7 +5,9 @@ project_name: bastion
 
 before:
   hooks:
-    - go mod tidy
+    # Sin modificar nada: la release se compila exactamente desde la etiqueta.
+    - go mod verify
+    - go mod tidy -diff
     - go test ./...
 
 builds:
@@ -44,6 +46,9 @@ sboms:
   - artifacts: archive
 
 release:
+  # vX.Y.Z-rc.1 y similares se publican como pre-release: no pasan a ser
+  # «latest» (lo que instalan el instalador y bastion update).
+  prerelease: auto
   extra_files:
     # version.txt lo genera el workflow: es lo que consultan los instaladores
     # en <releases>/latest/download/version.txt

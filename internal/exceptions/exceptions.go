@@ -89,10 +89,18 @@ func (e Entry) AppliesTo(host string) bool {
 	return false
 }
 
-var reRuleID = regexp.MustCompile(`^[A-Z]{2,5}-[A-Z0-9]{2,8}-\d{3}$`)
+// reRuleID sigue el mismo formato que los IDs de regla (rule.ValidID y el
+// esquema): al menos tres partes de mayúsculas y dígitos (LNX-SSH-001,
+// ACME-WIN-NET-0001...).
+var reRuleID = regexp.MustCompile(`^[A-Z0-9]+(-[A-Z0-9]+){2,}$`)
 
-// Validate comprueba una excepción.
-func (e Entry) Validate() error {
+// Validate comprueba una excepción respecto a la fecha actual.
+func (e Entry) Validate() error { return e.ValidateAt(time.Now()) }
+
+// ValidateAt comprueba una excepción en la fecha now. La vigencia máxima se
+// cuenta desde la creación y también desde hoy: una fecha de creación futura
+// no puede alargarla.
+func (e Entry) ValidateAt(now time.Time) error {
 	if !reRuleID.MatchString(e.Rule) {
 		return fmt.Errorf("ID de regla inválido %q", e.Rule)
 	}
@@ -115,6 +123,13 @@ func (e Entry) Validate() error {
 	}
 	if expires.Sub(created) > MaxDuration {
 		return fmt.Errorf("%s: la vigencia máxima es de un año (creada %s, caduca %s)", e.Rule, e.Created, e.Expires)
+	}
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+	if created.After(today.AddDate(0, 0, 1)) { // un día de margen por zonas horarias
+		return fmt.Errorf("%s: la fecha de creación %s está en el futuro", e.Rule, e.Created)
+	}
+	if expires.Sub(today) > MaxDuration {
+		return fmt.Errorf("%s: la vigencia máxima es de un año desde hoy (caduca %s)", e.Rule, e.Expires)
 	}
 	return nil
 }
@@ -176,11 +191,31 @@ func (f *File) Save(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return err
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, append([]byte(header), b...), 0o640); err != nil {
+	// Temporal único y sincronizado a disco antes de renombrar: dos
+	// "bastion exceptions add" a la vez no comparten temporal y un corte de
+	// luz no deja el fichero vacío.
+	tf, err := os.CreateTemp(filepath.Dir(path), ".exceptions-*.tmp")
+	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, path)
+	tmp := tf.Name()
+	_, err = tf.Write(append([]byte(header), b...))
+	if err == nil {
+		err = tf.Sync()
+	}
+	if cerr := tf.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = os.Chmod(tmp, 0o640)
+	}
+	if err == nil {
+		err = os.Rename(tmp, path)
+	}
+	if err != nil {
+		os.Remove(tmp)
+	}
+	return err
 }
 
 // Find devuelve la excepción de una regla que se aplica a host. Si hay

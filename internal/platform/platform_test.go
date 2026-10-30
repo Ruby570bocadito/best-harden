@@ -38,3 +38,15 @@ func TestDisplayName(t *testing.T) {
 		t.Errorf("Windows: %q", n)
 	}
 }
+
+func TestSudoClassic(t *testing.T) {
+	for p, want := range map[string]bool{
+		"/usr/bin/sudo":           true,
+		"/usr/lib/cargo/bin/sudo": false, // sudo-rs en Ubuntu 25.10+
+		"/usr/bin/sudo-rs":        false,
+	} {
+		if got := sudoClassic(p); got != want {
+			t.Errorf("sudoClassic(%q) = %v, quiero %v", p, got, want)
+		}
+	}
+}

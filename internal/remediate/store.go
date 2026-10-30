@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -94,12 +95,16 @@ func (s *Store) NewManifest(host, profile, version string, wave int) *Manifest {
 		Host: host, Profile: profile, Wave: wave, Status: StatusInProgress, store: s}
 }
 
-// Save escribe el manifiesto de forma atómica.
+func (m *Manifest) dir() string { return filepath.Join(m.store.Dir, m.ID) }
+
+// Save escribe el manifiesto de forma atómica: un temporal único (dos
+// procesos, el principal y el dead-man switch, pueden escribir el mismo
+// cambio), sincronizado a disco antes de renombrarlo.
 func (m *Manifest) Save() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.UpdatedAt = time.Now().UTC()
-	dir := filepath.Join(m.store.Dir, m.ID)
+	dir := m.dir()
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
@@ -107,11 +112,49 @@ func (m *Manifest) Save() error {
 	if err != nil {
 		return err
 	}
-	tmp := filepath.Join(dir, "manifest.json.tmp")
-	if err := os.WriteFile(tmp, b, 0o640); err != nil {
+	return writeFileAtomic(filepath.Join(dir, "manifest.json"), b, 0o640)
+}
+
+// writeFileAtomic escribe en un temporal único del mismo directorio, hace
+// fsync y lo renombra. En Windows el renombrado puede fallar un instante si
+// otro proceso está leyendo el destino: se reintenta.
+func writeFileAtomic(path string, b []byte, mode fs.FileMode) error {
+	f, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*.tmp")
+	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, filepath.Join(dir, "manifest.json"))
+	tmp := f.Name()
+	ok := false
+	defer func() {
+		if !ok {
+			f.Close()
+			os.Remove(tmp)
+		}
+	}()
+	if _, err := f.Write(b); err != nil {
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmp, mode); err != nil {
+		return err
+	}
+	for i := 0; ; i++ {
+		err = os.Rename(tmp, path)
+		if err == nil || i >= 20 {
+			break
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	if err != nil {
+		return err
+	}
+	ok = true
+	return nil
 }
 
 // Load lee un manifiesto por ID.
@@ -126,6 +169,9 @@ func (s *Store) Load(id string) (*Manifest, error) {
 	var m Manifest
 	if err := json.Unmarshal(b, &m); err != nil {
 		return nil, err
+	}
+	if m.ID != id {
+		return nil, fmt.Errorf("el manifiesto %s declara otro ID (%q)", id, m.ID)
 	}
 	m.store = s
 	return &m, nil
@@ -177,23 +223,150 @@ func (m *Manifest) pending(filter func(*Entry) bool) int {
 	return n
 }
 
-// Lock evita dos operaciones de hardening simultáneas. Un bloqueo de más
-// de 30 minutos se considera abandonado.
+// mergeFromDisk incorpora lo que otro proceso (el dead-man switch, un
+// rollback) haya escrito en disco: las entradas restauradas y si saltó el
+// dead-man switch. Solo avanza esos indicadores (nunca los deshace), así que
+// es seguro llamarlo con cualquier copia. Se llama con el bloqueo del cambio.
+func (m *Manifest) mergeFromDisk() {
+	disk, err := m.store.Load(m.ID)
+	if err != nil {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	bySeq := map[int]*Entry{}
+	for _, e := range disk.Entries {
+		bySeq[e.Seq] = e
+	}
+	for _, e := range m.Entries {
+		d := bySeq[e.Seq]
+		if d == nil || d.RuleID != e.RuleID || d.Action.Type != e.Action.Type {
+			continue
+		}
+		if d.RolledBack && !e.RolledBack {
+			e.RolledBack = true
+		}
+		if e.Error == "" && d.Error != "" {
+			e.Error = d.Error
+		}
+	}
+	if disk.DeadmanFired {
+		m.DeadmanFired = true
+		m.Confirmed = false
+	}
+	if disk.Confirmed && !m.DeadmanFired {
+		m.Confirmed = true
+	}
+}
+
+// ---- Bloqueos ------------------------------------------------------------
+
+// LockWait es lo que se espera como mucho por el bloqueo de un cambio que
+// tiene otro proceso (p. ej. el dead-man switch revirtiendo). Variable para
+// los tests.
+var LockWait = 15 * time.Minute
+
+// staleLockAge es la antigüedad a partir de la cual un bloqueo sin PID
+// legible se considera abandonado. Si el bloqueo tiene PID, se considera
+// abandonado solo cuando ese proceso ya no existe (sin límite de tiempo:
+// una confirmación remota o un rollback largo no lo invalidan). La
+// reutilización de PID tras un reinicio puede retener un bloqueo huérfano;
+// en ese caso el mensaje de error indica qué fichero borrar.
+const staleLockAge = 30 * time.Minute
+
+// lockStale indica si el fichero de bloqueo está abandonado.
+func lockStale(path string) bool {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return false // desapareció o no se puede leer: se reintenta
+	}
+	if f := strings.Fields(string(b)); len(f) > 0 {
+		if pid, err := strconv.Atoi(f[0]); err == nil && pid > 0 {
+			return !processAlive(pid)
+		}
+	}
+	st, err := os.Stat(path)
+	return err == nil && time.Since(st.ModTime()) > staleLockAge
+}
+
+// acquireLock crea path en exclusiva (con el PID dentro) y espera hasta wait
+// si lo tiene otro proceso vivo.
+func acquireLock(path string, wait time.Duration) (func(), error) {
+	deadline := time.Now().Add(wait)
+	for {
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o640)
+		if err == nil {
+			fmt.Fprintf(f, "%d %s\n", os.Getpid(), time.Now().Format(time.RFC3339))
+			f.Sync()
+			f.Close()
+			return func() { os.Remove(path) }, nil
+		}
+		if !errors.Is(err, fs.ErrExist) {
+			return nil, err
+		}
+		if lockStale(path) {
+			os.Remove(path)
+			continue
+		}
+		if !time.Now().Before(deadline) {
+			return nil, errBusy
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+var errBusy = errors.New("bloqueo ocupado")
+
+// Lock evita dos operaciones de hardening simultáneas. Un bloqueo cuyo
+// proceso ya no existe se considera abandonado.
 func (s *Store) Lock() (func(), error) {
 	if err := os.MkdirAll(s.Dir, 0o750); err != nil {
 		return nil, err
 	}
 	path := filepath.Join(s.Dir, ".lock")
-	if st, err := os.Stat(path); err == nil && time.Since(st.ModTime()) > 30*time.Minute {
-		os.Remove(path)
-	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o640)
-	if err != nil {
+	unlock, err := acquireLock(path, 0)
+	if errors.Is(err, errBusy) {
 		return nil, fmt.Errorf("hay otra operación de hardening en curso (si no es así, borra %s)", path)
 	}
-	fmt.Fprintf(f, "%d %s\n", os.Getpid(), time.Now().Format(time.RFC3339))
-	f.Close()
-	return func() { os.Remove(path) }, nil
+	return unlock, err
+}
+
+// withLock ejecuta fn con el bloqueo de este cambio (entre procesos).
+func (m *Manifest) withLock(fn func() error) error {
+	if err := os.MkdirAll(m.dir(), 0o750); err != nil {
+		return err
+	}
+	path := filepath.Join(m.dir(), ".lock")
+	unlock, err := acquireLock(path, LockWait)
+	if errors.Is(err, errBusy) {
+		return fmt.Errorf("el cambio %s está bloqueado por otro proceso (si no es así, borra %s)", m.ID, path)
+	}
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return fn()
+}
+
+// withLockBestEffort es como withLock, pero si no consigue el bloqueo ejecuta
+// fn de todos modos (y devuelve también ese error). Se usa para deshacer
+// cambios: no restaurar es peor que hacerlo sin bloqueo.
+func (m *Manifest) withLockBestEffort(fn func() error) error {
+	ran := false
+	err := m.withLock(func() error { ran = true; return fn() })
+	if !ran {
+		return errors.Join(err, fn())
+	}
+	return err
+}
+
+// saveMerged guarda el manifiesto con el bloqueo del cambio, tras incorporar
+// lo que otro proceso haya escrito.
+func (m *Manifest) saveMerged() error {
+	return m.withLock(func() error {
+		m.mergeFromDisk()
+		return m.Save()
+	})
 }
 
 // Log añade una línea al registro de cambios (changes.log, JSON por línea).

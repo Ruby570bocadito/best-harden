@@ -57,7 +57,7 @@ En un servidor sin escritorio, fija el puerto y usa un túnel SSH:
 
 func runUI(port int, noOpen bool, profile string) error {
 	if port < 0 || port > 65535 {
-		return fmt.Errorf("--port debe estar entre 1 y 65535")
+		return fmt.Errorf("--port debe estar entre 1 y 65535 (o 0: uno libre al azar)")
 	}
 	cfg := loadConfig()
 	b := &uiBackend{cfg: cfg, profile: profile, info: platform.Detect()}
@@ -72,7 +72,12 @@ func runUI(port int, noOpen bool, profile string) error {
 	if err != nil {
 		return fmt.Errorf("no se pudo abrir el puerto %d en 127.0.0.1: %w", port, err)
 	}
-	url := "http://" + net.JoinHostPort("127.0.0.1", strconv.Itoa(l.Addr().(*net.TCPAddr).Port)) + "/?t=" + srv.Token()
+	base := "http://" + net.JoinHostPort("127.0.0.1", strconv.Itoa(l.Addr().(*net.TCPAddr).Port))
+	// La dirección con el token solo se muestra en la terminal. El
+	// navegador se abre con un fichero local privado que redirige con un
+	// código de un solo uso: el token no pasa por la línea de órdenes del
+	// navegador, que cualquier usuario del equipo puede leer en /proc.
+	url := base + "/?t=" + srv.Token()
 
 	s := stdoutStyle()
 	fmt.Println()
@@ -87,7 +92,12 @@ func runUI(port int, noOpen bool, profile string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	if !noOpen {
-		if err := report.Open(url); err != nil {
+		launcher, cleanup, err := srv.WriteLauncher(base)
+		if err == nil {
+			defer cleanup()
+			err = report.Open(launcher)
+		}
+		if err != nil {
 			fmt.Printf("  %s No se pudo abrir el navegador (%v): copia la dirección.\n\n", s.Yellow("!"), err)
 		}
 	}
@@ -176,6 +186,8 @@ func (b *uiBackend) Changes() ([]ui.Change, error) {
 				c.Verified++
 			case remediate.OutcomeFailed, remediate.OutcomeNotEffective:
 				c.Failed++
+			case remediate.OutcomeNothing:
+				c.Nothing++
 			}
 		}
 		for _, e := range m.Entries {
@@ -223,6 +235,9 @@ func (b *uiBackend) Surface(ctx context.Context) (*surface.Report, error) {
 }
 
 func (b *uiBackend) Exceptions() ([]ui.Exception, error) {
+	if !configTrusted() {
+		return nil, fmt.Errorf("exceptions.yaml no es fiable: otro usuario podría haberlo modificado (bastion init restablece los permisos)")
+	}
 	f, err := exceptions.Load(exceptionsPath())
 	if err != nil && len(f.Exceptions) == 0 {
 		return nil, err

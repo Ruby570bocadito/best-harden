@@ -3,6 +3,9 @@ package remediate
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -44,6 +47,15 @@ type memSetter struct{}
 
 func (memSetter) Type() string { return "mem.set" }
 func (memSetter) Capture(_ context.Context, p probes.Params) (State, error) {
+	if p.String("mode") == "skiplater" {
+		memMu.Lock()
+		captures[p.String("key")]++
+		n := captures[p.String("key")]
+		memMu.Unlock()
+		if n > 1 {
+			return skipState("ya no hay nada que cambiar"), nil
+		}
+	}
 	v, ok := memGet(p.String("key"))
 	return State{"exists": ok, "value": v}, nil
 }
@@ -53,13 +65,24 @@ func (memSetter) Apply(_ context.Context, p probes.Params) error {
 	case "broken":
 		memSet(p.String("key"), "a-medias")
 		return errors.New("fallo simulado")
-	case "noop":
+	case "noop", "skiplater":
+		return nil
+	case "breakstore":
+		// Tras aplicar, el almacén de instantáneas deja de poder escribirse.
+		memSet(p.String("key"), p.String("value"))
+		brokenStore.Dir = filepath.Join(brokenFile, "sub")
+		return nil
+	case "stuck":
+		memSet(p.String("key"), "atascado")
 		return nil
 	}
 	memSet(p.String("key"), p.String("value"))
 	return nil
 }
 func (memSetter) Restore(_ context.Context, p probes.Params, b State) error {
+	if p.String("mode") == "stuck" {
+		return errors.New("restauración imposible")
+	}
 	if ok, _ := b["exists"].(bool); !ok {
 		memDel(p.String("key"))
 		return nil
@@ -67,6 +90,13 @@ func (memSetter) Restore(_ context.Context, p probes.Params, b State) error {
 	memSet(p.String("key"), b["value"].(string))
 	return nil
 }
+
+// Estado auxiliar de los modos especiales de memSetter.
+var (
+	captures    = map[string]int{}
+	brokenStore *Store
+	brokenFile  string
+)
 
 func init() {
 	probes.Register(memProbe{})
@@ -198,11 +228,14 @@ func TestDeadmanRevertsUnconfirmed(t *testing.T) {
 	x, st := newExecutor(t)
 	// Simula que la sesión se corta: nadie confirma ni revierte en el proceso principal.
 	x.ArmDeadman = func(string, time.Duration) error { return nil }
-	x.ConfirmRemote = func(time.Duration) bool { select {} }
-	x.DeadmanTimeout = 50 * time.Millisecond
+	// ConfirmRemote se llama con el cambio remoto ya aplicado y guardado.
+	waiting := make(chan struct{})
+	x.ConfirmRemote = func(time.Duration) bool { close(waiting); select {} }
+	x.DeadmanTimeout = time.Second
+	setMargin(t, 10*time.Millisecond)
 	m := st.NewManifest("h", "p", "test", 1)
 	go x.Execute(ctx, m, items) //nolint:errcheck // el proceso "muere" esperando
-	time.Sleep(20 * time.Millisecond)
+	<-waiting
 	if err := RunDeadman(ctx, st, m.ID, time.Second); err != nil {
 		t.Fatal(err)
 	}
@@ -275,5 +308,278 @@ func TestPlanRule(t *testing.T) {
 	it = PlanRule(context.Background(), memRule("SURF-Y", "plan.k", "b", "low", "", rule.Action{Type: "no.existe"}))
 	if it.Status != ItemUnsupported {
 		t.Errorf("acción desconocida: %+v", it)
+	}
+}
+
+func setMargin(t *testing.T, d time.Duration) {
+	t.Helper()
+	old := DeadmanMargin
+	DeadmanMargin = d
+	t.Cleanup(func() { DeadmanMargin = old })
+}
+
+// El dead-man switch actúa mientras el usuario aún no ha confirmado; aunque
+// después confirme, el cambio NO puede quedar como confirmado ni aplicado.
+func TestDeadmanFiredBeforeConfirm(t *testing.T) {
+	memSys = map[string]string{"r": "0"}
+	rules := []*rule.Rule{memRule("T-R-001", "r", "1", "low", "remote-access", act("r", "1", ""))}
+	ctx := context.Background()
+	items := BuildPlan(ctx, engine.New().Run(ctx, rules, nil), Options{Wave: 1, IncludeRemote: true})
+	x, st := newExecutor(t)
+	setMargin(t, 10*time.Millisecond)
+	x.DeadmanTimeout = time.Second
+	x.ArmDeadman = func(string, time.Duration) error { return nil }
+	var id string
+	x.ConfirmRemote = func(time.Duration) bool {
+		// El usuario tarda: el dead-man switch (otro proceso) salta antes.
+		if err := RunDeadman(ctx, st, id, time.Second); err != nil {
+			t.Errorf("deadman: %v", err)
+		}
+		return true // ... y confirma tarde
+	}
+	m := st.NewManifest("h", "p", "test", 1)
+	id = m.ID
+	m, err := x.Execute(ctx, m, items)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, _ := memGet("r"); v != "0" {
+		t.Errorf("el cambio debe quedar revertido, r = %q", v)
+	}
+	if items[0].Outcome != OutcomeReverted {
+		t.Errorf("outcome %q, quiero reverted", items[0].Outcome)
+	}
+	loaded, err := st.Load(m.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Confirmed || !loaded.DeadmanFired {
+		t.Errorf("confirmed=%v deadman=%v: no se puede confirmar tras el dead-man switch", loaded.Confirmed, loaded.DeadmanFired)
+	}
+	if loaded.pending(nil) != 0 {
+		t.Error("las entradas restauradas por el dead-man switch deben constar como deshechas")
+	}
+	if loaded.Status == StatusApplied {
+		t.Errorf("estado %q", loaded.Status)
+	}
+}
+
+func TestExecuteRejectsShortConfirmTimeout(t *testing.T) {
+	memSys = map[string]string{"r": "0"}
+	rules := []*rule.Rule{memRule("T-R-001", "r", "1", "low", "remote-access", act("r", "1", ""))}
+	ctx := context.Background()
+	items := BuildPlan(ctx, engine.New().Run(ctx, rules, nil), Options{Wave: 1, IncludeRemote: true})
+	x, st := newExecutor(t)
+	x.ArmDeadman = func(string, time.Duration) error { return nil }
+	x.ConfirmRemote = func(time.Duration) bool { return true }
+	x.DeadmanTimeout = 10 * time.Second
+	if _, err := x.Execute(ctx, st.NewManifest("h", "p", "test", 1), items); err == nil {
+		t.Fatal("un plazo menor que el margen debe rechazarse")
+	}
+	if v, _ := memGet("r"); v != "0" {
+		t.Error("no debe aplicarse nada")
+	}
+}
+
+// Si la instantánea deja de poder guardarse a mitad de una regla, lo ya
+// aplicado se deshace.
+func TestSaveFailureRevertsAppliedSteps(t *testing.T) {
+	memSys = map[string]string{"s1": "0", "s2": "0"}
+	r := memRule("T-S-001", "s2", "1", "low", "", act("s1", "1", "breakstore"), act("s2", "1", ""))
+	ctx := context.Background()
+	items := BuildPlan(ctx, engine.New().Run(ctx, []*rule.Rule{r}, nil), Options{Wave: 1})
+	x, st := newExecutor(t)
+	brokenStore = st
+	brokenFile = filepath.Join(t.TempDir(), "fichero")
+	if err := os.WriteFile(brokenFile, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	dir := st.Dir
+	t.Cleanup(func() { st.Dir = dir })
+	x.Execute(ctx, st.NewManifest("h", "p", "test", 1), items) //nolint:errcheck // el guardado final también falla
+	if v, _ := memGet("s1"); v != "0" {
+		t.Errorf("s1 = %q: el paso aplicado debe revertirse al fallar el guardado", v)
+	}
+	if v, _ := memGet("s2"); v != "0" {
+		t.Errorf("s2 = %q: no debe aplicarse sin instantánea", v)
+	}
+	if items[0].Outcome != OutcomeFailed {
+		t.Errorf("outcome %q", items[0].Outcome)
+	}
+}
+
+// Un fallo al revertir se comunica (no se dice "cambio revertido").
+func TestRevertFailureIsReported(t *testing.T) {
+	memSys = map[string]string{"k": "0"}
+	r := memRule("T-K-001", "k", "1", "low", "", act("k", "1", "stuck"))
+	ctx := context.Background()
+	items := BuildPlan(ctx, engine.New().Run(ctx, []*rule.Rule{r}, nil), Options{Wave: 1})
+	x, st := newExecutor(t)
+	m, err := x.Execute(ctx, st.NewManifest("h", "p", "test", 1), items)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if items[0].Outcome != OutcomeNotEffective || !strings.Contains(items[0].Message, "NO se pudo revertir") {
+		t.Errorf("mensaje: %q", items[0].Message)
+	}
+	if m.pending(nil) != 1 {
+		t.Error("la entrada no restaurada debe seguir pendiente para bastion rollback")
+	}
+	b, _ := os.ReadFile(filepath.Join(st.Dir, "changes.log"))
+	if !strings.Contains(string(b), "rollback-failed") {
+		t.Errorf("changes.log debe registrar el fallo: %s", b)
+	}
+}
+
+// Si al aplicar ya no queda nada que cambiar, el resultado es "nothing" y no
+// cuenta como fallo.
+func TestAllSkippedAtApplyIsNothing(t *testing.T) {
+	memSys = map[string]string{"q": "0"}
+	captures = map[string]int{}
+	r := memRule("T-Q-001", "q", "1", "low", "", act("q", "1", "skiplater"))
+	ctx := context.Background()
+	items := BuildPlan(ctx, engine.New().Run(ctx, []*rule.Rule{r}, nil), Options{Wave: 1})
+	x, st := newExecutor(t)
+	m, err := x.Execute(ctx, st.NewManifest("h", "p", "test", 1), items)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if items[0].Outcome != OutcomeNothing || m.Status != StatusNothing {
+		t.Errorf("outcome %q, estado %q", items[0].Outcome, m.Status)
+	}
+}
+
+func TestPolicyManagedSecpolAuditpol(t *testing.T) {
+	for _, typ := range []string{"secpol.set", "auditpol.set"} {
+		if !managedByPolicy([]rule.Action{{Type: typ}}) {
+			t.Errorf("%s debe considerarse gestionado por GPO en un equipo de dominio", typ)
+		}
+	}
+	if managedByPolicy([]rule.Action{{Type: "registry.set", Params: map[string]any{"path": `HKLM\SYSTEM\X`}}}) {
+		t.Error("una clave fuera de Policies no es de directiva")
+	}
+}
+
+func TestLockStaleByPID(t *testing.T) {
+	st := &Store{Dir: t.TempDir()}
+	unlock, err := st.Lock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Lock(); err == nil {
+		t.Error("el bloqueo de un proceso vivo no debe poder tomarse")
+	}
+	unlock()
+	// Bloqueo de un proceso que ya no existe: se toma aunque sea reciente.
+	if err := os.WriteFile(filepath.Join(st.Dir, ".lock"), []byte("2147483600 2026-01-01T00:00:00Z\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	unlock, err = st.Lock()
+	if err != nil {
+		t.Fatalf("un bloqueo abandonado debe recuperarse: %v", err)
+	}
+	unlock()
+}
+
+func TestSaveUsesUniqueTempFiles(t *testing.T) {
+	st := &Store{Dir: t.TempDir()}
+	m := st.NewManifest("h", "p", "test", 1)
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// Copias independientes, como dos procesos distintos.
+			c := &Manifest{Schema: ManifestSchema, ID: m.ID, Status: StatusInProgress, store: st}
+			for j := 0; j < 10; j++ {
+				if err := c.Save(); err != nil {
+					t.Error(err)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	if _, err := st.Load(m.ID); err != nil {
+		t.Fatal(err)
+	}
+	left, _ := filepath.Glob(filepath.Join(st.Dir, m.ID, "*.tmp"))
+	if len(left) > 0 {
+		t.Errorf("quedan temporales: %v", left)
+	}
+}
+
+func TestValidateBefore(t *testing.T) {
+	reg := rule.Action{Type: "registry.set", Params: map[string]any{"path": `HKLM\SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces\Tcpip_*`, "name": "NetbiosOptions", "value": 2}}
+	sec := rule.Action{Type: "secpol.set", Params: map[string]any{"section": "System Access", "key": "MinimumPasswordLength", "value": 14}}
+	fm := rule.Action{Type: "file.mode", Params: map[string]any{"path": "/etc/shadow", "mode": "0640"}}
+	fw := rule.Action{Type: "firewall.remote_address", Params: map[string]any{"rule": "X", "remote": "LocalSubnet"}}
+	sub := `SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces\Tcpip_{ABC}`
+	ok := []struct {
+		a rule.Action
+		b State
+	}{
+		{reg, State{"values": []any{map[string]any{"sub": sub, "exists": true, "type": "DWORD", "value": "0"}}}},
+		{reg, State{"values": []any{map[string]any{"sub": sub, "exists": false}}}},
+		{sec, State{"exists": true, "value": "7"}},
+		{fm, State{"path": "/etc/shadow", "mode": float64(0o640), "uid": float64(0), "gid": float64(42)}},
+		{fw, State{"remote": "Any"}},
+		{fw, State{"remote": "10.0.0.0/8,LocalSubnet"}},
+	}
+	for _, c := range ok {
+		if err := ValidateBefore(c.a, c.b); err != nil {
+			t.Errorf("%s %v debería ser válido: %v", c.a.Type, c.b, err)
+		}
+	}
+	bad := []struct {
+		a rule.Action
+		b State
+	}{
+		// Otra clave HKLM distinta de la de la acción.
+		{reg, State{"values": []any{map[string]any{"sub": `SOFTWARE\Microsoft\Windows\CurrentVersion\Run`, "exists": true, "type": "SZ", "value": "evil.exe"}}}},
+		{reg, State{"values": []any{map[string]any{"sub": sub, "exists": true, "type": "BINARY", "value": "00"}}}},
+		{reg, State{"values": []any{map[string]any{"sub": sub, "exists": true, "type": "DWORD", "value": "99999999999"}}}},
+		// Inyección en la plantilla de secedit.
+		{sec, State{"exists": true, "value": "1\r\n[Privilege Rights]\r\nSeDebugPrivilege = *S-1-1-0"}},
+		// chmod de un fichero que no es el de la acción.
+		{fm, State{"path": "/etc/sudoers", "mode": float64(0o777)}},
+		{fm, State{"path": "/etc/shadow", "mode": float64(0o100000)}},
+		{fw, State{"remote": "Any; Remove-Item C:\\"}},
+		{rule.Action{Type: "auditpol.set"}, State{"value": float64(9)}},
+	}
+	for _, c := range bad {
+		if err := ValidateBefore(c.a, c.b); err == nil {
+			t.Errorf("%s %v debería rechazarse", c.a.Type, c.b)
+		}
+	}
+}
+
+func TestValidateActionParams(t *testing.T) {
+	bad := []rule.Action{
+		{Type: "sysctl.set", Params: map[string]any{"key": "net.ipv6.conf.all.forwarding", "value": 0, "optinal": true}},
+		{Type: "service.config", Params: map[string]any{"name": "Spooler", "start_type": "disabled", "stop": "ture"}},
+		{Type: "registry.set", Params: map[string]any{"path": `HKLM\X`, "name": "Y", "value": 4294967296}},
+		{Type: "registry.set", Params: map[string]any{"path": `HKLM\X`, "name": "Y", "value": -1}},
+		{Type: "registry.set", Params: map[string]any{"path": `HKLM\X`, "name": "Y", "value": 1.5}},
+		{Type: "secpol.set", Params: map[string]any{"section": "System Access", "key": "MinimumPasswordLength", "value": 14.5}},
+	}
+	for _, a := range bad {
+		if err := ValidateAction(a); err == nil {
+			t.Errorf("%s %v debería rechazarse", a.Type, a.Params)
+		}
+	}
+	good := []rule.Action{
+		{Type: "registry.set", Params: map[string]any{"path": `HKLM\X`, "name": "Y", "value": 4294967295}},
+		{Type: "registry.set", Params: map[string]any{"path": `HKLM\X`, "name": "Y", "value": 4294967296, "value_type": "QWORD"}},
+		{Type: "registry.set", Params: map[string]any{"path": `HKLM\X`, "name": "Y", "value": `%SystemRoot%\x`, "value_type": "EXPAND_SZ"}},
+		{Type: "service.config", Params: map[string]any{"name": "Spooler", "start_type": "disabled", "stop": true}},
+	}
+	for _, a := range good {
+		if err := ValidateAction(a); err != nil {
+			t.Errorf("%s %v debería ser válida: %v", a.Type, a.Params, err)
+		}
+	}
+	if rule.ActionOS == nil || rule.ActionOS("registry.set") != "windows" || rule.ActionOS("sysctl.set") != "linux" {
+		t.Error("rule.ActionOS debe reflejar Spec.OS")
 	}
 }

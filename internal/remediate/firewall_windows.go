@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -29,10 +28,6 @@ type firewallRemote struct{}
 
 func (firewallRemote) Type() string { return "firewall.remote_address" }
 
-// reFwAddr valida cada dirección remota guardada en una instantánea antes de
-// restaurarla: IP, subred, rango o palabra clave (Any, LocalSubnet…).
-var reFwAddr = regexp.MustCompile(`^[A-Za-z0-9.:/-]+$`)
-
 // fwRule localiza la regla exacta en el almacén local (los corchetes y
 // asteriscos del nombre no se toman como comodines).
 const fwRule = `[Console]::OutputEncoding=[Text.Encoding]::UTF8; ` +
@@ -48,7 +43,7 @@ func runFwPS(ctx context.Context, script string, env ...string) (string, error) 
 	b, err := cmd.CombinedOutput()
 	out := string(b)
 	if !utf8.Valid(b) {
-		out = probes.DecodeText(b)
+		out = probes.DecodeConsole(b)
 	}
 	if err != nil {
 		return out, fmt.Errorf("%s: %v: %s", filepath.Base(exe), err, strings.TrimSpace(out))

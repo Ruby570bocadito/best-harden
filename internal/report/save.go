@@ -25,23 +25,62 @@ func JSON(w io.Writer, rep *engine.Report) error {
 	return enc.Encode(rep)
 }
 
+// CheckOutput comprueba, antes de escanear, que path tenga una extensión
+// soportada (exts; por defecto .html, .htm y .json), que no sea una carpeta
+// y que la carpeta existente más cercana sea de verdad una carpeta. No crea
+// ni vacía nada.
+func CheckOutput(path string, exts ...string) error {
+	if len(exts) == 0 {
+		exts = []string{".html", ".htm", ".json"}
+	}
+	ext := strings.ToLower(filepath.Ext(path))
+	ok := false
+	for _, e := range exts {
+		ok = ok || ext == e
+	}
+	if !ok {
+		return fmt.Errorf("formato no soportado para %s (usa %s)", path, strings.Join(exts, ", "))
+	}
+	if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+		return fmt.Errorf("%s es una carpeta", path)
+	}
+	for dir := filepath.Dir(path); ; {
+		if fi, err := os.Stat(dir); err == nil {
+			if !fi.IsDir() {
+				return fmt.Errorf("%s no es una carpeta", dir)
+			}
+			return nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return nil
+		}
+		dir = parent
+	}
+}
+
 // WriteFile genera el informe en path según su extensión (.html o .json).
+// El formato se comprueba y el contenido se genera antes de abrir el
+// fichero: un error nunca deja vacío un fichero que ya existía.
 func WriteFile(path string, rep *engine.Report) error {
+	if err := CheckOutput(path); err != nil {
+		return err
+	}
+	var buf bytes.Buffer
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".html", ".htm":
+		if err := HTML(&buf, rep); err != nil {
+			return err
+		}
+	default:
+		if err := JSON(&buf, rep); err != nil {
+			return err
+		}
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return err
 	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o640)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".html", ".htm":
-		return HTML(f, rep)
-	case ".json":
-		return JSON(f, rep)
-	}
-	return fmt.Errorf("formato no soportado para %s (usa .html o .json)", path)
+	return os.WriteFile(path, buf.Bytes(), 0o640)
 }
 
 var unsafeName = regexp.MustCompile(`[^A-Za-z0-9._-]+`)
@@ -60,22 +99,41 @@ func Save(dir string, rep *engine.Report, keep int) (string, string, error) {
 		return "", "", err
 	}
 	if keep > 0 {
-		prune(dir, keep)
+		prune(dir, host, keep)
 	}
 	return htmlPath, jsonPath, nil
 }
 
-// prune borra los informes más antiguos dejando keep escaneos.
-func prune(dir string, keep int) {
+// prune borra los informes más antiguos de host dejando keep escaneos. Solo
+// cuenta los de ese equipo: con varios nombres en la misma carpeta (un
+// equipo renombrado, una carpeta compartida) no se borran los de otro.
+func prune(dir, host string, keep int) {
 	for _, ext := range []string{".html", ".json"} {
-		files, _ := filepath.Glob(filepath.Join(dir, "bastion-*"+ext))
-		sort.Strings(files) // el nombre incluye la fecha
+		files := hostFiles(dir, "bastion-", host, ext)
 		if len(files) > keep {
 			for _, f := range files[:len(files)-keep] {
 				os.Remove(f)
 			}
 		}
 	}
+}
+
+// hostFiles devuelve los informes con prefijo de host (ya saneado), del
+// más antiguo al último: «pc» no recoge los de «pc-a».
+func hostFiles(dir, prefix, host, ext string) []string {
+	re := regexp.MustCompile(`^` + regexp.QuoteMeta(prefix+host) + `-[0-9]{8}-[0-9]{6}` + regexp.QuoteMeta(ext) + `$`)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, e := range entries {
+		if !e.IsDir() && re.MatchString(e.Name()) {
+			out = append(out, filepath.Join(dir, e.Name()))
+		}
+	}
+	sort.Strings(out) // el nombre incluye la fecha
+	return out
 }
 
 // Open abre un fichero con la aplicación por defecto (navegador para HTML).
@@ -209,19 +267,7 @@ func SaveSurface(dir string, rep *surface.Report, keep int) (string, string, err
 // surfaceFiles devuelve los análisis de superficie de host (solo de ese
 // equipo: «pc» no recoge los de «pc-a»), del más antiguo al último.
 func surfaceFiles(dir, host, ext string) []string {
-	re := regexp.MustCompile(`^surface-` + regexp.QuoteMeta(unsafeName.ReplaceAllString(host, "_")) + `-[0-9]{8}-[0-9]{6}` + regexp.QuoteMeta(ext) + `$`)
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil
-	}
-	var out []string
-	for _, e := range entries {
-		if !e.IsDir() && re.MatchString(e.Name()) {
-			out = append(out, filepath.Join(dir, e.Name()))
-		}
-	}
-	sort.Strings(out)
-	return out
+	return hostFiles(dir, "surface-", unsafeName.ReplaceAllString(host, "_"), ext)
 }
 
 // LatestSurface devuelve el último análisis de superficie guardado de host

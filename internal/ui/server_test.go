@@ -6,7 +6,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -21,6 +23,7 @@ const goodID = "bastion-pc-01-20261015-100000"
 
 type fakeBackend struct {
 	scans   int
+	onScan  func(context.Context)
 	block   chan struct{}
 	started chan struct{}
 }
@@ -28,6 +31,9 @@ type fakeBackend struct {
 func (f *fakeBackend) State() State { return State{Hostname: "pc-01", Version: "test"} }
 func (f *fakeBackend) Scan(ctx context.Context) (*engine.Report, string, error) {
 	f.scans++
+	if f.onScan != nil {
+		f.onScan(ctx)
+	}
 	if f.block != nil {
 		close(f.started)
 		<-f.block
@@ -172,17 +178,95 @@ func TestReportIDs(t *testing.T) {
 		}
 	}
 	if rec := do(h, "GET", "/r/"+goodID+".html", nil); rec.Code != http.StatusUnauthorized {
-		t.Errorf("informe HTML sin token: %d", rec.Code)
+		t.Errorf("informe HTML sin sesión: %d", rec.Code)
 	}
-	rec := do(h, "GET", "/r/"+goodID+".html?t="+s.Token(), nil)
+	// El token en la URL ya no vale: solo la cookie de sesión.
+	if rec := do(h, "GET", "/r/"+goodID+".html?t="+s.Token(), nil); rec.Code != http.StatusUnauthorized {
+		t.Errorf("informe HTML con el token en la URL: %d, quiero 401", rec.Code)
+	}
+	cookie := map[string]string{"Cookie": s.cookie + "=" + s.Token()}
+	rec := do(h, "GET", "/r/"+goodID+".html", cookie)
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "bastion-data") {
 		t.Errorf("informe HTML: %d", rec.Code)
 	}
 	if csp := rec.Header().Get("Content-Security-Policy"); csp != "frame-ancestors 'self'" {
 		t.Errorf("el informe solo debe poder incrustarse en la consola: %q", csp)
 	}
-	if rec := do(h, "GET", "/r/../x.html?t="+s.Token(), nil); rec.Code == 200 {
+	if rec := do(h, "GET", "/r/../x.html", cookie); rec.Code == 200 {
 		t.Error("ruta fuera del directorio aceptada")
+	}
+}
+
+func TestSessionCookieAndLaunchCode(t *testing.T) {
+	s, h, _ := newTest(t)
+	// La dirección de la terminal abre la sesión y redirige sin el token.
+	rec := do(h, "GET", "/?t="+s.Token(), nil)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/" {
+		t.Fatalf("GET /?t=: %d %q", rec.Code, rec.Header().Get("Location"))
+	}
+	c := rec.Result().Cookies()
+	if len(c) != 1 || c[0].Value != s.Token() || !c[0].HttpOnly || c[0].SameSite != http.SameSiteStrictMode || c[0].Name != s.cookie {
+		t.Fatalf("cookie de sesión: %+v", c)
+	}
+	// Un token erróneo no abre sesión.
+	if rec := do(h, "GET", "/?t=x"+s.Token()[1:], nil); len(rec.Result().Cookies()) != 0 {
+		t.Error("un token erróneo no debe abrir sesión")
+	}
+	cookie := s.cookie + "=" + s.Token()
+	// La cookie sola no basta para la API (CSRF): hace falta la cabecera.
+	if rec := do(h, "GET", "/api/state", map[string]string{"Cookie": cookie}); rec.Code != http.StatusUnauthorized {
+		t.Errorf("cookie sin X-Bastion-Request: %d, quiero 401", rec.Code)
+	}
+	if rec := do(h, "GET", "/api/state", map[string]string{"Cookie": cookie, "X-Bastion-Request": "1"}); rec.Code != 200 {
+		t.Errorf("cookie con X-Bastion-Request: %d", rec.Code)
+	}
+	if rec := do(h, "GET", "/api/state", map[string]string{"Cookie": s.cookie + "=otro", "X-Bastion-Request": "1"}); rec.Code != http.StatusUnauthorized {
+		t.Errorf("cookie errónea: %d", rec.Code)
+	}
+
+	// Código de un solo uso del fichero de apertura.
+	code, err := s.LaunchCode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec := do(h, "GET", "/?c="+code, nil); rec.Code != http.StatusSeeOther || len(rec.Result().Cookies()) != 1 {
+		t.Errorf("primer uso del código: %d %v", rec.Code, rec.Result().Cookies())
+	}
+	if rec := do(h, "GET", "/?c="+code, nil); len(rec.Result().Cookies()) != 0 {
+		t.Error("el código solo vale una vez")
+	}
+
+	// El fichero de apertura es privado y no contiene el token.
+	path, cleanup, err := s.WriteLauncher("http://127.0.0.1:8790")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+	b, _ := os.ReadFile(path)
+	if strings.Contains(string(b), s.Token()) || !strings.Contains(string(b), "http://127.0.0.1:8790/?c=") {
+		t.Errorf("fichero de apertura:\n%s", b)
+	}
+	if fi, err := os.Stat(path); err != nil || (runtime.GOOS != "windows" && fi.Mode().Perm() != 0o600) {
+		t.Errorf("permisos del fichero de apertura: %v %v", fi.Mode(), err)
+	}
+}
+
+// Un escaneo lanzado desde la consola no se cancela si el navegador corta
+// la conexión: se guardaría a medias.
+func TestScanDetachedFromRequest(t *testing.T) {
+	s, h, fb := newTest(t)
+	called := false
+	var scanErr error
+	fb.onScan = func(ctx context.Context) { called, scanErr = true, ctx.Err() }
+	ctx, cancel := context.WithCancel(context.Background())
+	req := httptest.NewRequest("POST", "/api/scan", nil).WithContext(ctx)
+	req.Host = "127.0.0.1:8790"
+	req.Header.Set("X-Bastion-Token", s.Token())
+	cancel()
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if !called || scanErr != nil {
+		t.Errorf("el escaneo recibió un contexto cancelado con la petición: %v", scanErr)
 	}
 }
 

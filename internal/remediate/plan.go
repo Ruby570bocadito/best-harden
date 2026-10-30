@@ -32,6 +32,7 @@ const (
 	OutcomeFailed       = "failed"        // error al aplicar: revertido
 	OutcomeNotEffective = "not-effective" // aplicado pero el control sigue fallando: revertido
 	OutcomeReverted     = "reverted"      // revertido (acceso remoto no confirmado)
+	OutcomeNothing      = "nothing"       // al aplicar ya no había nada que cambiar
 )
 
 // Step es una acción del plan con su estado previo.
@@ -133,12 +134,20 @@ func planSteps(ctx context.Context, it *Item) {
 
 var riskNames = map[string]string{"none": "ninguno", "low": "bajo", "medium": "medio", "high": "alto"}
 
-// managedByPolicy detecta valores de directiva (claves ...\Policies\...),
-// que una GPO de dominio volvería a sobrescribir.
+// managedByPolicy detecta valores de directiva que una GPO de dominio
+// volvería a sobrescribir: claves ...\Policies\..., la directiva de
+// seguridad (las directivas de cuentas del dominio se aplican también a las
+// cuentas locales de los equipos miembro y de los DC) y la directiva de
+// auditoría avanzada.
 func managedByPolicy(acts []rule.Action) bool {
 	for _, a := range acts {
-		if a.Type == "registry.set" && strings.Contains(strings.ToLower(fmt.Sprint(a.Params["path"])), `\policies\`) {
+		switch a.Type {
+		case "secpol.set", "auditpol.set":
 			return true
+		case "registry.set":
+			if strings.Contains(strings.ToLower(fmt.Sprint(a.Params["path"])), `\policies\`) {
+				return true
+			}
 		}
 	}
 	return false
@@ -146,7 +155,7 @@ func managedByPolicy(acts []rule.Action) bool {
 
 // Event informa del progreso de la ejecución.
 type Event struct {
-	Kind string // item-start, verified, failed, not-effective, remote-phase, remote-confirmed, remote-reverted
+	Kind string // item-start, verified, failed, not-effective, nothing, remote-phase, remote-confirmed, remote-reverted
 	Item *Item
 	Err  error
 }
@@ -169,11 +178,14 @@ func (x *Executor) emit(kind string, it *Item, err error) {
 	}
 }
 
+// DeadmanMargin es el margen entre el fin de la confirmación del acceso
+// remoto y el disparo del dead-man switch: el proceso principal decide (y
+// revierte si hace falta) antes de que actúe el dead-man switch. Variable
+// solo para los tests.
+var DeadmanMargin = 15 * time.Second
+
 // Execute aplica los elementos planificados y devuelve el manifiesto.
 func (x *Executor) Execute(ctx context.Context, m *Manifest, items []*Item) (*Manifest, error) {
-	if err := m.Save(); err != nil {
-		return nil, fmt.Errorf("no se pudo crear la instantánea: %w", err)
-	}
 	var normal, remote []*Item
 	for _, it := range items {
 		if it.Status != ItemPlanned {
@@ -185,16 +197,24 @@ func (x *Executor) Execute(ctx context.Context, m *Manifest, items []*Item) (*Ma
 			normal = append(normal, it)
 		}
 	}
+	deadman := len(remote) > 0 && x.ConfirmRemote != nil && x.ArmDeadman != nil
+	if deadman && x.DeadmanTimeout <= DeadmanMargin {
+		return nil, fmt.Errorf("el plazo de confirmación (%s) debe ser mayor que %s", x.DeadmanTimeout, DeadmanMargin)
+	}
+	if err := m.Save(); err != nil {
+		return nil, fmt.Errorf("no se pudo crear la instantánea: %w", err)
+	}
 	for _, it := range normal {
 		x.applyItem(ctx, m, it, false)
 	}
 
 	if len(remote) > 0 {
 		x.emit("remote-phase", nil, nil)
-		if x.ConfirmRemote != nil && x.ArmDeadman != nil {
-			deadline := time.Now().Add(x.DeadmanTimeout).UTC()
+		var deadline time.Time
+		if deadman {
+			deadline = time.Now().Add(x.DeadmanTimeout).UTC()
 			m.DeadmanDeadline = &deadline
-			if err := m.Save(); err != nil {
+			if err := m.saveMerged(); err != nil {
 				return m, err
 			}
 			if err := x.ArmDeadman(m.ID, x.DeadmanTimeout); err != nil {
@@ -210,36 +230,60 @@ func (x *Executor) Execute(ctx context.Context, m *Manifest, items []*Item) (*Ma
 			x.applyItem(ctx, m, it, true)
 			applied = applied || it.Outcome == OutcomeVerified
 		}
-		switch {
-		case !applied || x.ConfirmRemote == nil:
-			m.Confirmed = true
-		case x.ConfirmRemote(x.DeadmanTimeout - 15*time.Second):
-			m.Confirmed = true
-			x.emit("remote-confirmed", nil, nil)
-		default:
+		confirmed := true
+		if applied && x.ConfirmRemote != nil {
+			// La confirmación termina DeadmanMargin antes del plazo del dead-man
+			// switch, se haya tardado lo que se haya tardado en aplicar.
+			wait := x.DeadmanTimeout - DeadmanMargin
+			if deadman {
+				wait = time.Until(deadline) - DeadmanMargin
+			}
+			confirmed = wait > 0 && x.ConfirmRemote(wait)
+		}
+		if err := m.withLock(func() error {
+			// El dead-man switch pudo actuar ya: entonces no se confirma nada.
+			m.mergeFromDisk()
+			if confirmed && !m.DeadmanFired {
+				m.Confirmed = true
+			}
+			return m.Save()
+		}); err != nil {
+			return m, err
+		}
+		if m.Confirmed {
+			if applied && x.ConfirmRemote != nil {
+				x.emit("remote-confirmed", nil, nil)
+			}
+		} else {
 			x.rollbackFiltered(ctx, m, func(e *Entry) bool { return e.RemoteAccess })
+			msg := "acceso remoto no confirmado a tiempo"
+			if m.DeadmanFired {
+				msg = "el dead-man switch revirtió el cambio antes de la confirmación"
+			}
 			for _, it := range remote {
 				if it.Outcome == OutcomeVerified {
-					it.Outcome, it.Message = OutcomeReverted, "acceso remoto no confirmado a tiempo"
+					it.Outcome, it.Message = OutcomeReverted, msg
 				}
 			}
 			x.emit("remote-reverted", nil, nil)
 		}
-		_ = m.Save()
 	}
 
 	verified, failed := 0, 0
+	m.Rules = m.Rules[:0]
 	for _, it := range items {
 		if it.Status != ItemPlanned {
 			continue
 		}
 		m.Rules = append(m.Rules, RuleOutcome{RuleID: it.Rule.ID, Title: it.Rule.Title, Outcome: it.Outcome, Message: it.Message})
-		if it.Outcome == OutcomeVerified {
+		switch it.Outcome {
+		case OutcomeVerified:
 			verified++
 			if it.Rule.Remediation.RebootRequired {
 				m.RebootRequired = true
 			}
-		} else {
+		case OutcomeNothing:
+		default:
 			failed++
 		}
 	}
@@ -253,21 +297,33 @@ func (x *Executor) Execute(ctx context.Context, m *Manifest, items []*Item) (*Ma
 	default:
 		m.Status = StatusApplied
 	}
-	return m, m.Save()
+	return m, m.saveMerged()
 }
 
 func (x *Executor) applyItem(ctx context.Context, m *Manifest, it *Item, remote bool) {
 	x.emit("item-start", it, nil)
 	var done []*Entry
+	fail := func(kind, outcome, msg string, err error) {
+		if rerr := x.revert(ctx, m, done); rerr != nil {
+			msg += "; NO se pudo revertir del todo (" + rerr.Error() + "): usa bastion rollback " + m.ID
+		} else if len(done) > 0 {
+			msg += "; cambio revertido"
+		}
+		it.Outcome, it.Message = outcome, msg
+		m.store.Log(m.ID, it.Rule.ID, kind, msg)
+		x.emit(kind, it, err)
+	}
 	for _, st := range it.Steps {
+		if remote && m.DeadmanFired {
+			fail("failed", OutcomeReverted, "el dead-man switch ya ha revertido el acceso remoto", nil)
+			return
+		}
 		p := probes.Params(st.Action.Params)
 		// Se vuelve a capturar justo antes de aplicar: el estado guardado es
 		// el real en el momento del cambio.
 		before, err := st.Rem.Capture(ctx, p)
 		if err != nil {
-			x.revert(ctx, m, done)
-			it.Outcome, it.Message = OutcomeFailed, "no se pudo leer el estado previo: "+err.Error()
-			x.emit("failed", it, err)
+			fail("failed", OutcomeFailed, "no se pudo leer el estado previo: "+err.Error(), err)
 			return
 		}
 		if Skipped(before) {
@@ -276,32 +332,34 @@ func (x *Executor) applyItem(ctx context.Context, m *Manifest, it *Item, remote 
 		e := &Entry{Seq: len(m.Entries) + 1, RuleID: it.Rule.ID, Action: st.Action, Description: st.Rem.Describe(p, before),
 			Before: before, RemoteAccess: remote, Attempted: true}
 		m.Entries = append(m.Entries, e)
-		if err := m.Save(); err != nil {
-			it.Outcome, it.Message = OutcomeFailed, "no se pudo guardar la instantánea: "+err.Error()
-			x.emit("failed", it, err)
+		if err := m.saveMerged(); err != nil {
+			// La entrada no llegó a disco: no se aplica. Lo ya aplicado se deshace.
+			m.Entries = m.Entries[:len(m.Entries)-1]
+			fail("failed", OutcomeFailed, "no se pudo guardar la instantánea: "+err.Error(), err)
+			return
+		}
+		if remote && m.DeadmanFired {
+			// El dead-man switch saltó mientras se aplicaba: no se sigue.
+			fail("failed", OutcomeReverted, "el dead-man switch ya ha revertido el acceso remoto", nil)
 			return
 		}
 		if err := st.Rem.Apply(ctx, p); err != nil {
 			e.Error = err.Error()
 			done = append(done, e) // también se restaura: pudo quedar a medias
-			x.revert(ctx, m, done)
-			it.Outcome, it.Message = OutcomeFailed, err.Error()
-			m.store.Log(m.ID, it.Rule.ID, "failed", err.Error())
-			x.emit("failed", it, err)
+			fail("failed", OutcomeFailed, err.Error(), err)
 			return
 		}
 		e.Applied = true
 		done = append(done, e)
-		_ = m.Save()
+		_ = m.saveMerged()
 	}
 	if len(done) == 0 {
-		it.Outcome, it.Message = OutcomeNotEffective, "no había nada que cambiar"
-		x.emit("not-effective", it, nil)
+		it.Outcome, it.Message = OutcomeNothing, "no había nada que cambiar"
+		x.emit("nothing", it, nil)
 		return
 	}
 	res := x.Verify(ctx, it.Rule)
 	if res.Status != engine.Pass {
-		x.revert(ctx, m, done)
 		msg := "el control sigue sin cumplirse"
 		if res.Actual != "" {
 			msg += " (actual " + res.Actual + ")"
@@ -309,9 +367,7 @@ func (x *Executor) applyItem(ctx context.Context, m *Manifest, it *Item, remote 
 		if res.Message != "" {
 			msg += ": " + res.Message
 		}
-		it.Outcome, it.Message = OutcomeNotEffective, msg+"; cambio revertido"
-		m.store.Log(m.ID, it.Rule.ID, "not-effective", msg)
-		x.emit("not-effective", it, nil)
+		fail("not-effective", OutcomeNotEffective, msg, nil)
 		return
 	}
 	it.Outcome = OutcomeVerified
@@ -319,16 +375,41 @@ func (x *Executor) applyItem(ctx context.Context, m *Manifest, it *Item, remote 
 	x.emit("verified", it, nil)
 }
 
-// revert restaura entradas en orden inverso.
-func (x *Executor) revert(ctx context.Context, m *Manifest, entries []*Entry) {
-	for i := len(entries) - 1; i >= 0; i-- {
-		restoreEntry(ctx, entries[i])
+// revert restaura entradas en orden inverso y devuelve los errores (que
+// también quedan en el manifiesto y en changes.log).
+func (x *Executor) revert(ctx context.Context, m *Manifest, entries []*Entry) error {
+	if len(entries) == 0 {
+		return nil
 	}
-	_ = m.Save()
+	var errs []error
+	lerr := m.withLockBestEffort(func() error {
+		m.mergeFromDisk()
+		for i := len(entries) - 1; i >= 0; i-- {
+			e := entries[i]
+			if e.RolledBack {
+				continue
+			}
+			if err := restoreEntry(ctx, e); err != nil {
+				errs = append(errs, fmt.Errorf("%s (%s): %w", e.RuleID, e.Action.Type, err))
+				m.store.Log(m.ID, e.RuleID, "rollback-failed", err.Error())
+			} else {
+				m.store.Log(m.ID, e.RuleID, "rolled-back", "")
+			}
+		}
+		return m.Save()
+	})
+	if lerr != nil {
+		errs = append(errs, lerr)
+	}
+	return errors.Join(errs...)
 }
 
+// rollbackFiltered revierte el acceso remoto no confirmado. Si no se puede
+// tomar el bloqueo del cambio, revierte igualmente: dejar el acceso remoto
+// cambiado y sin confirmar es peor que competir con el dead-man switch (las
+// restauraciones son idempotentes).
 func (x *Executor) rollbackFiltered(ctx context.Context, m *Manifest, filter func(*Entry) bool) {
-	_ = Rollback(ctx, m, filter)
+	_ = rollback(ctx, m, filter, true)
 }
 
 func restoreEntry(ctx context.Context, e *Entry) error {
@@ -339,10 +420,14 @@ func restoreEntry(ctx context.Context, e *Entry) error {
 	if !ok {
 		return fmt.Errorf("la acción %s no está disponible en esta plataforma", e.Action.Type)
 	}
-	// El manifiesto se lee de disco: se revalida como si fuera una regla.
+	// El manifiesto se lee de disco: se revalidan la acción (como si fuera
+	// una regla) y el estado previo que se va a escribir.
 	if _, known := Specs[e.Action.Type]; known {
 		if err := ValidateAction(e.Action); err != nil {
 			return fmt.Errorf("acción inválida en el manifiesto: %w", err)
+		}
+		if err := ValidateBefore(e.Action, e.Before); err != nil {
+			return fmt.Errorf("estado previo inválido en el manifiesto: %w", err)
 		}
 	}
 	if err := rem.Restore(ctx, probes.Params(e.Action.Params), e.Before); err != nil {
@@ -354,26 +439,42 @@ func restoreEntry(ctx context.Context, e *Entry) error {
 }
 
 // Rollback deshace (en orden inverso) las entradas que cumplan filter (o
-// todas si es nil) y actualiza el manifiesto.
+// todas si es nil) y actualiza el manifiesto. Trabaja con el bloqueo del
+// cambio y con lo último que haya en disco, así que es seguro aunque otro
+// proceso (el dead-man switch) esté revirtiendo el mismo cambio.
 func Rollback(ctx context.Context, m *Manifest, filter func(*Entry) bool) error {
+	return rollback(ctx, m, filter, false)
+}
+
+func rollback(ctx context.Context, m *Manifest, filter func(*Entry) bool, bestEffort bool) error {
 	var errs []error
-	for i := len(m.Entries) - 1; i >= 0; i-- {
-		e := m.Entries[i]
-		if !e.Attempted || e.RolledBack || (filter != nil && !filter(e)) {
-			continue
-		}
-		if err := restoreEntry(ctx, e); err != nil {
-			errs = append(errs, fmt.Errorf("%s (%s): %w", e.RuleID, e.Action.Type, err))
-			m.store.Log(m.ID, e.RuleID, "rollback-failed", err.Error())
-		} else {
-			m.store.Log(m.ID, e.RuleID, "rolled-back", "")
-		}
-		_ = m.Save()
+	lock := m.withLock
+	if bestEffort {
+		lock = m.withLockBestEffort
 	}
-	if m.pending(nil) == 0 {
-		m.Status = StatusRolledBack
+	err := lock(func() error {
+		m.mergeFromDisk()
+		for i := len(m.Entries) - 1; i >= 0; i-- {
+			e := m.Entries[i]
+			if !e.Attempted || e.RolledBack || (filter != nil && !filter(e)) {
+				continue
+			}
+			if err := restoreEntry(ctx, e); err != nil {
+				errs = append(errs, fmt.Errorf("%s (%s): %w", e.RuleID, e.Action.Type, err))
+				m.store.Log(m.ID, e.RuleID, "rollback-failed", err.Error())
+			} else {
+				m.store.Log(m.ID, e.RuleID, "rolled-back", "")
+			}
+			_ = m.Save()
+		}
+		if m.pending(nil) == 0 {
+			m.Status = StatusRolledBack
+		}
+		return m.Save()
+	})
+	if err != nil {
+		errs = append(errs, err)
 	}
-	_ = m.Save()
 	return errors.Join(errs...)
 }
 
@@ -394,14 +495,25 @@ func RunDeadman(ctx context.Context, s *Store, id string, timeout time.Duration)
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-	if m, err = s.Load(id); err != nil {
+	remote := func(e *Entry) bool { return e.RemoteAccess }
+	fire := false
+	// La decisión (¿se confirmó?) y la marca DeadmanFired se toman con el
+	// bloqueo del cambio: después, el proceso principal ya no puede confirmar.
+	if err := m.withLock(func() error {
+		fresh, err := s.Load(id)
+		if err != nil {
+			return err
+		}
+		m = fresh
+		if m.Confirmed || m.pending(remote) == 0 {
+			return nil
+		}
+		fire = true
+		m.DeadmanFired = true
+		return m.Save()
+	}); err != nil || !fire {
 		return err
 	}
-	remote := func(e *Entry) bool { return e.RemoteAccess }
-	if m.Confirmed || m.pending(remote) == 0 {
-		return nil
-	}
-	m.DeadmanFired = true
 	s.Log(id, "", "deadman", "acceso remoto no confirmado: revirtiendo")
 	return Rollback(ctx, m, remote)
 }

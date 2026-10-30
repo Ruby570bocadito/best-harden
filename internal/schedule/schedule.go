@@ -42,9 +42,12 @@ func ValidAt(at string) error {
 
 // Run es una ejecución anotada en schedule.log.
 type Run struct {
-	Time         time.Time `json:"time"`
-	ScanScore    int       `json:"scan_score"`
-	SurfaceScore int       `json:"surface_score"`
+	Time      time.Time `json:"time"`
+	ScanScore int       `json:"scan_score"`
+	// ScanUnscored indica que no se pudo evaluar ningún control (ScanScore 0
+	// no es una puntuación).
+	ScanUnscored bool `json:"scan_unscored,omitempty"`
+	SurfaceScore int  `json:"surface_score"`
 	// Regressions cuenta los controles que han pasado de superados a
 	// fallidos y NewExposure, los cambios que aumentan la exposición, desde
 	// el análisis anterior.

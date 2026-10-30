@@ -27,6 +27,9 @@ func exceptionsPath() string { return exceptions.Path(config.ConfigDir()) }
 // loadExceptions lee exceptions.yaml. Como config.yaml, sin privilegios no
 // se puede leer en Windows: entonces no se aplica ninguna sin avisar.
 func loadExceptions() *exceptions.File {
+	if !configTrusted() {
+		return &exceptions.File{Schema: exceptions.Schema} // ver loadConfig
+	}
 	f, err := exceptions.Load(exceptionsPath())
 	if err != nil && !(errors.Is(err, fs.ErrPermission) && !probes.Privileged()) {
 		fmt.Fprintln(os.Stderr, "aviso:", err)

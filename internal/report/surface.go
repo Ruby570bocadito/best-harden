@@ -13,6 +13,7 @@ import (
 // SurfaceConsole escribe el análisis de superficie de ataque para humanos.
 // Sin all, los servicios que solo escuchan en el propio equipo se resumen.
 func SurfaceConsole(w io.Writer, rep *surface.Report, all bool, s Style) {
+	w = SafeWriter(w) // nombres de procesos, recursos y cuentas: sin secuencias de escape
 	line := s.Dim(strings.Repeat("─", 72))
 	host := rep.Host
 	fmt.Fprintln(w)
@@ -206,6 +207,7 @@ func SurfaceConsole(w io.Writer, rep *surface.Report, all bool, s Style) {
 // surfaceChanges muestra lo que ha cambiado desde el último análisis
 // guardado: primero lo que aumenta la exposición.
 func surfaceChanges(w io.Writer, rep *surface.Report, s Style) {
+	w = SafeWriter(w)
 	ch := rep.Changes
 	if ch == nil {
 		return

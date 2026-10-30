@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 
@@ -31,6 +32,9 @@ func (e *ExitError) Error() string { return e.Msg }
 type globalFlags struct {
 	noColor  bool
 	rulesDir []string
+	// trustEnv permite, con privilegios, las variables BASTION_HOME,
+	// BASTION_RELEASES_URL y BASTION_REPO.
+	trustEnv bool
 }
 
 var gf globalFlags
@@ -39,7 +43,8 @@ var gf globalFlags
 func Execute() int {
 	root := newRoot()
 	if err := root.Execute(); err != nil {
-		if ee, ok := err.(*ExitError); ok {
+		var ee *ExitError
+		if errors.As(err, &ee) {
 			if ee.Msg != "" {
 				fmt.Fprintln(os.Stderr, ee.Msg)
 			}
@@ -73,6 +78,8 @@ Primeros pasos:
 	root.SetVersionTemplate(version.String() + "\n")
 	root.PersistentFlags().BoolVar(&gf.noColor, "no-color", false, "desactivar colores")
 	root.PersistentFlags().StringSliceVar(&gf.rulesDir, "rules-dir", nil, "directorios adicionales de reglas (*.yaml)")
+	root.PersistentFlags().BoolVar(&gf.trustEnv, "trust-env", false, "con privilegios, usar igualmente BASTION_HOME, BASTION_RELEASES_URL y BASTION_REPO (desarrollo y laboratorios)")
+	root.PersistentPreRun = func(cmd *cobra.Command, _ []string) { dropUntrustedEnv(cmd) }
 	root.AddCommand(newScanCmd(), newHardenCmd(), newRollbackCmd(), newHistoryCmd(), newDeadmanCmd(), newExceptionsCmd(), newSurfaceCmd(), newScheduleCmd(), newUICmd(), newInfoCmd(), newRulesCmd(), newProfilesCmd(), newUpdateCmd(), newInitCmd(), newVersionCmd())
 	root.CompletionOptions.HiddenDefaultCmd = true
 	return root
@@ -81,12 +88,50 @@ Primeros pasos:
 // loadConfig lee config.yaml y avisa de los problemas reales. Sin
 // privilegios el fichero no se puede leer (en Windows la carpeta es solo
 // para administradores): se usan los valores por defecto sin avisar.
+//
+// Con privilegios, si otro usuario puede modificar la carpeta de
+// configuración o config.yaml, no se usa: podría apuntar las
+// actualizaciones a un espejo suyo o añadir reglas. Se avisa y se usan los
+// valores por defecto ("bastion init" restablece los permisos).
 func loadConfig() config.Config {
+	if !configTrusted() {
+		c := config.Default()
+		c.Rules.ExtraDirs = nil // rules.d tampoco es fiable
+		return c
+	}
 	cfg, err := config.Load()
 	if err != nil && !(errors.Is(err, fs.ErrPermission) && !probes.Privileged()) {
 		fmt.Fprintln(os.Stderr, "aviso:", err)
 	}
 	return cfg
+}
+
+var (
+	trustOnce sync.Once
+	trusted   = true
+)
+
+// configTrusted indica si la configuración (config.yaml, exceptions.yaml,
+// rules.d) es fiable. Solo se comprueba con privilegios: sin ellos Bastion
+// no aplica cambios y la carpeta de un usuario es suya. Con --trust-env y
+// BASTION_HOME (desarrollo) no se comprueba.
+func configTrusted() bool {
+	trustOnce.Do(func() {
+		if !probes.Privileged() || (gf.trustEnv && os.Getenv("BASTION_HOME") != "") {
+			return
+		}
+		probs := config.TrustProblems()
+		if len(probs) == 0 {
+			return
+		}
+		trusted = false
+		fmt.Fprintln(os.Stderr, "aviso: se ignoran config.yaml, exceptions.yaml y las reglas propias porque un usuario sin privilegios podría haberlos modificado:")
+		for _, p := range probs {
+			fmt.Fprintln(os.Stderr, "  ·", p.Err)
+		}
+		fmt.Fprintln(os.Stderr, "  Revisa su contenido y ejecuta \"bastion init\" para restablecer los permisos.")
+	})
+	return trusted
 }
 
 // reportsDir es donde "scan --save" guarda los informes: el directorio de
@@ -103,9 +148,15 @@ func reportsDir(cfg config.Config) (dir string, user bool) {
 }
 
 // ensureDataDirs prepara las carpetas de Bastion con sus permisos
-// restringidos si todavía no existen (nadie ejecutó "bastion init"). Así
-// ningún comando con privilegios las crea con los permisos heredados de
-// %ProgramData%, donde cualquier usuario puede crear ficheros.
+// restringidos antes de que un comando con privilegios escriba en ellas.
+//
+//   - Si no existen (nadie ejecutó "bastion init"), las crea con "init": así
+//     no heredan los permisos de %ProgramData%, donde cualquier usuario
+//     puede crear ficheros.
+//   - Si existen pero otro usuario puede modificarlas (las creó él antes,
+//     o las creó una versión anterior sin restringirlas), aparta los
+//     ficheros de configuración no fiables (*.no-confiable-<fecha>) y
+//     restablece los permisos.
 func ensureDataDirs() error {
 	for _, d := range []string{config.ConfigDir(), config.DataDir()} {
 		if _, err := os.Stat(d); errors.Is(err, fs.ErrNotExist) {
@@ -115,6 +166,39 @@ func ensureDataDirs() error {
 			return nil
 		}
 	}
+	return secureDataDirs()
+}
+
+// secureDataDirs aparta los ficheros de configuración no fiables y
+// restablece los permisos si otro usuario puede modificar las carpetas de
+// Bastion (ver ensureDataDirs).
+func secureDataDirs() error {
+	if !probes.Privileged() || (gf.trustEnv && os.Getenv("BASTION_HOME") != "") {
+		return nil
+	}
+	probs := config.TrustProblems()
+	if len(probs) == 0 {
+		return nil
+	}
+	fmt.Fprintln(os.Stderr, "aviso: las carpetas de Bastion tenían permisos inseguros:")
+	for _, p := range probs {
+		fmt.Fprintln(os.Stderr, "  ·", p.Err)
+		if p.Path == config.ConfigDir() || p.Path == config.DataDir() {
+			continue // se restringen abajo; su contenido no fiable se aparta aparte
+		}
+		if dst, err := config.Quarantine(p.Path); err != nil {
+			return err
+		} else {
+			fmt.Fprintf(os.Stderr, "    apartado en %s: revísalo antes de recuperarlo\n", dst)
+		}
+	}
+	if _, err := config.Init(); err != nil {
+		return fmt.Errorf("no se pudieron restablecer los permisos de las carpetas de Bastion: %w", err)
+	}
+	if probs := config.TrustProblems(); len(probs) > 0 {
+		return fmt.Errorf("las carpetas de Bastion siguen sin ser seguras: %v", probs[0].Err)
+	}
+	fmt.Fprintln(os.Stderr, "  Permisos restablecidos: solo los administradores pueden modificarlas.")
 	return nil
 }
 
@@ -163,3 +247,32 @@ func resolveProfile(c *rule.Catalog, info platform.Info, requested string) (*rul
 
 func stdoutStyle() report.Style { return report.NewStyle(os.Stdout, gf.noColor) }
 func stderrStyle() report.Style { return report.NewStyle(os.Stderr, gf.noColor) }
+
+// envOverrides son las variables que cambian de dónde lee Bastion su
+// configuración, sus datos o sus actualizaciones.
+var envOverrides = []string{"BASTION_HOME", "BASTION_RELEASES_URL", "BASTION_REPO"}
+
+// dropUntrustedEnv descarta, con privilegios, las variables que redirigen
+// la configuración, las instantáneas o las actualizaciones, salvo con
+// --trust-env. En Windows, cualquier programa del usuario puede fijarlas en
+// HKCU\Environment y la consola elevada del administrador las hereda: con
+// ellas, "harden" o "rollback" leerían una configuración o instantáneas que
+// controla ese programa, y "update" descargaría de su servidor.
+//
+// "deadman" es interno (lo lanza harden con su mismo entorno) y las
+// conserva para usar las mismas instantáneas.
+func dropUntrustedEnv(cmd *cobra.Command) {
+	if gf.trustEnv || cmd.Name() == "deadman" || !probes.Privileged() {
+		return
+	}
+	for _, k := range envOverrides {
+		if v := os.Getenv(k); v != "" {
+			fmt.Fprintf(os.Stderr, "aviso: con privilegios se ignora %s=%s (usa --trust-env si es intencionado", k, v)
+			if k == "BASTION_RELEASES_URL" || k == "BASTION_REPO" {
+				fmt.Fprint(os.Stderr, ", o --releases-url / --repo en bastion update")
+			}
+			fmt.Fprintln(os.Stderr, ")")
+			_ = os.Unsetenv(k)
+		}
+	}
+}

@@ -46,10 +46,12 @@ mkdir -p /tmp/m/latest/download && echo v0.1.0 > /tmp/m/latest/download/version.
 # 3. Instalar como lo haría un usuario
 export BASTION_RELEASES_URL=http://127.0.0.1:8765 BASTION_HOME=/tmp/bh
 cat scripts/install.sh | sudo -E bash -s -- --prefix /tmp/bin
+# (bastion, ejecutado como root por el instalador, ignora BASTION_HOME sin
+#  --trust-env: el init y el primer escaneo usan /etc/bastion y /var/lib/bastion)
 
 # 4. Publicar v0.2.0 y probar la actualización (one-liner y bastion update)
 echo v0.2.0 > /tmp/m/latest/download/version.txt
-sudo -E /tmp/bin/bastion update
+sudo -E /tmp/bin/bastion --trust-env update   # o: update --releases-url http://127.0.0.1:8765
 ```
 
 Escenarios verificados: instalación limpia con primer escaneo, reejecución sin cambios, actualización con el one-liner, auto-actualización con `bastion update`, **archivo manipulado rechazado** (en ambos caminos) y desinstalación.

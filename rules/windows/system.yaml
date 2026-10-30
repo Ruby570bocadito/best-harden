@@ -364,8 +364,8 @@ remediation:
       value: 1
 ---
 id: WIN-UPD-001
-title: Actualizaciones automáticas de Windows no desactivadas
-description: Ninguna directiva debe desactivar Windows Update y su servicio no debe estar deshabilitado.
+title: Actualizaciones automáticas de Windows no desactivadas por directiva
+description: Ninguna directiva debe desactivar las actualizaciones automáticas de Windows (NoAutoUpdate).
 rationale: La mayoría de las intrusiones aprovechan vulnerabilidades con parche publicado. Un equipo sin actualizaciones acumula fallos explotables cada mes.
 category: Sistema
 severity: high
@@ -376,19 +376,47 @@ references:
   mitre_mitigations: [M1051]
   mitre_techniques: [T1190, T1203]
 check:
-  all:
-    - {label: directiva NoAutoUpdate, probe: registry, path: HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU, name: NoAutoUpdate, op: eq, expected: 0, default: 0}
-    - {label: servicio wuauserv, probe: service, name: wuauserv, field: start_type, op: ne, expected: disabled}
+  probe: registry
+  path: HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU
+  name: NoAutoUpdate
+  op: eq
+  expected: 0
+  default: 0
 remediation:
-  summary: Quitar la directiva que desactiva las actualizaciones automáticas y no deshabilitar el servicio Windows Update.
+  summary: Quitar la directiva que desactiva las actualizaciones automáticas.
   gpo: Computer Configuration > Administrative Templates > Windows Components > Windows Update > Configure Automatic Updates
   commands: |
     reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v NoAutoUpdate /t REG_DWORD /d 0 /f
-    Set-Service wuauserv -StartupType Manual
   breaking_risk: low
   actions:
     - type: registry.set
       path: 'HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU'
       name: 'NoAutoUpdate'
       value: 0
-impact: Si el servicio wuauserv está deshabilitado, actívalo a mano con inicio manual. Bastion no cambia el servicio por si lo gestiona otra herramienta de parches.
+---
+# Separada de WIN-UPD-001: su acción automática no puede corregir el
+# servicio, así que juntas la remediación nunca hacía pasar el control.
+id: WIN-UPD-002
+title: Servicio Windows Update no deshabilitado
+description: El servicio Windows Update (wuauserv) no debe estar deshabilitado.
+rationale: Con el servicio deshabilitado no se instala ningún parche, aunque ninguna directiva lo impida.
+category: Sistema
+severity: high
+platforms: [windows]
+profiles: [win-workstation-l1, win-server-l1]
+references:
+  nist: [SI-2]
+  mitre_mitigations: [M1051]
+  mitre_techniques: [T1190, T1203]
+check:
+  probe: service
+  name: wuauserv
+  field: start_type
+  op: ne
+  expected: disabled
+remediation:
+  summary: Volver a poner el servicio Windows Update con inicio manual.
+  commands: |
+    Set-Service wuauserv -StartupType Manual
+  breaking_risk: low
+impact: Bastion no cambia el servicio automáticamente por si lo gestiona otra herramienta de parches (WSUS, Intune, un agente de terceros); compruébalo antes.

@@ -21,8 +21,9 @@ func entry(rule, created, expires string, hosts ...string) Entry {
 }
 
 func TestValidate(t *testing.T) {
+	now := day("2026-10-15").Add(10 * time.Hour)
 	ok := entry("WIN-SYS-003", "2026-10-15", "2027-01-31")
-	if err := ok.Validate(); err != nil {
+	if err := ok.ValidateAt(now); err != nil {
 		t.Fatalf("excepción válida rechazada: %v", err)
 	}
 	bad := map[string]Entry{
@@ -32,10 +33,20 @@ func TestValidate(t *testing.T) {
 		"sin fecha":    {Rule: ok.Rule, Reason: ok.Reason, Created: ok.Created},
 		"más de 1 año": entry("WIN-SYS-003", "2026-10-15", "2027-12-31"),
 		"al revés":     entry("WIN-SYS-003", "2026-10-15", "2026-10-01"),
+		// Creación futura: sería vigente desde hoy durante más de un año.
+		"creada en el futuro":    entry("WIN-SYS-003", "2030-01-01", "2030-12-31"),
+		"más de 1 año desde hoy": entry("WIN-SYS-003", "2026-10-16", "2027-10-20"),
 	}
 	for name, e := range bad {
-		if err := e.Validate(); err == nil {
+		if err := e.ValidateAt(now); err == nil {
 			t.Errorf("%s: debería ser inválida", name)
+		}
+	}
+	// IDs con el formato de las reglas (incluidas las de terceros).
+	for _, id := range []string{"ACME-LNX-SSH-001", "LNX-SSH-1001", "WIN-DC-001"} {
+		e := entry(id, "2026-10-15", "2027-01-31")
+		if err := e.ValidateAt(now); err != nil {
+			t.Errorf("%s debería admitirse: %v", id, err)
 		}
 	}
 }

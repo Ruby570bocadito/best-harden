@@ -124,6 +124,11 @@ func runSurfaceFix(f surfaceFixFlags, ids []string) error {
 	if runtime.GOOS != "windows" {
 		return fmt.Errorf("bastion surface fix solo está disponible en Windows por ahora; en Linux, cada hallazgo de bastion surface explica cómo limitar el puerto (ufw, firewalld)")
 	}
+	if !f.noDeadman {
+		if err := checkConfirmTimeout(f.confirmTimeout); err != nil {
+			return err
+		}
+	}
 	info := platform.Detect()
 	if !probes.Privileged() {
 		return fmt.Errorf("bastion surface fix lee las reglas del registro y las modifica: %s", report.AdminHint(info.Family))
@@ -214,11 +219,14 @@ func runSurfaceFix(f surfaceFixFlags, ids []string) error {
 	if err != nil {
 		return err
 	}
+	// Los cambios ya están aplicados y verificados regla a regla: si el
+	// análisis final falla, se muestra igualmente el resumen con la
+	// instantánea para poder deshacerlos, y solo se avisa.
 	after, err := analyzeSurface(ctx)
-	if err != nil {
-		return err
-	}
 	printSurfaceFixSummary(s, m, items, rep, after)
+	if err != nil {
+		fmt.Printf("  %s %s\n\n", s.Yellow("!"), s.Yellow("No se pudo repetir el análisis para mostrar la exposición final ("+err.Error()+"): compruébalo con bastion surface."))
+	}
 	if m.Status == remediate.StatusFailed {
 		return &ExitError{Code: 1}
 	}
@@ -259,20 +267,20 @@ func printSurfaceFixPlan(s report.Style, rep *surface.Report, items []*remediate
 			if it.Remote() {
 				remote++
 			}
-			fmt.Printf("  %s %s %s\n", s.Green("+"), s.Cyan(fmt.Sprintf("%-15s", it.Rule.ID)), it.Rule.Title)
+			fmt.Printf("  %s %s %s\n", s.Green("+"), s.Cyan(fmt.Sprintf("%-15s", it.Rule.ID)), report.Clean(it.Rule.Title))
 			for _, st := range it.Steps {
 				if remediate.Skipped(st.Before) {
-					fmt.Printf("    %s %s\n", s.Dim("·"), s.Dim(fmt.Sprint(st.Before["reason"])))
+					fmt.Printf("    %s %s\n", s.Dim("·"), s.Dim(report.Clean(fmt.Sprint(st.Before["reason"]))))
 					continue
 				}
-				fmt.Printf("    %s %s\n", s.Dim("→"), st.Desc)
+				fmt.Printf("    %s %s\n", s.Dim("→"), report.Clean(st.Desc))
 			}
 			if it.Remote() {
 				fmt.Printf("    %s %s\n", s.Yellow(report.Sym("⚠")), s.Yellow("acceso remoto: se aplica con dead-man switch"))
 			}
 		default:
-			fmt.Printf("  %s %s %s\n", s.Dim("·"), s.Cyan(fmt.Sprintf("%-15s", it.Rule.ID)), it.Rule.Title)
-			fmt.Printf("    %s\n", s.Dim(it.Reason))
+			fmt.Printf("  %s %s %s\n", s.Dim("·"), s.Cyan(fmt.Sprintf("%-15s", it.Rule.ID)), report.Clean(it.Rule.Title))
+			fmt.Printf("    %s\n", s.Dim(report.Clean(it.Reason)))
 		}
 	}
 	return planned, remote
@@ -287,9 +295,14 @@ func printSurfaceFixSummary(s report.Style, m *remediate.Manifest, items []*reme
 	}
 	fmt.Println()
 	fmt.Println("  " + s.Dim(strings.Repeat("─", 72)))
-	fmt.Printf("  %s  %d/100 %s  →  %s\n", s.Bold("EXPOSICIÓN"), before.Score, before.Grade, s.Bold(fmt.Sprintf("%d/100 %s", after.Score, after.Grade)))
-	fmt.Printf("  %s %d hallazgos limitados a la red local · %d abiertos a cualquiera (antes %d)\n", s.Green(report.Sym("✓")), verified,
-		after.Reachable-after.Limited, before.Reachable-before.Limited)
+	if after != nil {
+		fmt.Printf("  %s  %d/100 %s  →  %s\n", s.Bold("EXPOSICIÓN"), before.Score, before.Grade, s.Bold(fmt.Sprintf("%d/100 %s", after.Score, after.Grade)))
+		fmt.Printf("  %s %d hallazgos limitados a la red local · %d abiertos a cualquiera (antes %d)\n", s.Green(report.Sym("✓")), verified,
+			after.Reachable-after.Limited, before.Reachable-before.Limited)
+	} else {
+		fmt.Printf("  %s  %d/100 %s  →  ?\n", s.Bold("EXPOSICIÓN"), before.Score, before.Grade)
+		fmt.Printf("  %s %d hallazgos limitados a la red local\n", s.Green(report.Sym("✓")), verified)
+	}
 	if m.Status != remediate.StatusFailed && m.Status != remediate.StatusNothing {
 		fmt.Printf("  %s Instantánea %s · para deshacer: %s\n", s.Cyan(report.Sym("→")), s.Bold(m.ID), s.Bold("bastion rollback "+m.ID))
 	}

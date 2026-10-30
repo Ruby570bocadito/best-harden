@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -62,38 +63,40 @@ func runCmdEnv(ctx context.Context, env []string, name string, args ...string) (
 	return res, nil
 }
 
-// readFileLimited lee un fichero con un límite de tamaño.
+// readFileLimited lee un fichero con un límite de tamaño: falla solo si
+// tiene MÁS de maxReadBytes (uno de exactamente ese tamaño se lee entero).
 func readFileLimited(path string) ([]byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	var buf bytes.Buffer
-	_, err = buf.ReadFrom(&limitedReader{f: f, n: maxReadBytes})
-	return buf.Bytes(), err
+	return readLimited(f, maxReadBytes)
 }
 
-type limitedReader struct {
-	f interface{ Read([]byte) (int, error) }
-	n int64
-}
-
-func (l *limitedReader) Read(p []byte) (int, error) {
-	if l.n <= 0 {
-		return 0, errors.New("fichero demasiado grande")
+func readLimited(r io.Reader, max int64) ([]byte, error) {
+	b, err := io.ReadAll(io.LimitReader(r, max+1))
+	if err != nil {
+		return b, err
 	}
-	if int64(len(p)) > l.n {
-		p = p[:l.n]
+	if int64(len(b)) > max {
+		return b[:max], errors.New("fichero demasiado grande")
 	}
-	n, err := l.f.Read(p)
-	l.n -= int64(n)
-	return n, err
+	return b, nil
 }
 
-// decodeText convierte UTF-16 (con BOM) o UTF-8 con BOM a string. Windows
-// genera UTF-16 en secedit y otras herramientas.
-func decodeText(b []byte) string {
+// decodeText convierte el contenido de un FICHERO a string: UTF-16 con BOM
+// (el INF de secedit), UTF-8 o, si no es UTF-8 válido, la página de códigos
+// ANSI del sistema (Windows-1252 en español).
+func decodeText(b []byte) string { return decodeWith(b, decodeLegacy) }
+
+// decodeConsole convierte la SALIDA de una herramienta de consola (netstat,
+// tasklist, auditpol /get…). No usan la página ANSI sino la de la consola,
+// que por defecto es la OEM (850 en español): «Dirección» llega con 0xA2
+// («ó» en CP850), que en Windows-1252 se leería «Direcci¢n».
+func decodeConsole(b []byte) string { return decodeWith(b, decodeOEM) }
+
+func decodeWith(b []byte, legacy func([]byte) string) string {
 	if len(b) >= 2 && b[0] == 0xFF && b[1] == 0xFE {
 		return decodeUTF16(b[2:], false)
 	}
@@ -102,17 +105,13 @@ func decodeText(b []byte) string {
 	}
 	b = bytes.TrimPrefix(b, []byte("\xef\xbb\xbf"))
 	if !utf8.Valid(b) {
-		// Herramientas como auditpol escriben en la página de códigos
-		// "ANSI" del sistema (Windows-1252 en español): sin convertirla,
-		// "Creación" se vería como "Creaci�n".
-		return decodeLegacy(b)
+		return legacy(b)
 	}
 	return string(b)
 }
 
-// decodeLegacy convierte texto de 8 bits que no es UTF-8. En Windows usa la
-// página de códigos ANSI del sistema; en el resto, Latin-1.
-var decodeLegacy = func(b []byte) string {
+// latin1 interpreta cada byte como un carácter Latin-1.
+func latin1(b []byte) string {
 	r := make([]rune, len(b))
 	for i, c := range b {
 		r[i] = rune(c)
@@ -120,9 +119,22 @@ var decodeLegacy = func(b []byte) string {
 	return string(r)
 }
 
-// DecodeText convierte la salida de una herramienta del sistema a UTF-8
-// (UTF-16 con BOM, UTF-8 o la página de códigos heredada).
+// decodeLegacy convierte el texto de 8 bits de un fichero. En Windows usa
+// la página de códigos ANSI del sistema; en el resto, Latin-1.
+var decodeLegacy = latin1
+
+// decodeOEM convierte la salida de 8 bits de una herramienta de consola. En
+// Windows usa la página de códigos de la consola (u OEM); en el resto,
+// Latin-1.
+var decodeOEM = latin1
+
+// DecodeText convierte el contenido de un fichero a UTF-8 (UTF-16 con BOM,
+// UTF-8 o la página de códigos ANSI).
 func DecodeText(b []byte) string { return decodeText(b) }
+
+// DecodeConsole convierte la salida de una herramienta de consola de
+// Windows a UTF-8 (UTF-16 con BOM, UTF-8 o la página de códigos OEM).
+func DecodeConsole(b []byte) string { return decodeConsole(b) }
 
 func decodeUTF16(b []byte, bigEndian bool) string {
 	u := make([]uint16, 0, len(b)/2)

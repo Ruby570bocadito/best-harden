@@ -18,12 +18,15 @@ import (
 func sandbox(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	old := []string{sysctlDropIn, procSys, modprobeDir, sudoersDropIn}
-	sysctlDropIn = filepath.Join(root, "etc/sysctl.d/60-bastion.conf")
+	old := []string{sysctlDropIn, procSys, modprobeDir, sudoersDropIn, sysctlLegacyDropIn}
+	sysctlDropIn = filepath.Join(root, "etc/sysctl.d/99-zz-bastion.conf")
+	sysctlLegacyDropIn = filepath.Join(root, "etc/sysctl.d/60-bastion.conf")
 	procSys = filepath.Join(root, "proc/sys")
 	modprobeDir = filepath.Join(root, "etc/modprobe.d")
 	sudoersDropIn = filepath.Join(root, "etc/sudoers.d/00-bastion")
-	t.Cleanup(func() { sysctlDropIn, procSys, modprobeDir, sudoersDropIn = old[0], old[1], old[2], old[3] })
+	t.Cleanup(func() {
+		sysctlDropIn, procSys, modprobeDir, sudoersDropIn, sysctlLegacyDropIn = old[0], old[1], old[2], old[3], old[4]
+	})
 	return root
 }
 
@@ -179,10 +182,17 @@ func TestSudoersDefaultsCycle(t *testing.T) {
 	}
 	sandbox(t)
 	r := sudoersDefaults{}
+	// sudo-rs (Ubuntu 25.10+) no admite logfile: LNX-AUTH-007 exige sudo-classic.
+	logfile := `logfile="/var/log/sudo.log"`
+	if v, _ := exec.LookPath("visudo"); v != "" {
+		if real, err := filepath.EvalSymlinks(v); err == nil && strings.Contains(real, "/cargo/") {
+			logfile = "env_reset"
+		}
+	}
 	b1 := cycle(t, r, probes.Params{"option": "use_pty"})
-	b2 := cycle(t, r, probes.Params{"option": `logfile="/var/log/sudo.log"`})
+	b2 := cycle(t, r, probes.Params{"option": logfile})
 	got := read(t, sudoersDropIn)
-	if !strings.Contains(got, "Defaults use_pty\n") || !strings.Contains(got, "Defaults logfile=\"/var/log/sudo.log\"\n") {
+	if !strings.Contains(got, "Defaults use_pty\n") || !strings.Contains(got, "Defaults "+logfile+"\n") {
 		t.Errorf("sudoers:\n%s", got)
 	}
 	if st, _ := os.Stat(sudoersDropIn); st.Mode().Perm() != 0o440 {
@@ -208,5 +218,27 @@ func TestUpsertLine(t *testing.T) {
 	}
 	if got := upsertLine("", "x 1", func(string) bool { return false }); got != "x 1\n" {
 		t.Errorf("upsert vacío = %q", got)
+	}
+}
+
+// Las instantáneas antiguas (sin "path") restauran el drop-in anterior,
+// 60-bastion.conf; una ruta ajena se rechaza.
+func TestSysctlLegacyDropInRestore(t *testing.T) {
+	root := sandbox(t)
+	write(t, filepath.Join(root, "proc/sys/kernel/kptr_restrict"), "2\n")
+	write(t, sysctlLegacyDropIn, "kernel.kptr_restrict = 2\n")
+	old := State{"runtime": "0", "file": map[string]any{"exists": false}}
+	if err := (sysctlSet{}).Restore(context.Background(), probes.Params{"key": "kernel.kptr_restrict"}, old); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, sysctlLegacyDropIn); got != "<no existe>" {
+		t.Errorf("el drop-in antiguo debería eliminarse:\n%s", got)
+	}
+	bad := State{"runtime": "0", "path": "/etc/passwd", "file": map[string]any{"exists": false}}
+	if err := (sysctlSet{}).Restore(context.Background(), probes.Params{"key": "kernel.kptr_restrict"}, bad); err == nil {
+		t.Error("una ruta ajena en la instantánea debe rechazarse")
+	}
+	if !strings.HasSuffix(sysctlDropIn, "99-zz-bastion.conf") {
+		t.Errorf("el drop-in debe cargarse el último: %s", sysctlDropIn)
 	}
 }

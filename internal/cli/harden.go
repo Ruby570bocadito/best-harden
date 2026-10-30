@@ -82,6 +82,11 @@ func runHarden(f hardenFlags) error {
 	if f.wave < 1 || f.wave > 3 {
 		return fmt.Errorf("--wave debe ser 1, 2 o 3")
 	}
+	if !f.noDeadman {
+		if err := checkConfirmTimeout(f.confirmTimeout); err != nil {
+			return err
+		}
+	}
 	cfg := loadConfig()
 	cat, err := loadCatalog(cfg)
 	if err != nil {
@@ -201,6 +206,14 @@ func hardenCmdLine(f hardenFlags, apply bool) string {
 	if f.includeRemote {
 		parts = append(parts, "--include-remote")
 	}
+	// Sin estas opciones el plan sería otro: con --force-local entran los
+	// valores gestionados por GPO y con --rules-dir, las reglas propias.
+	if f.forceLocal {
+		parts = append(parts, "--force-local")
+	}
+	for _, d := range gf.rulesDir {
+		parts = append(parts, "--rules-dir "+quoteArg(d))
+	}
 	if apply {
 		parts = append(parts, "--apply")
 	}
@@ -217,7 +230,7 @@ func printPlan(s report.Style, info platform.Info, prof *rule.Profile, f hardenF
 	fmt.Printf("  %s %s %s\n", s.Dim(fmt.Sprintf("%-9s", "Equipo")), s.Bold(info.Hostname), s.Dim("· "+info.DisplayName()))
 	fmt.Printf("  %s %s %s\n", s.Dim(fmt.Sprintf("%-9s", "Perfil")), prof.Name, s.Dim("("+prof.ID+")"))
 	fmt.Printf("  %s %d · %s\n", s.Dim(fmt.Sprintf("%-9s", "Ola")), f.wave, waveNames[f.wave])
-	fmt.Printf("  %s %d/100 %s · %d controles fallidos\n", s.Dim(fmt.Sprintf("%-9s", "Postura")), sc.Value, sc.Grade, sc.Failed)
+	fmt.Printf("  %s %s · %d controles fallidos\n", s.Dim(fmt.Sprintf("%-9s", "Postura")), scoreLabel(sc), sc.Failed)
 	if sc.Exceptions > 0 {
 		fmt.Printf("  %s %s\n", s.Dim(fmt.Sprintf("%-9s", "")), s.Dim(fmt.Sprintf("%d con excepción vigente: no se modifican (bastion exceptions list)", sc.Exceptions)))
 	}
@@ -263,12 +276,12 @@ func printPlan(s report.Style, info platform.Info, prof *rule.Profile, f hardenF
 			switch g.status {
 			case remediate.ItemPlanned:
 				for _, st := range it.Steps {
-					fmt.Printf("  %s %s %s\n", strings.Repeat(" ", 22), s.Dim("·"), st.Desc)
+					fmt.Printf("  %s %s %s\n", strings.Repeat(" ", 22), s.Dim("·"), report.Clean(st.Desc))
 				}
 			case remediate.ItemManual:
 				fmt.Printf("  %s %s\n", strings.Repeat(" ", 22), s.Dim(it.Rule.Remediation.Summary))
 			case remediate.ItemCaptureError, remediate.ItemUnsupported, remediate.ItemWave, remediate.ItemNothing:
-				fmt.Printf("  %s %s\n", strings.Repeat(" ", 22), s.Dim(it.Reason))
+				fmt.Printf("  %s %s\n", strings.Repeat(" ", 22), s.Dim(report.Clean(it.Reason)))
 			}
 		}
 	}
@@ -281,10 +294,15 @@ func hardenEvents(s report.Style) func(remediate.Event) {
 			fmt.Printf("  %s %s %s\n", s.Green(report.Sym("✓")), s.Cyan(fmt.Sprintf("%-13s", e.Item.Rule.ID)), e.Item.Rule.Title)
 		case "failed":
 			fmt.Printf("  %s %s %s\n", s.Red(report.Sym("✗")), s.Cyan(fmt.Sprintf("%-13s", e.Item.Rule.ID)), e.Item.Rule.Title)
-			fmt.Printf("  %s %s\n", strings.Repeat(" ", 15), s.Red("error: "+e.Item.Message+" (revertido)"))
+			fmt.Printf("  %s %s\n", strings.Repeat(" ", 15), s.Red("error: "+report.Clean(e.Item.Message)+" (revertido)"))
 		case "not-effective":
 			fmt.Printf("  %s %s %s\n", s.Yellow("↺"), s.Cyan(fmt.Sprintf("%-13s", e.Item.Rule.ID)), e.Item.Rule.Title)
-			fmt.Printf("  %s %s\n", strings.Repeat(" ", 15), s.Yellow(e.Item.Message))
+			fmt.Printf("  %s %s\n", strings.Repeat(" ", 15), s.Yellow(report.Clean(e.Item.Message)))
+		case "nothing":
+			// Al aplicar, todas sus acciones se omitieron: ya no había nada
+			// que cambiar (alguien lo corrigió entre el plan y la aplicación).
+			fmt.Printf("  %s %s %s\n", s.Dim("·"), s.Cyan(fmt.Sprintf("%-13s", e.Item.Rule.ID)), e.Item.Rule.Title)
+			fmt.Printf("  %s %s\n", strings.Repeat(" ", 15), s.Dim("sin cambios: ya estaba como se pedía"))
 		case "remote-phase":
 			fmt.Printf("\n  %s\n", s.Bold("Cambios de acceso remoto (con dead-man switch)"))
 		case "remote-confirmed":
@@ -369,7 +387,7 @@ func printHardenSummary(s report.Style, m *remediate.Manifest, items []*remediat
 	}
 	fmt.Println()
 	fmt.Println("  " + s.Dim(strings.Repeat("─", 72)))
-	fmt.Printf("  %s  %d/100 %s  →  %s\n", s.Bold("POSTURA"), before.Value, before.Grade, s.Bold(fmt.Sprintf("%d/100 %s", after.Value, after.Grade)))
+	fmt.Printf("  %s  %s  →  %s\n", s.Bold("POSTURA"), scoreLabel(before), s.Bold(scoreLabel(after)))
 	fmt.Printf("  %s %d aplicados y verificados", s.Green(report.Sym("✓")), counts[remediate.OutcomeVerified])
 	if n := counts[remediate.OutcomeFailed]; n > 0 {
 		fmt.Printf("   %s %d con error (revertidos)", s.Red(report.Sym("✗")), n)
@@ -380,7 +398,13 @@ func printHardenSummary(s report.Style, m *remediate.Manifest, items []*remediat
 	if n := counts[remediate.OutcomeReverted]; n > 0 {
 		fmt.Printf("   %s %d revertidos (acceso remoto)", s.Yellow("↺"), n)
 	}
+	if n := counts[remediate.OutcomeNothing]; n > 0 {
+		fmt.Printf("   %s %d sin cambios (ya estaban bien)", s.Dim("·"), n)
+	}
 	fmt.Println()
+	if m.Status == remediate.StatusNothing {
+		fmt.Printf("  %s No se ha cambiado nada: no hay nada que deshacer.\n", s.Dim("·"))
+	}
 	if m.Status != remediate.StatusFailed && m.Status != remediate.StatusNothing {
 		fmt.Printf("  %s Instantánea %s · para deshacer: %s\n", s.Cyan(report.Sym("→")), s.Bold(m.ID), s.Bold("bastion rollback "+m.ID))
 	}
@@ -435,6 +459,11 @@ func newRollbackCmd() *cobra.Command {
 				return err
 			}
 			defer unlock()
+			// Se relee con el bloqueo tomado: mientras se pedía confirmación,
+			// el dead-man switch u otro rollback pudo cambiar el manifiesto.
+			if m, err = store.Load(m.ID); err != nil {
+				return err
+			}
 			if err := remediate.Rollback(context.Background(), m, nil); err != nil {
 				return fmt.Errorf("rollback incompleto: %w", err)
 			}

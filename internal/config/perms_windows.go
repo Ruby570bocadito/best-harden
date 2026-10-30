@@ -3,9 +3,11 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
@@ -52,4 +54,91 @@ func GrantUserRead(dir string) error {
 		return nil
 	}
 	return icacls(dir, "/grant", "*"+sid+":(OI)(CI)RX", "/Q")
+}
+
+// trustedSIDs pueden modificar los ficheros de Bastion: SYSTEM,
+// Administradores, TrustedInstaller, CREADOR PROPIETARIO (solo se hereda) y
+// DERECHOS DE PROPIETARIO (el propietario ya se exige de confianza).
+var trustedSIDs = map[string]bool{
+	"S-1-5-18":     true,
+	"S-1-5-32-544": true,
+	"S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464": true,
+	"S-1-3-0": true,
+	"S-1-3-4": true,
+}
+
+// Derechos de acceso a ficheros (winnt.h).
+const (
+	fileWriteData   = 0x2 // también FILE_ADD_FILE en carpetas
+	fileAppendData  = 0x4 // también FILE_ADD_SUBDIRECTORY
+	fileWriteEA     = 0x10
+	fileDeleteChild = 0x40
+)
+
+// writeMask devuelve los derechos que, en manos de un usuario sin
+// privilegios, permiten sustituir o alterar path.
+func writeMask(kind Kind) windows.ACCESS_MASK {
+	common := windows.ACCESS_MASK(windows.DELETE | windows.WRITE_DAC | windows.WRITE_OWNER | windows.GENERIC_ALL)
+	switch kind {
+	case KindAncestor:
+		return common | fileDeleteChild
+	default:
+		return common | windows.GENERIC_WRITE | fileWriteData | fileAppendData | fileWriteEA | fileDeleteChild
+	}
+}
+
+// CheckAdminOnly comprueba que path pertenezca a Administradores, SYSTEM o
+// TrustedInstaller y que su DACL no conceda a nadie más derechos para
+// modificarlo (según kind).
+func CheckAdminOnly(path string, kind Kind) error {
+	sd, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT,
+		windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		return fmt.Errorf("no se pueden leer los permisos de %s: %w", path, err)
+	}
+	owner, _, err := sd.Owner()
+	if err != nil || owner == nil {
+		return fmt.Errorf("no se puede leer el propietario de %s", path)
+	}
+	if !trustedSIDs[owner.String()] {
+		return fmt.Errorf("%s pertenece a %s, no a Administradores ni a SYSTEM", path, sidName(owner))
+	}
+	dacl, _, err := sd.DACL()
+	if err != nil {
+		return fmt.Errorf("no se pueden leer los permisos de %s: %w", path, err)
+	}
+	if dacl == nil {
+		return fmt.Errorf("%s no tiene lista de permisos: cualquiera puede modificarlo", path)
+	}
+	bad := writeMask(kind)
+	for i := uint32(0); i < uint32(dacl.AceCount); i++ {
+		var ace *windows.ACCESS_ALLOWED_ACE
+		if err := windows.GetAce(dacl, i, &ace); err != nil {
+			return fmt.Errorf("no se pueden leer los permisos de %s: %w", path, err)
+		}
+		// Solo cuentan las entradas de permiso que se aplican al propio
+		// objeto: ACCESS_ALLOWED (0) y ACCESS_ALLOWED_CALLBACK (9), que
+		// tienen la misma estructura.
+		if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE && ace.Header.AceType != 9 {
+			continue
+		}
+		if ace.Header.AceFlags&windows.INHERIT_ONLY_ACE != 0 || ace.Mask&bad == 0 {
+			continue
+		}
+		sid := (*windows.SID)(unsafe.Pointer(&ace.SidStart))
+		if !trustedSIDs[sid.String()] {
+			return fmt.Errorf("%s: %s puede modificarlo (derechos 0x%x)", path, sidName(sid), uint32(ace.Mask))
+		}
+	}
+	return nil
+}
+
+func sidName(sid *windows.SID) string {
+	if acc, dom, _, err := sid.LookupAccount(""); err == nil {
+		if dom != "" {
+			return dom + `\` + acc
+		}
+		return acc
+	}
+	return sid.String()
 }

@@ -56,6 +56,8 @@ Type=oneshot
 ExecStart=%s schedule run
 Nice=10
 IOSchedulingClass=idle
+# Un análisis colgado no debe bloquear el temporizador para siempre.
+TimeoutStartSec=1h
 # 3: la exposición ha crecido (queda anotado en schedule.log).
 SuccessExitStatus=3
 `, systemdQuote(exe))
@@ -82,20 +84,26 @@ func cronEntry(exe, at string) string {
 		"%s %s * * * root %s schedule run >/dev/null 2>&1\n", strings.TrimPrefix(mm, "0"), strings.TrimPrefix(hh, "0"), shellQuote(exe))
 }
 
-// systemdQuote escribe una ruta para ExecStart (entre comillas si tiene
-// espacios).
+// systemdQuote escribe una ruta para ExecStart: entre comillas si tiene
+// espacios y con % y $ escapados (systemd los expande como especificadores
+// y variables).
 func systemdQuote(p string) string {
-	if strings.ContainsAny(p, " \t\"\\") {
+	p = strings.NewReplacer("%", "%%", "$", "$$").Replace(p)
+	if strings.ContainsAny(p, " \t\"\\'") {
 		return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(p) + `"`
 	}
 	return p
 }
 
+// shellQuote escribe una ruta para la orden de una línea de cron: entre
+// comillas simples si hace falta y con % escapado (cron lo convierte en un
+// salto de línea incluso entre comillas).
 func shellQuote(p string) string {
-	if strings.ContainsAny(p, " \t'\"$`\\;&|<>()*?") {
-		return "'" + strings.ReplaceAll(p, "'", `'\''`) + "'"
+	q := p
+	if strings.ContainsAny(p, " \t'\"$`\\;&|<>()*?#~!{}[]") {
+		q = "'" + strings.ReplaceAll(p, "'", `'\''`) + "'"
 	}
-	return p
+	return strings.ReplaceAll(q, "%", `\%`)
 }
 
 func (u *unixScheduler) Enable(ctx context.Context, exe, at string) (Status, error) {

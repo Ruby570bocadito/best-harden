@@ -26,7 +26,9 @@ Desarrollar sin tocar `/etc` ni `/var/lib`:
 
 ```bash
 export BASTION_HOME=$PWD/.dev
-go run ./cmd/bastion init && sudo -E go run ./cmd/bastion scan --save
+go run ./cmd/bastion init && sudo -E go run ./cmd/bastion --trust-env scan --save
+# Con privilegios, BASTION_HOME (y BASTION_RELEASES_URL, BASTION_REPO) solo se
+# usan con --trust-env: cualquier programa del usuario podría fijarlas.
 ```
 
 ## Estructura y responsabilidades

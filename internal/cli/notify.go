@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -37,14 +38,19 @@ cuando no hay cambios a peor). El aviso lleva el resumen (equipo,
 puntuaciones y títulos de los cambios), nunca evidencias.
 
 Sin opciones, envía un aviso de prueba por todos los canales. Con --set,
-primero prueba el webhook y solo lo guarda si el aviso llega.`,
+primero prueba el webhook y solo lo guarda si el aviso llega.
+
+La dirección suele llevar un secreto (el tema de ntfy, el token de Slack):
+con --set - se lee de la entrada estándar y no queda en el historial de la
+shell ni en la lista de procesos, que otros usuarios pueden ver.`,
 		Example: `  bastion schedule notify                                  # probar los avisos
   bastion schedule notify --set https://ntfy.sh/bastion-casa-7f3k9
   bastion schedule notify --set https://hooks.slack.com/services/… --when always
+  sudo bastion schedule notify --set - < webhook.txt         # sin la dirección en la línea de órdenes
   bastion schedule notify --clear`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return scheduleNotify(set, format, when, clear) },
 	}
-	cmd.Flags().StringVar(&set, "set", "", "dirección del webhook (https://…); para ntfy, https://ntfy.sh/<tema difícil de adivinar>")
+	cmd.Flags().StringVar(&set, "set", "", "dirección del webhook (https://…), o - para leerla de la entrada estándar; para ntfy, https://ntfy.sh/<tema difícil de adivinar>")
 	cmd.Flags().StringVar(&format, "format", "", "formato: "+strings.Join(notify.Formats, ", ")+" (por defecto se deduce de la dirección)")
 	cmd.Flags().StringVar(&when, "when", "", "cuándo avisar al webhook: changes (si algo empeora o falla) o always")
 	cmd.Flags().BoolVar(&clear, "clear", false, "quitar el webhook (el Visor de eventos o syslog siguen registrando cada ejecución)")
@@ -52,6 +58,15 @@ primero prueba el webhook y solo lo guarda si el aviso llega.`,
 }
 
 func scheduleNotify(set, format, when string, clear bool) error {
+	if set == "-" {
+		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		if err != nil && line == "" {
+			return fmt.Errorf("--set -: no se pudo leer la dirección de la entrada estándar: %w", err)
+		}
+		if set = strings.TrimSpace(line); set == "" {
+			return fmt.Errorf("--set -: la entrada estándar está vacía")
+		}
+	}
 	if format != "" && !slices.Contains(notify.Formats, format) {
 		return fmt.Errorf("formato %q desconocido: usa %s", format, strings.Join(notify.Formats, ", "))
 	}
@@ -131,8 +146,8 @@ func testEvent() notify.Event {
 	if runs, err := schedule.ReadRuns(schedule.LogPath(config.DataDir())); err == nil && len(runs) > 0 {
 		r := runs[len(runs)-1]
 		ev.ScanScore, ev.SurfaceScore = r.ScanScore, r.SurfaceScore
-		ev.Lines = append(ev.Lines, fmt.Sprintf("Último análisis (%s): postura %d/100 · exposición %d/100",
-			r.Time.Local().Format("2006-01-02 15:04"), r.ScanScore, r.SurfaceScore))
+		ev.Lines = append(ev.Lines, fmt.Sprintf("Último análisis (%s): postura %s · exposición %d/100",
+			r.Time.Local().Format("2006-01-02 15:04"), runScanText(r), r.SurfaceScore))
 	}
 	return ev
 }
@@ -167,7 +182,7 @@ func scheduleEvent(host string, run schedule.Run, scanOK, surfaceOK bool, regres
 	ev := notify.Event{Host: host, Time: run.Time, Level: notify.LevelInfo, ScanScore: run.ScanScore, SurfaceScore: run.SurfaceScore, Errors: run.Errors}
 	var scores []string
 	if scanOK {
-		scores = append(scores, fmt.Sprintf("postura %d/100", run.ScanScore))
+		scores = append(scores, "postura "+runScanText(run))
 	}
 	if surfaceOK {
 		scores = append(scores, fmt.Sprintf("exposición %d/100", run.SurfaceScore))

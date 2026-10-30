@@ -96,6 +96,26 @@ func TestCronFallback(t *testing.T) {
 	if got := cronEntry("/opt/a b/bastion", "00:00"); !strings.Contains(got, "0 0 * * * root '/opt/a b/bastion' schedule run") {
 		t.Errorf("ruta con espacios: %s", got)
 	}
+	if got := cronEntry("/opt/100%/bastion", "00:00"); !strings.Contains(got, `root /opt/100\%/bastion schedule run`) {
+		t.Errorf("%% en la ruta: %s", got)
+	}
+}
+
+func TestSystemdEscapes(t *testing.T) {
+	for in, want := range map[string]string{
+		"/usr/local/bin/bastion": "/usr/local/bin/bastion",
+		"/opt/100%/bastion":      "/opt/100%%/bastion",
+		"/opt/$HOME/bastion":     "/opt/$$HOME/bastion",
+		"/opt/a b/bastion":       `"/opt/a b/bastion"`,
+		`/opt/a "b"/c%d/bastion`: `"/opt/a \"b\"/c%%d/bastion"`,
+	} {
+		if got := systemdQuote(in); got != want {
+			t.Errorf("systemdQuote(%q) = %q, quiero %q", in, got, want)
+		}
+	}
+	if svc := serviceUnit("/usr/local/bin/bastion"); !strings.Contains(svc, "TimeoutStartSec=") {
+		t.Errorf("el servicio necesita un plazo:\n%s", svc)
+	}
 }
 
 func TestValidAt(t *testing.T) {

@@ -5,6 +5,7 @@ package probes
 
 import (
 	"bufio"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -14,6 +15,14 @@ import (
 
 // sshdTimeKeys son opciones de sshd cuyo valor es un tiempo ("1m30s").
 var sshdTimeKeys = map[string]bool{"logingracetime": true, "clientaliveinterval": true}
+
+// sshdAlgoKeys son listas de algoritmos que admiten los prefijos "+" (añadir
+// a los de por defecto), "-" (quitar) y "^" (poner delante).
+var sshdAlgoKeys = map[string]bool{
+	"kexalgorithms": true, "ciphers": true, "macs": true, "hostkeyalgorithms": true,
+	"pubkeyacceptedalgorithms": true, "pubkeyacceptedkeytypes": true,
+	"hostbasedacceptedalgorithms": true, "casignaturealgorithms": true,
+}
 
 // parseSSHDTest interpreta la salida de "sshd -T" (clave valor, en minúsculas).
 // Las claves repetidas (hostkey, listenaddress) se unen con comas.
@@ -43,8 +52,9 @@ type sshdConfigReader func(path string) (string, error)
 // gana la PRIMERA aparición de cada clave, se siguen los Include (con globs,
 // relativos a /etc/ssh) y se ignoran los bloques Match, que solo aplican a
 // conexiones concretas.
-func parseSSHDConfig(path string, read sshdConfigReader, glob func(string) ([]string, error)) map[string]string {
+func parseSSHDConfig(file string, read sshdConfigReader, glob func(string) ([]string, error)) map[string]string {
 	m := map[string]string{}
+	seen := map[string]bool{}
 	var walk func(p string, depth int)
 	walk = func(p string, depth int) {
 		if depth > 8 {
@@ -67,8 +77,8 @@ func parseSSHDConfig(path string, read sshdConfigReader, glob func(string) ([]st
 				return // el resto del fichero pertenece al bloque Match
 			case "include":
 				for _, pat := range strings.Fields(v) {
-					if !filepath.IsAbs(pat) {
-						pat = filepath.Join("/etc/ssh", pat)
+					if !path.IsAbs(pat) { // rutas de sshd: siempre POSIX
+						pat = path.Join("/etc/ssh", pat)
 					}
 					files, _ := glob(pat)
 					for _, f := range files {
@@ -77,17 +87,31 @@ func parseSSHDConfig(path string, read sshdConfigReader, glob func(string) ([]st
 				}
 				continue
 			}
-			if _, seen := m[k]; !seen {
-				if sshdTimeKeys[k] {
-					if secs, ok := parseSSHDTime(v); ok {
-						v = strconv.Itoa(secs)
-					}
-				}
-				m[k] = v
+			if seen[k] {
+				continue
 			}
+			seen[k] = true
+			if sshdTimeKeys[k] {
+				if secs, ok := parseSSHDTime(v); ok {
+					v = strconv.Itoa(secs)
+				}
+			}
+			if sshdAlgoKeys[k] && v != "" {
+				switch v[0] {
+				case '-':
+					// Quita algoritmos de los de por defecto: lo efectivo es el
+					// valor por defecto de la regla sin ellos, nunca la lista.
+					continue
+				case '+', '^':
+					// Sin "sshd -T" no se conocen los de por defecto: se
+					// evalúan los que se añaden.
+					v = v[1:]
+				}
+			}
+			m[k] = v
 		}
 	}
-	walk(path, 0)
+	walk(file, 0)
 	return m
 }
 

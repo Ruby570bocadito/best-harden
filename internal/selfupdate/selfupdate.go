@@ -19,9 +19,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -38,6 +41,47 @@ type Source struct {
 	BaseURL string // espejo opcional; por defecto https://github.com/<repo>/releases
 }
 
+// Validate comprueba el origen antes de descargar nada: el repositorio
+// debe tener la forma owner/nombre y el espejo debe usar HTTPS (HTTP solo
+// hacia el propio equipo, para pruebas). Las sumas SHA-256 viajan por el
+// mismo canal que los binarios: sin TLS no protegerían de nada.
+func (s Source) Validate() error {
+	if s.BaseURL == "" {
+		if !reRepo.MatchString(s.Repo) {
+			return fmt.Errorf("repositorio %q no válido (formato owner/nombre)", s.Repo)
+		}
+		return nil
+	}
+	return CheckURL(s.BaseURL)
+}
+
+var reRepo = regexp.MustCompile(`^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$`)
+
+// CheckURL exige HTTPS, o HTTP solo hacia el propio equipo.
+func CheckURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return fmt.Errorf("dirección de releases no válida: %q", raw)
+	}
+	switch u.Scheme {
+	case "https":
+		return nil
+	case "http":
+		if loopback(u.Hostname()) {
+			return nil
+		}
+	}
+	return fmt.Errorf("la dirección de releases debe usar https:// (%s): sin TLS, quien intercepte la conexión podría servir un binario y sus sumas", raw)
+}
+
+func loopback(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
 // Base devuelve la URL base de releases.
 func (s Source) Base() string {
 	if s.BaseURL != "" {
@@ -46,9 +90,22 @@ func (s Source) Base() string {
 	return "https://github.com/" + s.Repo + "/releases"
 }
 
-var client = &http.Client{Timeout: 5 * time.Minute}
+// client sigue las redirecciones de GitHub (a su CDN) pero nunca hacia
+// HTTP: una redirección no puede rebajar la conexión.
+var client = &http.Client{
+	Timeout: 5 * time.Minute,
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 10 {
+			return errors.New("demasiadas redirecciones")
+		}
+		return CheckURL(req.URL.String())
+	},
+}
 
 func get(ctx context.Context, url string, w io.Writer, limit int64) error {
+	if err := CheckURL(url); err != nil {
+		return err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
@@ -98,7 +155,7 @@ func (s Source) Latest(ctx context.Context) (string, error) {
 		return "", err
 	}
 	tag := strings.TrimSpace(b.String())
-	if tag == "" || strings.ContainsAny(tag, "/ \\") {
+	if !ValidTag(tag) {
 		return "", fmt.Errorf("version.txt inválido: %q", tag)
 	}
 	return tag, nil
@@ -115,6 +172,9 @@ func AssetName(goos, goarch string) string {
 // Download descarga y verifica la release tag y devuelve la ruta del binario
 // extraído en un directorio temporal (que el llamador debe borrar).
 func (s Source) Download(ctx context.Context, tag string) (binPath, tmpDir string, err error) {
+	if !ValidTag(tag) {
+		return "", "", fmt.Errorf("versión %q no válida", tag)
+	}
 	asset := AssetName(runtime.GOOS, runtime.GOARCH)
 	tmpDir, err = os.MkdirTemp("", "bastion-update-")
 	if err != nil {
@@ -342,4 +402,32 @@ func parseSemver(v string) ([4]int, bool) {
 		out[i] = n
 	}
 	return out, true
+}
+
+var reTag = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$`)
+
+// ValidTag indica si tag es una etiqueta de versión (v1.2.3 o v1.2.3-rc.1).
+// La etiqueta forma parte de las URLs de descarga: nada más se admite.
+func ValidTag(tag string) bool { return reTag.MatchString(tag) }
+
+// IsRelease indica si v es una versión publicada (semver) y no una
+// compilación de desarrollo ("dev", "dev-abc1234"…).
+func IsRelease(v string) bool {
+	_, ok := parseSemver(v)
+	return ok
+}
+
+// Compare devuelve -1, 0 o 1 según a sea anterior, igual o posterior a b
+// (las pre-releases son anteriores a la final). ok es false si alguna no es
+// una versión.
+func Compare(a, b string) (c int, ok bool) {
+	switch {
+	case !IsRelease(a) || !IsRelease(b):
+		return 0, false
+	case Newer(a, b):
+		return 1, true
+	case Newer(b, a):
+		return -1, true
+	}
+	return 0, true
 }

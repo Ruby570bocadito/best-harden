@@ -33,13 +33,13 @@ Opciones globales: `--no-color`, `--rules-dir <dir>` (repetible).
 |---|---|
 | `-p, --profile <id>` | Perfil a evaluar. Por defecto el de `config.yaml` o el que corresponde al rol del equipo |
 | `-f, --format console\|json` | Formato de la salida estándar |
-| `-o, --output <fichero>` | Guardar el informe en `.html` o `.json` (repetible) |
+| `-o, --output <fichero>` | Guardar el informe en `.html` o `.json` (repetible). La extensión y la carpeta se comprueban antes de escanear; un error nunca vacía un fichero existente |
 | `--save` | Guardar HTML y JSON con fecha en el directorio de informes (conserva los últimos `keep`) |
 | `--open` | Abrir el informe HTML al terminar (implica `--save` si no hay `-o *.html`) |
 | `-a, --all` | Mostrar también los controles superados y los que no aplican |
 | `--rule <ID,…>` | Evaluar solo esas reglas |
 | `--category <nombre,…>` | Evaluar solo esas categorías |
-| `--min-score <n>` | Salir con código 2 si la puntuación es inferior |
+| `--min-score <n>` | Salir con código 2 si la puntuación es inferior (0-100), o si no se pudo evaluar ningún control y no hay puntuación |
 | `-q, --quiet` | Sin resumen en consola |
 
 ### Ejemplos
@@ -166,7 +166,7 @@ sudo bastion schedule notify                                             # envia
 sudo bastion schedule notify --clear
 ```
 
-`--set` envía primero un aviso de prueba y solo guarda la dirección (en la sección `notify` de `config.yaml`) si llega. El formato se deduce de la dirección (ntfy, Slack, Discord, Teams —flujos de *Workflows* o conectores de webhook entrante— y, para cualquier otra, JSON con el esquema `bastion.notify/v1`); `--format` lo fuerza. Por defecto solo se avisa al webhook cuando algo empeora o falla. El aviso lleva el equipo, las puntuaciones y los títulos de los cambios, nunca evidencias. Con ntfy, el tema funciona como contraseña: elige uno difícil de adivinar. Si un aviso no llega, `bastion schedule` lo indica en sus últimas ejecuciones.
+La dirección suele llevar un secreto: con `--set -` se lee de la entrada estándar (`sudo bastion schedule notify --set - < webhook.txt`) y no queda en el historial de la shell ni en la lista de procesos. `--set` envía primero un aviso de prueba y solo guarda la dirección (en la sección `notify` de `config.yaml`) si llega. El formato se deduce de la dirección (ntfy, Slack, Discord, Teams —flujos de *Workflows* o conectores de webhook entrante— y, para cualquier otra, JSON con el esquema `bastion.notify/v1`); `--format` lo fuerza. Por defecto solo se avisa al webhook cuando algo empeora o falla. El aviso lleva el equipo, las puntuaciones y los títulos de los cambios, nunca evidencias. Con ntfy, el tema funciona como contraseña: elige uno difícil de adivinar. Si un aviso no llega, `bastion schedule` lo indica en sus últimas ejecuciones.
 
 Como la tarea se ejecuta como SYSTEM o root, `enable` se niega si el ejecutable está en una carpeta que otros usuarios pueden modificar (Descargas, el escritorio, una carpeta de `/home`…): quien pudiera sustituirlo obtendría esos privilegios. El instalador deja Bastion en `Program Files` o `/usr/local/bin`, que son seguras. `--unsafe-path` lo permite igualmente, solo para laboratorios.
 
@@ -177,7 +177,7 @@ sudo bastion ui                      # abre el navegador con la consola
 bastion ui --port 8790 --no-open     # puerto fijo, sin abrir el navegador
 ```
 
-Muestra la dirección (`http://127.0.0.1:<puerto>/?t=<token>`) y queda en marcha hasta Ctrl+C. Al abrirla escanea si el último escaneo tiene más de una hora; cada escaneo se guarda en el directorio de informes y alimenta la tendencia y el historial. Las pestañas se describen en [07-ui-y-diseno.md](07-ui-y-diseno.md#consola-local-bastion-ui-).
+Muestra la dirección (`http://127.0.0.1:<puerto>/?t=<token>`) y queda en marcha hasta Ctrl+C. Al abrir esa dirección, la consola fija una cookie de sesión (HttpOnly, SameSite=Strict) y redirige a `/`, así que el token no se queda en la barra de direcciones. El navegador se abre con un fichero local privado que redirige con un código de un solo uso: el token no aparece en la línea de órdenes del navegador, que otros usuarios del equipo pueden ver. Para scripts, la API acepta el token en la cabecera `X-Bastion-Token`. Un escaneo lanzado desde la consola termina aunque cierres la pestaña, y uno interrumpido (Ctrl+C) no se guarda. Al abrirla escanea si el último escaneo tiene más de una hora; cada escaneo se guarda en el directorio de informes y alimenta la tendencia y el historial. Las pestañas se describen en [07-ui-y-diseno.md](07-ui-y-diseno.md#consola-local-bastion-ui-).
 
 La consola **solo lee y escanea**: el plan de hardening es una simulación y los cambios se aplican desde la terminal con `bastion harden --apply`. Solo escucha en `127.0.0.1` y exige el token de la dirección, así que ni otra web ni otro usuario del equipo pueden usarla ([ADR-0008](adr/0008-consola-local.md)).
 

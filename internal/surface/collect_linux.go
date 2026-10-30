@@ -38,7 +38,7 @@ func Collect(ctx context.Context) (Inventory, error) {
 	}
 	for _, s := range socks {
 		l := s.Listener
-		l.Ephemeral = l.Proto == "udp" && l.Port >= lo && l.Port <= hi
+		l.Ephemeral = l.Proto == "udp" && ephemeralUDP(l.Port, lo, hi)
 		if pid, ok := owners[s.inode]; ok {
 			l.PID = pid
 			l.Process = processName(pid)
@@ -72,6 +72,10 @@ func Collect(ctx context.Context) (Inventory, error) {
 		inv.Notes = append(inv.Notes, "No se pudo leer el firewall: los puertos se muestran sin filtrar. "+err.Error())
 	} else {
 		inv.Firewall = fw
+		if u := fw.Uncovered(); len(u) > 0 {
+			inv.Notes = append(inv.Notes, "Hay reglas que descartan tráfico antes de la cadena de entrada y no se evalúan ("+
+				strings.Join(u, ", ")+"): algún puerto puede aparecer accesible sin estarlo.")
+		}
 	}
 	return inv, nil
 }
@@ -90,18 +94,16 @@ func collectNetfilter(ctx context.Context) (*Firewall, error) {
 	return newLinuxFirewall(nft, string(save4), string(save6))
 }
 
-// toolPath busca una herramienta del sistema por su ruta absoluta (sudo
-// puede no tener /usr/sbin en el PATH).
+// toolPath busca una herramienta del sistema primero en los directorios
+// del sistema (sudo puede no tener /usr/sbin en el PATH, y un PATH ajeno
+// podría suplantarla) y solo después en el PATH.
 func toolPath(name string) (string, error) {
-	path, err := exec.LookPath(name)
-	if err != nil {
-		for _, dir := range []string{"/usr/sbin", "/sbin", "/usr/bin", "/bin"} {
-			if fi, e := os.Stat(filepath.Join(dir, name)); e == nil && !fi.IsDir() {
-				return filepath.Join(dir, name), nil
-			}
+	for _, dir := range []string{"/usr/sbin", "/usr/bin", "/sbin", "/bin"} {
+		if fi, e := os.Stat(filepath.Join(dir, name)); e == nil && !fi.IsDir() {
+			return filepath.Join(dir, name), nil
 		}
 	}
-	return path, err
+	return exec.LookPath(name)
 }
 
 // runTool ejecuta una herramienta del sistema y falla si termina con error.

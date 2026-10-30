@@ -233,8 +233,33 @@ func TestScore(t *testing.T) {
 	if s.Grade != "A" || s.Passed != 1 || s.Failed != 1 || s.NA != 1 {
 		t.Errorf("score inesperado: %+v", s)
 	}
-	if ComputeScore(nil).Value != 100 {
-		t.Error("sin controles evaluables la puntuación debe ser 100")
+	if !s.Scored {
+		t.Error("con controles evaluados la puntuación existe")
+	}
+	// Sin nada superado ni fallido no hay puntuación (antes salía 100/A).
+	empty := ComputeScore([]Result{{Rule: na, Eval: Eval{Status: Skipped}}})
+	if empty.Scored || empty.Value != 0 || empty.Grade != "N/A" || !empty.Partial {
+		t.Errorf("sin controles evaluables: %+v", empty)
+	}
+	for _, c := range empty.ByCategory {
+		if c.Scored {
+			t.Errorf("categoría sin evaluar con puntuación: %+v", c)
+		}
+	}
+}
+
+// En "any", un hijo con error y otro fallido da error (el que no se pudo
+// evaluar quizá cumplía), no un fallo.
+func TestEvalAnyErrorBeforeFail(t *testing.T) {
+	e := New()
+	ctx := probes.WithSession(context.Background(), probes.NewSession())
+	c := rule.Check{Any: []rule.Check{leaf("a", "regex", "("), leaf("b", "eq", "x")}}
+	if ev := e.evalCheck(ctx, c); ev.Status != Error {
+		t.Errorf("any con error + fallo → %s, quiero error", ev.Status)
+	}
+	c = rule.Check{Any: []rule.Check{leaf("a", "regex", "("), leaf("b", "eq", "b")}}
+	if ev := e.evalCheck(ctx, c); ev.Status != Pass {
+		t.Errorf("any con error + acierto → %s, quiero pass", ev.Status)
 	}
 }
 

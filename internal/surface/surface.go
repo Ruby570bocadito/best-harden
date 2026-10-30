@@ -274,6 +274,29 @@ func label(proto string, port int) string {
 	return labels[proto+"/"+strconv.Itoa(port)]
 }
 
+// ephemeralUDP indica si un socket UDP en ese puerto es, casi seguro, de un
+// cliente: está en el rango dinámico [lo, hi] y no es un servicio conocido
+// (WireGuard, Sunshine…), que se analizan como cualquier otro.
+func ephemeralUDP(port, lo, hi int) bool {
+	if port < lo || port > hi {
+		return false
+	}
+	if _, ok := lookup("udp", port); ok {
+		return false
+	}
+	return label("udp", port) == ""
+}
+
+// wildcard indica si alguna dirección es la de todas las interfaces.
+func wildcard(addrs []string) bool {
+	for _, a := range addrs {
+		if a == "0.0.0.0" || a == "::" || a == "*" || a == "[::]" {
+			return true
+		}
+	}
+	return false
+}
+
 // Lookup devuelve el servicio conocido de un puerto y protocolo.
 func lookup(proto string, port int) (knownPort, bool) {
 	k, ok := ports[port]
@@ -355,6 +378,7 @@ func Analyze(inv Inventory, host platform.Info, version string, now time.Time) *
 	// no vale, accesibles desde la red.
 	var bins []*exposedBinary
 	binIdx := map[string]*exposedBinary{}
+	var ephApps []string // programas con UDP en puertos dinámicos de todas las interfaces
 	for i := range rep.Ports {
 		p := &rep.Ports[i]
 		k, ok := lookup(p.Proto, p.Port)
@@ -374,6 +398,11 @@ func Analyze(inv Inventory, host platform.Info, version string, now time.Time) *
 			p.Known = "IP-HTTPS (túnel IPv6 de Windows)"
 		default:
 			p.Known = label(p.Proto, p.Port)
+		}
+		if p.Scope == ScopeNetwork && p.Ephemeral && userApp(*p) && wildcard(p.Addresses) {
+			// No se analiza (suele ser un cliente: QUIC, descubrimiento…),
+			// pero un programa que no es del sistema podría ser un servidor.
+			ephApps = appendOnce(ephApps, p.Process)
 		}
 		if p.Scope != ScopeNetwork || p.Ephemeral {
 			continue
@@ -580,6 +609,11 @@ func Analyze(inv Inventory, host platform.Info, version string, now time.Time) *
 			f.FirewallRules = ids
 		}
 		rep.Findings = append(rep.Findings, f)
+	}
+	if len(ephApps) > 0 {
+		rep.Notes = append(rep.Notes, fmt.Sprintf("Sin analizar: %s tiene(n) sockets UDP en puertos dinámicos de todas las interfaces. "+
+			"Suelen ser de clientes (QUIC, descubrimiento de red), pero si no reconoces el programa, revisa si acepta datos de la red.",
+			shortList(ephApps, 4)))
 	}
 	rep.Findings = append(rep.Findings, binaryFindings(bins)...)
 	rep.Findings = append(rep.Findings, shareFindings(inv.Shares)...)
