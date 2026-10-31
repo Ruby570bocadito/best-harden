@@ -3,189 +3,226 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="Bastion">
-<title>Bastion · consola</title>
+<meta name="generator" content="Adarve">
+<title>Adarve · consola</title>
 <style>
+/* Identidad de Adarve: noche (fondo), piedra (la muralla) y luna (acción).
+   El tema oscuro es el de la marca; el claro ("día") se elige con el botón. */
 :root {
-  color-scheme: light;
-  --page: #f6f6f3;
-  --surface: #fcfcfb;
-  --surface-2: #f0efec;
-  --ink: #0b0b0b;
-  --ink-2: #52514e;
-  --muted: #6e6c66;
-  --hair: #e1e0d9;
-  --axis: #c3c2b7;
-  --ring: rgba(11,11,11,.10);
-  --accent: #2a78d6;
-  --accent-soft: #cde2fb;
-  --good: #0ca30c;
-  --good-text: #006300;
-  --warning: #fab219;
-  --serious: #ec835a;
-  --critical: #d03b3b;
-  --info: #898781;
-  --track: #e8e7e1;
-  --code-bg: #f0efec;
-  --shadow: 0 1px 2px rgba(11,11,11,.04), 0 8px 24px rgba(11,11,11,.05);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --page: #0d0d0d;
-    --surface: #1a1a19;
-    --surface-2: #232321;
-    --ink: #f0efec;
-    --ink-2: #c3c2b7;
-    --muted: #9a988f;
-    --hair: #2c2c2a;
-    --axis: #383835;
-    --ring: rgba(255,255,255,.10);
-    --accent: #3987e5;
-    --accent-soft: #184f95;
-    --good-text: #0ca30c;
-    --track: #2c2c2a;
-    --code-bg: #232321;
-    --shadow: none;
-  }
-}
-:root[data-theme="dark"] {
   color-scheme: dark;
-  --page: #0d0d0d;
-  --surface: #1a1a19;
-  --surface-2: #232321;
-  --ink: #f0efec;
-  --ink-2: #c3c2b7;
-  --muted: #9a988f;
-  --hair: #2c2c2a;
-  --axis: #383835;
-  --ring: rgba(255,255,255,.10);
-  --accent: #3987e5;
-  --accent-soft: #184f95;
-  --good-text: #0ca30c;
-  --track: #2c2c2a;
-  --code-bg: #232321;
-  --shadow: none;
+  --page: #0e1218;
+  --surface: #151a22;
+  --surface-2: #1c2330;
+  --ink: #ece6da;
+  --ink-2: #c9cdd4;
+  --muted: #a7adb8;
+  --hair: #252c37;
+  --axis: #353e4b;
+  --stone: #cdbb95;
+  --mortar: #a4916b;
+  --stone-ink: #14110b;
+  --moon: #9cc2ff;
+  --moon-ink: #0b1626;
+  --good: #6fd99a;
+  --good-text: #6fd99a;
+  --good-bg: #10261a;
+  --warning: #f2c94c;
+  --serious: #ffa463;
+  --critical: #ff8a7d;
+  --crit-bg: #3b1d1a;
+  --info: #b9bfca;
+  --track: #252c37;
+  --code-bg: #0b0f14;
+  --void: #050709;
+  --display: Bahnschrift, "DIN Alternate", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --page: #f2eee5;
+  --surface: #fbf9f4;
+  --surface-2: #ebe5d8;
+  --ink: #1a1d23;
+  --ink-2: #3d4250;
+  --muted: #5d6270;
+  --hair: #ddd5c4;
+  --axis: #c4b9a3;
+  --stone: #c9b48a;
+  --mortar: #a08b62;
+  --stone-ink: #14110b;
+  --moon: #2f5fa8;
+  --moon-ink: #ffffff;
+  --good: #2e9a5a;
+  --good-text: #1f7a43;
+  --good-bg: #dcefe2;
+  --warning: #c79a00;
+  --serious: #c2621f;
+  --critical: #b3261e;
+  --crit-bg: #f7dedb;
+  --info: #6e7381;
+  --track: #e3dccd;
+  --code-bg: #ebe5d8;
+  --void: #1b1712;
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--page); color: var(--ink);
-  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 15px/1.5 "Segoe UI Variable Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
-a { color: var(--accent); text-decoration: none; }
+a { color: var(--moon); text-decoration: none; }
 a:hover { text-decoration: underline; }
 code, pre, .mono { font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace; font-size: 13px; }
-.wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
+.display { font-family: var(--display); font-stretch: condensed; font-weight: 700; }
+
+/* Piedra: la textura de la muralla (hiladas y juntas) */
+.stone {
+  background-color: var(--stone);
+  background-image: linear-gradient(var(--mortar) 1px, transparent 1px), linear-gradient(90deg, var(--mortar) 1px, transparent 1px);
+  background-size: 100% 16px, 30px 16px;
+}
 
 /* Cabecera y navegación */
-.top { background: var(--surface); border-bottom: 1px solid var(--hair); position: sticky; top: 0; z-index: 5; }
-.top .wrap { display: flex; align-items: center; gap: 14px; height: 58px; }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: .2px; white-space: nowrap; }
-.brand svg { width: 26px; height: 26px; color: var(--accent); }
-.brand small { color: var(--muted); font-weight: 450; }
+.top { background: var(--page); border-bottom: 1px solid var(--hair); position: sticky; top: 0; z-index: 5; }
+.top .wrap { display: flex; align-items: center; gap: 14px; height: 62px; }
+.brand { display: flex; align-items: center; gap: 10px; white-space: nowrap; color: var(--ink); }
+.brand svg { width: 28px; height: 28px; flex: none; }
+.brand .name { font-family: var(--display); font-stretch: condensed; font-weight: 700; font-size: 24px; letter-spacing: .08em; text-transform: uppercase; }
 nav.tabs { display: flex; gap: 2px; margin-left: 10px; overflow-x: auto; scrollbar-width: none; }
 nav.tabs::-webkit-scrollbar { display: none; }
 .tab {
-  appearance: none; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 14px;
-  padding: 8px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+  appearance: none; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14.5px;
+  padding: 8px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap; min-height: 40px;
 }
 .tab:hover { background: var(--surface-2); color: var(--ink); }
 .tab[aria-current="page"] { background: var(--surface-2); color: var(--ink); font-weight: 600; }
 .spacer { flex: 1; }
 .btn {
-  appearance: none; border: 1px solid var(--hair); background: var(--surface); color: var(--ink-2);
-  border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 13.5px; cursor: pointer;
+  appearance: none; border: 1px solid var(--axis); background: transparent; color: var(--ink);
+  border-radius: 10px; padding: 8px 14px; font: inherit; font-size: 14px; cursor: pointer; min-height: 40px;
   display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
 }
-.btn:hover { background: var(--surface-2); color: var(--ink); }
-.btn.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); font-weight: 600; }
-.btn.primary:hover { opacity: .9; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--stone); color: var(--stone-ink); border-color: var(--stone); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.moon { background: var(--moon); color: var(--moon-ink); border-color: var(--moon); font-weight: 600; }
 .btn[disabled] { opacity: .55; cursor: progress; }
-.btn:focus-visible, .tab:focus-visible, .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.btn.copy { padding: 3px 8px; font-size: 12px; }
+.btn:focus-visible, .tab:focus-visible, .seg button:focus-visible, .tramo:focus-visible, .ronda:focus-visible { outline: 2px solid var(--moon); outline-offset: 3px; }
+.btn.copy { padding: 4px 10px; font-size: 12.5px; min-height: 30px; }
 
 /* Estructura */
 main { padding-bottom: 40px; }
-.page-head { padding: 26px 0 6px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 20px; }
-.page-head h1 { margin: 0; font-size: 26px; font-weight: 650; letter-spacing: -.2px; overflow-wrap: anywhere; }
+.page-head { padding: 26px 0 4px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; }
+.page-head h1 { margin: 0; font-family: var(--display); font-stretch: condensed; font-weight: 700; font-size: 34px; letter-spacing: .01em; overflow-wrap: anywhere; }
 .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--ink-2); font-size: 14px; }
 .meta span { display: inline-flex; gap: 6px; }
 .meta b { color: var(--muted); font-weight: 500; }
 .banner {
-  margin-top: 14px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--hair);
+  margin-top: 14px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--hair);
   background: var(--surface); display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--ink-2);
 }
 .banner .ico { color: var(--warning); flex: none; }
-.banner.info .ico { color: var(--accent); }
+.banner.info .ico { color: var(--moon); }
 .banner .grow { flex: 1; }
-section { margin-top: 16px; }
-.card {
-  background: var(--surface); border: 1px solid var(--ring); border-radius: 14px;
-  box-shadow: var(--shadow); padding: 20px; min-width: 0;
-}
-.card h2 { margin: 0 0 14px; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 8px; }
-.card h2 .right { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; }
-.hero-row { display: grid; grid-template-columns: minmax(280px, 1.1fr) 2fr; gap: 16px; margin-top: 18px; }
-.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.wide-left { display: grid; grid-template-columns: 1.7fr 1fr; gap: 16px; }
+section { margin-top: 18px; }
+.card { background: var(--surface); border: 1px solid var(--hair); border-radius: 18px; padding: 22px; min-width: 0; }
+.card h2 { margin: 0 0 14px; font-size: 12.5px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.card h2 .right { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 13.5px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.wide-left { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; }
 
-/* Héroe y KPIs */
-.hero { display: flex; flex-direction: column; justify-content: space-between; }
-.hero-figure { display: flex; align-items: baseline; gap: 10px; }
-.hero-figure .num { font-size: 64px; line-height: 1; font-weight: 650; letter-spacing: -1.5px; }
-.hero-figure .of { color: var(--muted); font-size: 18px; }
+/* La muralla */
+.wall-card { margin-top: 18px; padding: 26px; }
+.wall-head { display: flex; flex-wrap: wrap; gap: 18px 40px; align-items: flex-end; justify-content: space-between; }
+.wall-head .left { flex: 1 1 520px; min-width: 0; }
+.figure { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.figure .num { font-family: var(--display); font-stretch: condensed; font-weight: 700; font-size: 96px; line-height: .9; letter-spacing: -.01em; }
+.figure .pct { font-family: var(--display); font-stretch: condensed; font-size: 34px; color: var(--muted); }
 .grade {
-  margin-left: auto; align-self: center; min-width: 52px; height: 52px; border-radius: 12px;
-  display: grid; place-items: center; font-size: 26px; font-weight: 700; border: 2px solid currentColor;
+  align-self: center; min-width: 50px; height: 50px; border-radius: 12px; display: inline-grid; place-items: center;
+  font-family: var(--display); font-stretch: condensed; font-weight: 700; font-size: 28px; border: 2px solid currentColor;
 }
-.hero p { margin: 10px 0 0; color: var(--ink-2); font-size: 14px; }
+.from { font-family: ui-monospace, Consolas, monospace; font-size: 13.5px; color: var(--good-text); }
+.voice { margin: 10px 0 0; font-size: 18.5px; line-height: 1.45; max-width: 720px; color: var(--ink); }
 .delta { font-weight: 600; font-size: 14px; }
 .delta.up { color: var(--good-text); }
 .delta.down { color: var(--critical); }
-.meter { height: 10px; border-radius: 99px; background: var(--track); overflow: hidden; margin-top: 16px; }
-.meter > i { display: block; height: 100%; border-radius: 99px; }
-.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.kpi { padding: 18px; }
-.kpi .label { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 14px; }
-.kpi .value { font-size: 34px; font-weight: 650; margin-top: 6px; letter-spacing: -.5px; }
-.kpi .sub { color: var(--muted); font-size: 13px; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border: 1px solid var(--hair); border-radius: 12px; background: var(--page); }
+.seg button { appearance: none; border: 0; background: transparent; color: var(--ink-2); font: inherit; font-size: 14px; padding: 8px 14px; min-height: 40px; border-radius: 9px; cursor: pointer; }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--stone); color: var(--stone-ink); font-weight: 600; }
+.wall { overflow-x: auto; margin-top: 22px; padding-bottom: 4px; }
+.wall-row { display: grid; gap: 10px; align-items: end; }
+.wall-row.towers { border-bottom: 3px solid var(--mortar); }
+.tramo {
+  appearance: none; border: 0; background: transparent; cursor: pointer; padding: 6px 6px 0; border-radius: 10px 10px 0 0;
+  display: flex; flex-direction: column; justify-content: flex-end; height: 248px; min-width: 0;
+}
+.tramo:hover { background: var(--surface-2); }
+.tramo[aria-pressed="true"] { background: var(--surface-2); box-shadow: inset 0 0 0 2px var(--moon); }
+.merlons { display: flex; justify-content: space-between; padding: 0 3px; }
+.merlons span { display: block; width: 24%; height: 16px; }
+.tower { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden; transition: height .6s cubic-bezier(.2,.8,.2,1); }
+.tower.weak { filter: saturate(.55) brightness(.78); }
+.tower.mended { box-shadow: inset 0 0 0 2px var(--good); }
+.tower svg { width: 26px; height: 22px; flex: none; }
+.tower .more { font: 600 12px ui-monospace, Consolas, monospace; color: var(--stone-ink); }
+.wall-row.labels { padding-top: 10px; }
+.wall-row.labels div { text-align: center; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.wall-row.labels .n { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.25; }
+.wall-row.labels .v { font: 13px ui-monospace, Consolas, monospace; color: var(--muted); }
+.wall-row.labels .c { font-size: 12.5px; font-weight: 500; }
+.detail { display: flex; flex-wrap: wrap; gap: 20px 32px; border-top: 1px solid var(--hair); margin-top: 22px; padding-top: 22px; }
+.detail .who { flex: 1 1 240px; display: flex; flex-direction: column; gap: 4px; }
+.detail .who .title { font-family: var(--display); font-stretch: condensed; font-weight: 700; font-size: 36px; line-height: 1.05; overflow-wrap: anywhere; }
+.detail .who .sub { color: var(--muted); }
+.breaches { flex: 3 1 560px; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.breaches li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 12px 16px; border-radius: 12px; background: var(--page); border: 1px solid var(--hair); }
+.breaches li.mended { opacity: .62; }
+.breaches .t { flex: 1 1 260px; display: flex; flex-direction: column; min-width: 0; }
+.breaches .t b { font-weight: 550; }
+.breaches .t span { font: 12.5px ui-monospace, Consolas, monospace; color: var(--muted); }
+.breaches .st { font-size: 13.5px; font-weight: 500; }
+.intact { padding: 14px 16px; border-radius: 12px; background: var(--good-bg); color: var(--good-text); }
+
+/* Insignias */
 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
 .badge {
   display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
-  padding: 2px 8px 2px 6px; border-radius: 99px; background: var(--surface-2); color: var(--ink); white-space: nowrap;
+  padding: 2px 9px 2px 7px; border-radius: 99px; background: var(--surface-2); color: var(--ink); white-space: nowrap;
 }
 .badge .dot { width: 8px; height: 8px; }
-.tag { font-size: 11.5px; font-weight: 600; padding: 1px 7px; border-radius: 6px; background: var(--accent-soft); color: var(--ink); white-space: nowrap; }
+.tag { font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 6px; background: var(--surface-2); color: var(--moon); white-space: nowrap; }
 
-/* Tendencia */
-.trend svg { width: 100%; height: auto; display: block; overflow: visible; }
-.trend .pt { cursor: pointer; }
-.trend .pt:hover { r: 6; }
-.trend-foot { display: flex; justify-content: space-between; color: var(--muted); font-size: 12.5px; margin-top: 6px; }
+/* Rondas */
+.rondas { display: flex; align-items: flex-end; gap: 6px; height: 140px; border-bottom: 2px solid var(--mortar); }
+.ronda { appearance: none; border: 0; padding: 0; cursor: pointer; flex: 1 1 0; min-width: 6px; max-width: 46px; opacity: .72; border-radius: 2px 2px 0 0; }
+.ronda:hover { opacity: 1; }
+.ronda.cur { opacity: 1; box-shadow: 0 0 0 2px var(--moon); }
+.trend-foot { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font: 12.5px ui-monospace, Consolas, monospace; margin-top: 8px; }
+.lead { margin: 14px 0 0; font-size: 16px; }
 
 /* Barras */
+.meter { height: 10px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.meter > i { display: block; height: 100%; border-radius: 99px; }
 .sev-row { display: grid; grid-template-columns: 110px 1fr 70px; align-items: center; gap: 12px; padding: 7px 0; }
 .sev-row + .sev-row { border-top: 1px solid var(--hair); }
 .sev-bar { height: 14px; display: flex; align-items: center; }
 .sev-bar > i { display: block; height: 14px; border-radius: 0 4px 4px 0; }
 .sev-row .count { text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; font-size: 14px; }
 .ok-mark { color: var(--good-text); font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
-.cat-row { display: grid; grid-template-columns: minmax(120px, 1fr) 2fr 44px; gap: 12px; align-items: center; padding: 6px 0; }
-.cat-row .meter { margin: 0; height: 8px; }
-.cat-row .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-.cat-row .n { color: var(--muted); font-size: 12px; }
 
-/* Corrección automática */
-.fix-big { font-size: 34px; font-weight: 650; letter-spacing: -.5px; }
-.fix-big small { font-size: 15px; color: var(--muted); font-weight: 500; letter-spacing: 0; }
-.waves { margin: 14px 0; display: grid; gap: 8px; }
+/* Reparar */
+.fix-big { font-family: var(--display); font-stretch: condensed; font-weight: 700; font-size: 44px; line-height: 1; }
+.fix-big small { font-family: "Segoe UI Variable Text", system-ui, sans-serif; font-size: 15.5px; color: var(--ink-2); font-weight: 500; }
+.waves { margin: 16px 0; display: grid; gap: 8px; }
 .wave-row { display: grid; grid-template-columns: 64px 1fr 32px; gap: 10px; align-items: center; font-size: 13.5px; color: var(--ink-2); }
-.wave-row .meter { margin: 0; height: 8px; }
+.wave-row .meter { height: 8px; }
 .wave-row .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
-.cmd { display: flex; align-items: center; gap: 8px; background: var(--code-bg); border-radius: 10px; padding: 8px 8px 8px 12px; margin-top: 10px; }
+.cmd { display: flex; align-items: center; gap: 8px; background: var(--code-bg); border: 1px solid var(--hair); border-radius: 10px; padding: 8px 8px 8px 12px; margin-top: 10px; }
 .cmd code { flex: 1; overflow-wrap: anywhere; }
 .note { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+.checks { display: flex; flex-direction: column; gap: 3px; color: var(--ink-2); font-size: 13.5px; margin-top: 10px; }
 
 /* Listas */
 .prio { list-style: none; margin: 0; padding: 0; }
@@ -204,17 +241,13 @@ th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacin
 td { padding: 10px; border-bottom: 1px solid var(--hair); vertical-align: top; }
 tr.current td { background: var(--surface-2); }
 td.num { font-variant-numeric: tabular-nums; text-align: right; }
-td .sub { color: var(--muted); font-size: 12.5px; }
+td .sub, .sub { color: var(--muted); font-size: 12.5px; }
 
 /* Plan */
-.seg { display: inline-flex; border: 1px solid var(--hair); border-radius: 10px; overflow: hidden; }
-.seg button { appearance: none; border: 0; background: var(--surface); color: var(--ink-2); font: inherit; font-size: 13.5px; padding: 7px 14px; cursor: pointer; }
-.seg button + button { border-left: 1px solid var(--hair); }
-.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); font-weight: 600; }
 .plan-group { margin-top: 18px; }
-.plan-group h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin: 0 0 8px; font-weight: 600; display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.plan-group h3 { font-size: 12.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 0 0 8px; font-weight: 600; display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
 .plan-group h3 .hint { text-transform: none; letter-spacing: 0; font-weight: 450; }
-.item { border: 1px solid var(--hair); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--surface); }
+.item { border: 1px solid var(--hair); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; background: var(--page); }
 .item .h { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
 .item .h .t { font-weight: 550; }
 .item .h .rid { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; color: var(--muted); }
@@ -223,49 +256,74 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .item ul li { overflow-wrap: anywhere; }
 .item p { margin: 6px 0 0; color: var(--ink-2); font-size: 13.5px; }
 
+/* Puertas */
+.gates { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.gates.small { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.gate { background: var(--surface); border: 1px solid var(--hair); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.gate.crit { border-color: var(--critical); }
+.gate.high { border-color: var(--serious); }
+.gate .top-row { display: flex; gap: 16px; align-items: flex-end; min-width: 0; }
+.arch { flex: none; width: 84px; height: 104px; border-radius: 42px 42px 4px 4px; padding: 9px 9px 0; display: flex; }
+.arch > span { display: block; flex: 1; border-radius: 33px 33px 0 0; }
+.gates.small .gate { padding: 14px; gap: 8px; border-radius: 14px; }
+.gates.small .arch { width: 44px; height: 56px; border-radius: 22px 22px 3px 3px; padding: 5px 5px 0; }
+.gates.small .arch > span { border-radius: 17px 17px 0 0; }
+.door-open { background: var(--void); box-shadow: inset 0 -16px 28px rgba(255,120,100,.30); }
+.door-bars { background-color: var(--void); background-image: repeating-linear-gradient(90deg, #8a7a5c 0 4px, transparent 4px 14px), repeating-linear-gradient(0deg, #8a7a5c 0 3px, transparent 3px 20px); }
+.door-shut { background-color: #5a4630; background-image: repeating-linear-gradient(90deg, #4a3826 0 2px, transparent 2px 16px); }
+.gate .port { font-family: var(--display); font-stretch: condensed; font-weight: 700; font-size: 34px; line-height: 1; overflow-wrap: anywhere; }
+.gates.small .gate .port { font-size: 22px; }
+.gate .svc { font-weight: 600; overflow-wrap: anywhere; }
+.gate .proc { font: 12.5px ui-monospace, Consolas, monospace; color: var(--muted); overflow-wrap: anywhere; }
+.gate .why { margin: 0; font-size: 14px; color: var(--ink-2); }
+.gate .fix { margin: 0; font-size: 13.5px; color: var(--good-text); }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { display: block; width: 16px; height: 20px; border-radius: 8px 8px 2px 2px; border: 2px solid var(--stone); }
+details.more-table { margin-top: 14px; }
+details.more-table summary { cursor: pointer; color: var(--moon); font-size: 14px; }
+
 /* Informe incrustado */
-.frame { width: 100%; height: calc(100vh - 150px); min-height: 520px; border: 1px solid var(--ring); border-radius: 14px; background: var(--page); }
+.frame { width: 100%; height: calc(100vh - 150px); min-height: 520px; border: 1px solid var(--hair); border-radius: 16px; background: var(--page); }
 
 /* Progreso y avisos */
-.progress { height: 3px; background: var(--track); overflow: hidden; position: fixed; left: 0; right: 0; top: 58px; z-index: 6; display: none; }
+.progress { height: 3px; background: var(--track); overflow: hidden; position: fixed; left: 0; right: 0; top: 62px; z-index: 6; display: none; }
 .progress.on { display: block; }
-.progress > i { display: block; width: 30%; height: 100%; background: var(--accent); animation: slide 1.2s ease-in-out infinite; }
+.progress > i { display: block; width: 30%; height: 100%; background: var(--moon); animation: slide 1.2s ease-in-out infinite; }
 @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(340%); } }
 .loading { padding: 60px 20px; text-align: center; color: var(--muted); }
-.loading .spin { width: 28px; height: 28px; border: 3px solid var(--track); border-top-color: var(--accent); border-radius: 50%; margin: 0 auto 14px; animation: rot .9s linear infinite; }
+.loading .spin { width: 28px; height: 28px; border: 3px solid var(--track); border-top-color: var(--moon); border-radius: 50%; margin: 0 auto 14px; animation: rot .9s linear infinite; }
 @keyframes rot { to { transform: rotate(360deg); } }
-.toast { position: fixed; right: 16px; bottom: 16px; max-width: min(420px, calc(100vw - 32px)); background: var(--ink); color: var(--surface); padding: 10px 14px; border-radius: 10px; font-size: 14px; box-shadow: var(--shadow); z-index: 10; }
+.toast { position: fixed; right: 16px; bottom: 16px; max-width: min(440px, calc(100vw - 32px)); background: var(--stone); color: var(--stone-ink); padding: 11px 15px; border-radius: 12px; font-size: 14px; z-index: 10; }
 footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
 
 @media (max-width: 980px) {
-  .hero-row, .two, .wide-left { grid-template-columns: 1fr; }
-  .kpis { grid-template-columns: repeat(2, 1fr); }
-  .brand small { display: none; }
+  .two, .wide-left { grid-template-columns: 1fr; }
+  .figure .num { font-size: 76px; }
 }
 @media (max-width: 620px) {
   .top .wrap { flex-wrap: wrap; height: auto; padding-top: 8px; padding-bottom: 8px; }
   nav.tabs { order: 3; width: 100%; margin-left: 0; }
   .progress { top: 0; }
-  .hero-figure .num { font-size: 52px; }
-  .kpi .value { font-size: 28px; }
-  .cat-row { grid-template-columns: 1fr 44px; }
-  .cat-row .meter { grid-column: 1 / -1; grid-row: 2; }
+  .figure .num { font-size: 64px; }
+  .voice { font-size: 16.5px; }
+  .wall-card { padding: 18px; }
   #scanBtn .long { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { .progress > i, .loading .spin { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .progress > i, .loading .spin { animation: none; } .tower { transition: none; } }
 </style>
 </head>
 <body>
 <header class="top">
   <div class="wrap">
     <div class="brand">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3z"/><path d="m9 12 2 2 4-4"/></svg>
-      Bastion <small>· consola local</small>
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 29V11h5v4h4v-4h8v4h4v-4h5v18z" style="fill:var(--stone)"/><path d="M3 19h26" style="stroke:var(--page);stroke-width:2"/><circle cx="16" cy="6" r="2.6" style="fill:var(--moon)"/></svg>
+      <span class="name">Adarve</span>
     </div>
     <nav class="tabs" id="tabs" aria-label="Secciones"></nav>
     <div class="spacer"></div>
-    <button class="btn primary" id="scanBtn" type="button">Escanear<span class="long"> ahora</span></button>
-    <button class="btn" id="theme" type="button" title="Cambiar tema">Tema</button>
+    <button class="btn primary" id="scanBtn" type="button">Hacer la ronda<span class="long"> ahora</span></button>
+    <button class="btn" id="theme" type="button" title="Cambiar entre noche y día">Tema</button>
   </div>
 </header>
 <div class="progress" id="progress" aria-hidden="true"><i></i></div>
@@ -283,15 +341,20 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
   // script nunca ve el token. Cada petición lleva X-Bastion-Request, que una
   // web ajena no puede añadir sin una comprobación CORS que no se concede.
 
+  // Nombre del producto en la interfaz y del ejecutable en los comandos que
+  // se muestran para copiar. Cuando el binario cambie de nombre, solo cambia CLI.
+  var BRAND = "Adarve";
+  var CLI = "bastion";
+
   var SEV = {
-    critical: { label: "Crítico", color: "var(--critical)", rank: 0 },
-    high: { label: "Alto", color: "var(--serious)", rank: 1 },
-    medium: { label: "Medio", color: "var(--warning)", rank: 2 },
-    low: { label: "Bajo", color: "var(--info)", rank: 3 },
-    info: { label: "Info", color: "var(--info)", rank: 4 }
+    critical: { label: "Crítico", color: "var(--critical)", rank: 0, weight: 10 },
+    high: { label: "Alto", color: "var(--serious)", rank: 1, weight: 5 },
+    medium: { label: "Medio", color: "var(--warning)", rank: 2, weight: 3 },
+    low: { label: "Bajo", color: "var(--info)", rank: 3, weight: 1 },
+    info: { label: "Info", color: "var(--info)", rank: 4, weight: 0 }
   };
   var STATUS = {
-    fail: { label: "Fallido", icon: "✕", color: "var(--critical)" },
+    fail: { label: "Brecha", icon: "✕", color: "var(--critical)" },
     error: { label: "Error", icon: "!", color: "var(--warning)" },
     skipped: { label: "Sin evaluar", icon: "⊘", color: "var(--muted)" },
     exception: { label: "Excepción", icon: "◇", color: "var(--info)" },
@@ -303,19 +366,20 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
   var ROLE = { workstation: "Estación de trabajo", server: "Servidor", dc: "Controlador de dominio" };
   var CHANGE = { applied: "Aplicado", partial: "Parcial", failed: "Fallido", "rolled-back": "Deshecho", "in-progress": "En curso", nothing: "Sin cambios" };
   var GROUPS = [
-    ["planned", "Cambios que se aplicarán", ""],
+    ["planned", "Lo que repararé", ""],
     ["wave", "Requieren una ola superior", "sube la ola para incluirlos"],
-    ["remote", "Afectan al acceso remoto", "bastion harden --include-remote (con dead-man switch)"],
+    ["remote", "Afectan al acceso remoto", CLI + " harden --include-remote (con dead-man switch)"],
     ["gpo", "Gestionados por una GPO de dominio", "corrígelos en la GPO o usa --force-local"],
-    ["manual", "Remediación manual", "bastion rules show <ID>"],
+    ["manual", "Decisión tuya (remediación manual)", CLI + " rules show <ID>"],
     ["capture-error", "No se pudo leer el estado", ""],
     ["unsupported", "No disponibles en esta plataforma", ""],
     ["nothing", "Sin nada que cambiar", ""]
   ];
-  var TABS = [["panel", "Panel"], ["controles", "Controles"], ["plan", "Plan de hardening"], ["superficie", "Superficie"], ["historial", "Historial"], ["excepciones", "Excepciones"]];
+  var TABS = [["panel", "Muralla"], ["controles", "Brechas"], ["plan", "Plan de reparación"], ["superficie", "Puertas"], ["historial", "Rondas"], ["excepciones", "Excepciones"]];
 
   var S = { info: null, reports: [], report: null, reportId: "", latestId: "", plan: { wave: 1, items: null, loading: false },
-    changes: null, exceptions: null, schedule: null, surface: null, surfaceLoading: false, showLocal: false, scanning: false, tab: "panel", error: "" };
+    changes: null, exceptions: null, schedule: null, surface: null, surfaceLoading: false, showLocal: false, scanning: false, tab: "panel", error: "",
+    sim: 0, tramo: "", heights: {} };
 
   // ---- Utilidades ----
   function el(tag, attrs, children) {
@@ -341,9 +405,12 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
   // scored === false: ningún control evaluado (los informes antiguos no
   // traen el campo y siempre tienen puntuación).
   function scored(sc) { return !!sc && sc.scored !== false; }
-  function scoreText(sc) { return scored(sc) ? sc.value + "/100" : "sin evaluar"; }
+  function scoreText(sc) { return scored(sc) ? "muralla al " + sc.value + " %" : "sin evaluar"; }
   function scoreColor(v) { return v >= 80 ? "var(--good)" : v >= 60 ? "var(--warning)" : "var(--critical)"; }
-  function scoreWord(v) { return v >= 90 ? "excelente" : v >= 80 ? "buena" : v >= 70 ? "mejorable" : v >= 60 ? "débil" : "crítica"; }
+  function scoreWord(v) { return v >= 90 ? "firme" : v >= 80 ? "sólida" : v >= 70 ? "con grietas" : v >= 60 ? "débil" : "muy dañada"; }
+  function gradeOf(v) { return v >= 90 ? "A" : v >= 80 ? "B" : v >= 70 ? "C" : v >= 60 ? "D" : "F"; }
+  // Igual que engine.pct: porcentaje redondeado con aritmética entera.
+  function pct(got, max) { return max ? Math.floor((got * 100 + Math.floor(max / 2)) / max) : 0; }
   function dot(color) { return el("span", { class: "dot", style: "background:" + color }); }
   function badge(color, text, icon) {
     return el("span", { class: "badge" }, [icon ? el("span", { text: icon, style: "color:" + color + ";font-weight:700" }) : dot(color), text]);
@@ -382,11 +449,12 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     setTimeout(function () { t.remove(); }, 5000);
   }
   function busy(on) { document.getElementById("progress").classList.toggle("on", !!on); }
+  function sudoWhere() { return S.info.family === "windows" ? "un PowerShell como administrador" : "una terminal con sudo"; }
 
   function api(path, opts) {
     opts = opts || {};
     return fetch(path, { method: opts.method || "GET", headers: { "X-Bastion-Request": "1" }, credentials: "same-origin", cache: "no-store" }).then(function (r) {
-      if (r.status === 401) throw new Error("la sesión no es válida o ha caducado. Abre de nuevo la dirección que muestra \"bastion ui\" en la terminal");
+      if (r.status === 401) throw new Error("la sesión no es válida o ha caducado. Abre de nuevo la dirección que muestra \"" + CLI + " ui\" en la terminal");
       return r.json().catch(function () { return {}; }).then(function (body) {
         if (!r.ok) throw new Error(body.error || ("HTTP " + r.status));
         return body;
@@ -394,15 +462,13 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     });
   }
 
-  // ---- Tema ----
+  // ---- Tema: noche (por defecto, el de la marca) o día ----
   var root = document.documentElement;
-  try { var saved = localStorage.getItem("bastion-theme"); if (saved) root.setAttribute("data-theme", saved); } catch (e) {}
+  try { if (localStorage.getItem("adarve-theme") === "light") root.setAttribute("data-theme", "light"); } catch (e) {}
   document.getElementById("theme").addEventListener("click", function () {
-    var dark = root.getAttribute("data-theme") === "dark" ||
-      (!root.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    var next = dark ? "light" : "dark";
-    root.setAttribute("data-theme", next);
-    try { localStorage.setItem("bastion-theme", next); } catch (e) {}
+    var next = root.getAttribute("data-theme") === "light" ? "dark" : "light";
+    if (next === "light") root.setAttribute("data-theme", "light"); else root.removeAttribute("data-theme");
+    try { localStorage.setItem("adarve-theme", next); } catch (e) {}
     if (S.tab === "controles") render(); // el informe incrustado lee el tema al cargar
   });
 
@@ -437,20 +503,20 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     if (!S.report) render();
     api("/api/scan", { method: "POST" }).then(function (res) {
       S.report = res.report; S.reportId = res.id; S.latestId = res.id;
-      S.plan.items = null;
+      S.plan.items = null; S.sim = 0;
       return api("/api/reports").then(function (list) { S.reports = list; });
     }).then(function () {
-      toast("Escaneo completado: " + scoreText(S.report.score));
+      toast("Ronda terminada: " + scoreText(S.report.score) + ".");
       if (S.tab === "plan") loadPlan(S.plan.wave);
-    }).catch(function (e) { toast("No se pudo escanear: " + e.message); })
+    }).catch(function (e) { toast("No pude hacer la ronda: " + e.message); })
       .then(function () { S.scanning = false; scanBtn.disabled = false; busy(false); render(); });
   }
 
   function openReport(id) {
     busy(true);
     return api("/api/reports/" + encodeURIComponent(id)).then(function (rep) {
-      S.report = rep; S.reportId = id; render();
-    }).catch(function (e) { toast("No se pudo abrir el informe: " + e.message); }).then(function () { busy(false); });
+      S.report = rep; S.reportId = id; S.sim = 0; render();
+    }).catch(function (e) { toast("No se pudo abrir la ronda: " + e.message); }).then(function () { busy(false); });
   }
 
   function loadPlan(wave) {
@@ -462,7 +528,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
   function loadSurface() {
     S.surfaceLoading = true; busy(true); render();
     api("/api/surface").then(function (r) { S.surface = r; })
-      .catch(function (e) { toast("No se pudo analizar la superficie: " + e.message); })
+      .catch(function (e) { toast("No se pudieron revisar las puertas: " + e.message); })
       .then(function () { S.surfaceLoading = false; busy(false); render(); });
   }
   function loadSchedule() {
@@ -480,17 +546,19 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
   function render() {
     app.textContent = "";
     if (S.error) { app.appendChild(el("div", { class: "loading" }, [el("p", { text: S.error })])); return; }
-    if (!S.info) { app.appendChild(loadingBox("Cargando…")); return; }
+    if (!S.info) { app.appendChild(loadingBox("Subiendo al adarve…")); return; }
     app.appendChild(pageHead());
     if (!S.report) {
-      app.appendChild(S.scanning ? loadingBox("Escaneando el equipo… (solo lectura, tarda unos segundos)") :
-        el("div", { class: "card empty", style: "margin-top:18px" }, [el("p", { text: "Todavía no hay escaneos guardados." }),
-          el("button", { class: "btn primary", type: "button", text: "Escanear ahora", onclick: function () { scan(); } })]));
+      app.appendChild(S.scanning ? loadingBox("Haciendo la ronda: reviso el equipo sin tocar nada. Tarda unos segundos.") :
+        el("div", { class: "card empty", style: "margin-top:18px" }, [el("p", { text: "Todavía no he hecho ninguna ronda en este equipo." }),
+          el("button", { class: "btn primary", type: "button", text: "Hacer la primera ronda", onclick: function () { scan(); } })]));
       return;
     }
     banners().forEach(function (b) { app.appendChild(b); });
     ({ panel: renderPanel, controles: renderControls, plan: renderPlan, superficie: renderSurface, historial: renderHistory, excepciones: renderExceptions })[S.tab]();
-    app.appendChild(el("footer", null, ["Bastion " + S.info.version + " · consola local en 127.0.0.1. Solo lee y escanea: los cambios se aplican desde la terminal con bastion harden, que guarda una instantánea y permite deshacerlos."]));
+    app.appendChild(el("footer", null, [BRAND + " " + S.info.version + " · consola local en 127.0.0.1. Solo mira y hace rondas: las reparaciones se aplican desde la terminal con " +
+      CLI + " harden, que guarda una instantánea y permite deshacerlas."]));
+    growTowers();
   }
 
   function loadingBox(text) { return el("div", { class: "loading" }, [el("div", { class: "spin" }), el("div", { text: text })]); }
@@ -499,7 +567,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     var i = S.info, r = S.report;
     var meta = el("div", { class: "meta" });
     [["Sistema", i.system], ["Rol", ROLE[i.role] || i.role], ["Perfil", r && r.profile ? r.profile.name : i.profile],
-     ["Escaneo", r ? fmtDate(r.finished_at) + " (" + ago(r.finished_at) + ")" : "—"]].forEach(function (p) {
+     ["Ronda", r ? fmtDate(r.finished_at) + " (" + ago(r.finished_at) + ")" : "—"]].forEach(function (p) {
       if (p[1]) meta.appendChild(el("span", null, [el("b", { text: p[0] }), p[1]]));
     });
     return el("div", { class: "page-head" }, [el("h1", { text: i.hostname }), meta]);
@@ -509,21 +577,177 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     var out = [], r = S.report, sc = r.score;
     if (S.reportId && S.latestId && S.reportId !== S.latestId) {
       out.push(el("div", { class: "banner info" }, [el("span", { class: "ico", text: "ⓘ" }),
-        el("span", { class: "grow", text: "Estás viendo un escaneo anterior (" + fmtDate(r.finished_at) + ")." }),
-        el("button", { class: "btn copy", type: "button", text: "Volver al último", onclick: function () { openReport(S.latestId); } })]));
+        el("span", { class: "grow", text: "Estás viendo una ronda anterior (" + fmtDate(r.finished_at) + ")." }),
+        el("button", { class: "btn copy", type: "button", text: "Volver a la última", onclick: function () { openReport(S.latestId); } })]));
     }
     if (!S.info.is_admin) {
       out.push(el("div", { class: "banner" }, [el("span", { class: "ico", text: "⚠" }),
-        el("span", { text: "La consola se ejecuta sin privilegios" + (sc.skipped ? ": " + plural(sc.skipped, "control queda", "controles quedan") + " sin evaluar y no cuentan en la puntuación" : "") +
-          ". Ciérrala y lanza bastion ui desde " + (S.info.family === "windows" ? "un PowerShell abierto como administrador." : "sudo.") })]));
+        el("span", { text: "Hago la ronda sin privilegios" + (sc.skipped ? ": " + plural(sc.skipped, "control queda", "controles quedan") + " sin revisar y no cuentan" : "") +
+          ". Ciérrame y lanza " + CLI + " ui desde " + sudoWhere() + "." })]));
     }
     var expired = (r.results || []).filter(function (x) { return x.exception && x.exception.expired; });
     if (expired.length) {
       out.push(el("div", { class: "banner" }, [el("span", { class: "ico", text: "⚠" }),
         el("span", { text: (expired.length === 1 ? "1 excepción ha caducado" : expired.length + " excepciones han caducado") + ": " +
-          expired.map(function (x) { return x.rule.id; }).join(", ") + ". Corrige el control o renueva la excepción." })]));
+          expired.map(function (x) { return x.rule.id; }).join(", ") + ". Repara el control o renueva la excepción." })]));
     }
     return out;
+  }
+
+  // ---- La muralla ----
+  function isAuto(x) { var rem = x.rule.remediation || {}; return !!(rem.actions && rem.actions.length); }
+  function isRemote(x) { return (x.rule.remediation || {}).safety === "remote-access"; }
+  function waveOf(x) { return WAVE_OF[(x.rule.remediation || {}).breaking_risk] || 1; }
+  // Una brecha que "harden --apply --wave N" repararía sola (sin el acceso remoto).
+  function mendedBy(x, sim) { return sim > 0 && isAuto(x) && !isRemote(x) && waveOf(x) <= sim; }
+  function byPriority(a, b) {
+    return (SEV[a.rule.severity].rank - SEV[b.rule.severity].rank) || (waveOf(a) - waveOf(b));
+  }
+
+  // wallModel recalcula la puntuación como si las olas hasta "sim" se
+  // hubieran aplicado bien, con los mismos pesos que engine.ComputeScore.
+  function wallModel(results, sim) {
+    var got = 0, max = 0, cats = {}, mended = 0;
+    results.forEach(function (x) {
+      if (x.status !== "pass" && x.status !== "fail") return;
+      var w = (SEV[x.rule.severity] || SEV.info).weight;
+      var c = cats[x.rule.category] || (cats[x.rule.category] = { name: x.rule.category, got: 0, max: 0, open: [], mended: [], got0: 0 });
+      var fixed = x.status === "fail" && mendedBy(x, sim);
+      max += w; c.max += w;
+      if (x.status === "pass") c.got0 += w;
+      if (x.status === "pass" || fixed) { got += w; c.got += w; }
+      if (fixed) { c.mended.push(x); mended++; } else if (x.status === "fail") c.open.push(x);
+    });
+    var list = Object.keys(cats).map(function (k) {
+      var c = cats[k];
+      c.value = pct(c.got, c.max); c.value0 = pct(c.got0, c.max);
+      c.open.sort(byPriority); c.mended.sort(byPriority);
+      return c;
+    }).filter(function (c) { return c.max > 0; });
+    // Orden estable entre simulaciones: de la más dañada a la más firme hoy.
+    list.sort(function (a, b) { return (a.value0 - b.value0) || (a.name < b.name ? -1 : 1); });
+    return { value: pct(got, max), cats: list, mended: mended };
+  }
+
+  function crackSVG() {
+    return svg("svg", { viewBox: "0 0 26 22", "aria-hidden": "true" }, [svg("path", { d: "M2 3l7 6-3 4 8 3-2 4 12-6",
+      style: "fill:none;stroke:var(--stone-ink);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round" })]);
+  }
+
+  // Las torres crecen desde la altura que tenían a la nueva (al simular una ola).
+  var pendingGrow = [];
+  function growTowers() {
+    var list = pendingGrow; pendingGrow = [];
+    if (!list.length) return;
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      list.forEach(function (p) { p[0].style.height = p[1] + "px"; });
+    }); });
+  }
+
+  function breachStatus(x, sim) {
+    if (mendedBy(x, sim)) return ["Reparada en la simulación", "var(--good-text)"];
+    if (!isAuto(x)) return ["Decisión tuya · manual", "var(--critical)"];
+    if (isRemote(x)) return ["Acceso remoto · con dead-man switch", "var(--moon)"];
+    var w = waveOf(x);
+    return [w === 1 ? "Ola 1 · la reparo yo" : "Ola " + w + " · riesgo " + (w === 2 ? "medio" : "alto"), "var(--moon)"];
+  }
+
+  function wallCard(results, sc) {
+    var failed = results.filter(function (x) { return x.status === "fail"; });
+    var auto = failed.filter(isAuto).length;
+    var base = wallModel(results, 0), model = wallModel(results, S.sim);
+    var value = S.sim ? model.value : sc.value;
+    var color = scoreColor(value), prev = previousMeta();
+
+    // Olas que se pueden simular (solo las que reparan algo más que la anterior).
+    var opts = [[0, "Estado actual"]], last = 0;
+    [[1, "Simular ola 1"], [2, "Olas 1 y 2"], [3, "Olas 1 a 3"]].forEach(function (o) {
+      var n = failed.filter(function (x) { return mendedBy(x, o[0]); }).length;
+      if (n > last) { opts.push(o); last = n; }
+    });
+    if (!opts.some(function (o) { return o[0] === S.sim; })) S.sim = 0;
+    var seg = opts.length > 1 ? el("div", { class: "seg", role: "group", "aria-label": "Simular reparación" }, opts.map(function (o) {
+      return el("button", { type: "button", "aria-pressed": String(S.sim === o[0]), text: o[1], onclick: function () { S.sim = o[0]; render(); } });
+    })) : null;
+
+    var voice;
+    if (S.sim) {
+      voice = (S.sim === 1 ? "Con la ola 1 reparo " + plural(model.mended, "brecha", "brechas") + " sin riesgo de rotura." :
+        "Con las olas 1" + (S.sim === 3 ? " a 3" : " y 2") + " reparo " + plural(model.mended, "brecha", "brechas") + ".") +
+        " La muralla pasaría del " + base.value + " % al " + model.value + " %" +
+        (failed.length - model.mended ? "; quedarían " + plural(failed.length - model.mended, "brecha", "brechas") + " para ti." : " y quedaría intacta.");
+    } else if (!failed.length) {
+      voice = "Ronda terminada: la muralla está intacta. Ni una brecha en los controles que he podido revisar.";
+    } else {
+      var top = failed.slice().sort(byPriority)[0];
+      voice = "Ronda terminada. Hay " + plural(failed.length, "brecha", "brechas") + " en la muralla: " +
+        (auto === failed.length ? "todas las puedo reparar yo." : auto ? auto + " las puedo reparar yo y " + plural(failed.length - auto, "necesita", "necesitan") + " tu decisión." :
+          "ninguna se repara sola, necesitan tu decisión.") + " Empieza por «" + top.rule.title + "».";
+    }
+    var deltaEl = null;
+    if (!S.sim && prev && scored(prev.score)) {
+      var d = sc.value - prev.score.value;
+      deltaEl = el("span", { class: "delta " + (d > 0 ? "up" : d < 0 ? "down" : ""), text: (d > 0 ? "▲ +" + d : d < 0 ? "▼ " + d : "= igual") + " desde la ronda anterior" });
+    }
+    var head = el("div", { class: "wall-head" }, [
+      el("div", { class: "left" }, [
+        el("h2", { text: "Estado de la muralla", style: "margin:0 0 6px" }),
+        el("div", { class: "figure" }, [
+          el("span", { class: "num", text: String(value) }), el("span", { class: "pct", text: "%" }),
+          el("span", { class: "grade", text: S.sim ? gradeOf(value) : sc.grade, style: "color:" + color, title: "Calificación" }),
+          S.sim ? el("span", { class: "from", text: "desde " + base.value + " · simulación" }) : deltaEl
+        ]),
+        el("p", { class: "voice", text: voice }),
+        sc.partial && !S.sim ? el("p", { class: "note", text: "Parcial: hay controles sin revisar o con error, y no cuentan." }) : null
+      ]),
+      seg
+    ]);
+
+    // Los tramos: uno por categoría.
+    var cats = model.cats;
+    if (!cats.some(function (c) { return c.name === S.tramo; })) {
+      var worst = cats.filter(function (c) { return c.open.length; })[0] || cats[0];
+      S.tramo = worst ? worst.name : "";
+    }
+    var cols = "grid-template-columns:repeat(" + cats.length + ",minmax(64px,1fr));min-width:" + Math.max(0, cats.length * 74) + "px";
+    var towers = el("div", { class: "wall-row towers", style: cols });
+    var labels = el("div", { class: "wall-row labels", style: cols });
+    cats.forEach(function (c) {
+      var h = Math.max(10, Math.round(200 * c.value / 100));
+      var from = S.heights[c.name] !== undefined ? S.heights[c.name] : h;
+      S.heights[c.name] = h;
+      var tower = el("span", { class: "tower stone" + (c.value < 50 ? " weak" : "") + (c.mended.length ? " mended" : ""), style: "height:" + from + "px" });
+      c.open.slice(0, 3).forEach(function () { tower.appendChild(crackSVG()); });
+      if (c.open.length > 3) tower.appendChild(el("span", { class: "more", text: "+" + (c.open.length - 3) }));
+      if (from !== h) pendingGrow.push([tower, h]);
+      towers.appendChild(el("button", { class: "tramo", type: "button", "aria-pressed": String(S.tramo === c.name),
+        "aria-label": c.name + ": " + c.value + " %, " + plural(c.open.length, "brecha", "brechas"),
+        onclick: function () { S.tramo = c.name; render(); } }, [
+        el("span", { class: "merlons", "aria-hidden": "true" }, [el("span", { class: "stone" }), el("span", { class: "stone" }), el("span", { class: "stone" })]),
+        tower
+      ]));
+      labels.appendChild(el("div", null, [el("span", { class: "n", text: c.name }), el("span", { class: "v", text: c.value + " %" }),
+        el("span", { class: "c", text: c.open.length ? plural(c.open.length, "brecha", "brechas") : "intacto",
+          style: "color:" + (c.open.length ? "var(--serious)" : "var(--good-text)") })]));
+    });
+
+    var sel = cats.filter(function (c) { return c.name === S.tramo; })[0];
+    var detail = null;
+    if (sel) {
+      var items = sel.open.concat(sel.mended);
+      var list = items.length ? el("ul", { class: "breaches" }, items.map(function (x) {
+        var st = breachStatus(x, S.sim);
+        return el("li", { class: mendedBy(x, S.sim) ? "mended" : null }, [sevBadge(x.rule.severity),
+          el("span", { class: "t" }, [el("b", { text: x.rule.title }), el("span", { text: x.rule.id })]),
+          el("span", { class: "st", text: st[0], style: "color:" + st[1] })]);
+      })) : el("div", { class: "breaches" }, [el("div", { class: "intact", text: "Tramo intacto: nada que reparar aquí." })]);
+      detail = el("div", { class: "detail" }, [
+        el("div", { class: "who" }, [el("h2", { text: "Tramo seleccionado", style: "margin:0" }), el("span", { class: "title", text: sel.name }),
+          el("span", { class: "sub", text: sel.value + " % en pie · " + (sel.open.length ? plural(sel.open.length, "brecha abierta", "brechas abiertas") : "sin brechas abiertas") })]),
+        list
+      ]);
+    }
+    return el("div", { class: "card wall-card" }, [head, cats.length ? el("div", { class: "wall" }, [towers, labels]) : null, detail]);
   }
 
   // ---- Panel ----
@@ -535,75 +759,46 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
 
   function renderPanel() {
     var r = S.report, sc = r.score, results = r.results || [];
-    var color = scoreColor(sc.value), prev = previousMeta();
-    var deltaEl = null;
-    if (prev && scored(sc) && scored(prev.score)) {
-      var d = sc.value - prev.score.value;
-      deltaEl = el("span", { class: "delta " + (d > 0 ? "up" : d < 0 ? "down" : ""), text: (d > 0 ? "▲ +" + d : d < 0 ? "▼ " + d : "= sin cambios") + " desde el escaneo anterior" });
+    if (!scored(sc)) {
+      app.appendChild(el("div", { class: "card wall-card" }, [el("h2", { text: "Estado de la muralla" }),
+        el("div", { class: "figure" }, [el("span", { class: "num", text: "—" }), el("span", { class: "pct", text: "sin evaluar" })]),
+        el("p", { class: "voice", text: "No he podido revisar ningún control (sin privilegios, con error o no aplicables), así que no hay muralla que medir." +
+          (S.info && !S.info.is_admin ? " Lánzame con privilegios." : "") })]));
+    } else {
+      app.appendChild(wallCard(results, sc));
     }
-    var hero = el("div", { class: "card hero" }, [
-      el("h2", { text: "Postura de seguridad" }),
-      !scored(sc) ? el("div", null, [
-        el("div", { class: "hero-figure" }, [el("span", { class: "num", text: "—" }), el("span", { class: "of", text: "sin evaluar" })]),
-        el("p", { text: "Ningún control se ha podido evaluar (sin privilegios, con error o no aplicables): no hay puntuación." + (S.info && !S.info.is_admin ? " Ejecuta bastion ui con privilegios." : "") })
-      ]) : el("div", null, [
-        el("div", { class: "hero-figure" }, [
-          el("span", { class: "num", text: String(sc.value) }), el("span", { class: "of", text: "/ 100" }),
-          el("span", { class: "grade", text: sc.grade, style: "color:" + color, title: "Calificación " + sc.grade })
-        ]),
-        el("div", { class: "meter", role: "img", "aria-label": "Puntuación " + sc.value + " de 100" }, [el("i", { style: "width:" + sc.value + "%;background:" + color })]),
-        el("p", null, ["Postura " + scoreWord(sc.value) + " según el perfil " + (r.profile ? r.profile.id : "") + "." + (sc.partial ? " Parcial: hay controles sin evaluar o con error. " : " "), deltaEl])
-      ])
-    ]);
-    var unk = (sc.errors || 0) + (sc.skipped || 0);
-    var third = !unk && sc.exceptions ? ["exception", sc.exceptions, "Excepciones", "riesgo aceptado"] :
-      [sc.skipped ? "skipped" : "error", unk, "Sin evaluar", sc.skipped ? "requieren privilegios" : "no se pudieron leer"];
-    var kpis = el("div", { class: "kpis" });
-    [["fail", sc.failed, "Fallidos", "requieren acción"], ["pass", sc.passed, "Superados", "conformes"], third, ["na", sc.na, "No aplican", "fuera de alcance"]].forEach(function (k) {
-      var st = STATUS[k[0]];
-      kpis.appendChild(el("div", { class: "card kpi" }, [
-        el("div", { class: "label" }, [el("span", { text: st.icon, style: "color:" + st.color + ";font-weight:700" }), k[2]]),
-        el("div", { class: "value", text: String(k[1]) }), el("div", { class: "sub", text: k[3] })
-      ]));
-    });
-    app.appendChild(el("div", { class: "hero-row" }, [hero, kpis]));
 
-    // Controles que han empeorado o se han corregido desde el escaneo anterior.
+    // Controles que han empeorado o se han corregido desde la ronda anterior.
     var ch = r.changes;
     if (ch && ((ch.regressions || []).length || (ch.fixed || []).length)) {
       var chList = el("ol", { class: "prio" });
       (ch.regressions || []).forEach(function (c) {
         chList.appendChild(el("li", null, [sevBadge(c.severity),
           el("div", null, [el("span", { class: "t", text: c.title }), el("span", { class: "id", text: c.id })]),
-          el("div", { class: "d", style: "color:var(--critical)", text: "Ha empeorado: antes se superaba y ahora falla." })]));
+          el("div", { class: "d", style: "color:var(--critical)", text: "Brecha nueva: antes estaba en pie y ahora falla." })]));
       });
       (ch.fixed || []).slice(0, 8).forEach(function (c) {
         chList.appendChild(el("li", null, [statusBadge("pass"),
           el("div", null, [el("span", { class: "t", text: c.title }), el("span", { class: "id", text: c.id })]),
-          el("div", { class: "d", text: "Corregido desde el escaneo anterior." })]));
+          el("div", { class: "d", text: "Reparada desde la ronda anterior." })]));
       });
-      app.appendChild(el("section", null, [card("Cambios desde el " + fmtDate(ch.since) + " · " + (ch.regressions || []).length + " empeorados, " +
-        (ch.fixed || []).length + " corregidos", [chList])]));
+      app.appendChild(el("section", null, [card("Desde la ronda del " + fmtDate(ch.since) + " · " + plural((ch.regressions || []).length, "brecha nueva", "brechas nuevas") + ", " +
+        plural((ch.fixed || []).length, "reparada", "reparadas"), [chList])]));
     }
 
-    // Tendencia + corrección automática
-    app.appendChild(el("section", { class: "wide-left" }, [trendCard(), autofixCard(results)]));
+    app.appendChild(el("section", { class: "wide-left" }, [rondasCard(), repairCard(results)]));
 
-    // Prioridades + severidad/categorías
     var failed = results.filter(function (x) { return x.status === "fail"; });
     var prio = el("ol", { class: "prio" });
-    failed.slice().sort(function (a, b) {
-      return (SEV[a.rule.severity].rank - SEV[b.rule.severity].rank) ||
-        ((WAVE_OF[a.rule.remediation.breaking_risk] || 1) - (WAVE_OF[b.rule.remediation.breaking_risk] || 1));
-    }).slice(0, 7).forEach(function (x) {
+    failed.slice().sort(byPriority).slice(0, 7).forEach(function (x) {
       var rem = x.rule.remediation || {};
       prio.appendChild(el("li", null, [sevBadge(x.rule.severity),
         el("div", null, [el("span", { class: "t", text: x.rule.title }), el("span", { class: "id", text: x.rule.id })]),
-        el("div", { class: "d" }, [rem.summary || "", rem.actions && rem.actions.length ? el("span", { class: "tag", text: "auto · ola " + (WAVE_OF[rem.breaking_risk] || 1) }) : null])
+        el("div", { class: "d" }, [rem.summary || "", isAuto(x) ? el("span", { class: "tag", text: isRemote(x) ? "auto · remoto" : "auto · ola " + waveOf(x) }) : null])
       ]));
     });
-    var prioCard = card("Empieza por aquí", [failed.length ? prio : el("p", { class: "empty", text: "No hay controles fallidos. ¡Buen trabajo!" })],
-      failed.length > 7 ? el("a", { href: "#controles", text: "ver los " + failed.length + " →" }) : null);
+    var prioCard = card("Empieza por aquí", [failed.length ? prio : el("p", { class: "empty", text: "Ninguna brecha. La muralla está entera." })],
+      failed.length > 7 ? el("a", { href: "#controles", text: "ver las " + failed.length + " →" }) : null);
 
     var sevWrap = el("div");
     var maxF = 1;
@@ -612,85 +807,68 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
       var c = sc.by_severity[s]; if (!c || !(c.passed + c.failed)) return;
       sevWrap.appendChild(el("div", { class: "sev-row" }, [sevBadge(s),
         c.failed ? el("div", { class: "sev-bar" }, [el("i", { style: "width:" + Math.max(4, c.failed / maxF * 100) + "%;background:" + SEV[s].color })]) :
-          el("span", { class: "ok-mark" }, [el("span", { text: "✓" }), "Todos conformes"]),
+          el("span", { class: "ok-mark" }, [el("span", { text: "✓" }), "Todo en pie"]),
         el("span", { class: "count", text: c.failed + " / " + (c.passed + c.failed) })]));
     });
-    var cats = el("div");
-    (sc.by_category || []).filter(function (c) { return c.passed + c.failed > 0; }).slice(0, 8).forEach(function (c) {
-      cats.appendChild(el("div", { class: "cat-row" }, [
-        el("div", null, [el("div", { text: c.name }), el("div", { class: "n", text: c.passed + " de " + (c.passed + c.failed) + " conformes" })]),
-        el("div", { class: "meter" }, [el("i", { style: "width:" + c.value + "%;background:" + scoreColor(c.value) })]),
-        el("span", { class: "v", text: String(c.value) })]));
-    });
-    app.appendChild(el("section", { class: "two" }, [prioCard,
-      el("div", { class: "card" }, [el("h2", { text: "Fallidos por severidad" }), sevWrap,
-        el("h2", { text: "Categorías más débiles", style: "margin-top:22px" }), cats])]));
+    var kp = el("p", { class: "note", style: "margin-top:16px", text: sc.passed + " controles en pie · " + sc.failed + " brechas" +
+      (sc.exceptions ? " · " + plural(sc.exceptions, "excepción", "excepciones") : "") + ((sc.errors || 0) + (sc.skipped || 0) ? " · " + ((sc.errors || 0) + (sc.skipped || 0)) + " sin revisar" : "") +
+      " · " + sc.na + " no aplican" });
+    app.appendChild(el("section", { class: "two" }, [prioCard, el("div", { class: "card" }, [el("h2", { text: "Brechas por severidad" }), sevWrap, kp])]));
   }
 
-  function trendCard() {
-    var pts = S.reports.filter(function (m) { return scored(m.score); }).slice(-30); // sin los escaneos sin puntuación
+  function rondasCard() {
+    var pts = S.reports.filter(function (m) { return scored(m.score); }).slice(-24); // sin las rondas sin puntuación
     var body;
     if (pts.length < 2) {
-      body = el("p", { class: "empty", text: "La tendencia aparece a partir del segundo escaneo. Vuelve a escanear después de aplicar cambios para ver cómo mejora la postura." });
+      body = el("p", { class: "empty", text: "La historia de la muralla aparece a partir de la segunda ronda. Vuelve a hacerla después de reparar para ver cómo sube." });
     } else {
-      var W = 640, H = 210, L = 34, R = 14, T = 12, B = 26;
-      var x = function (i) { return L + (pts.length === 1 ? 0 : i * (W - L - R) / (pts.length - 1)); };
-      var y = function (v) { return T + (100 - v) * (H - T - B) / 100; };
-      var g = svg("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Evolución de la puntuación en los últimos " + pts.length + " escaneos" });
-      [0, 50, 80, 100].forEach(function (v) {
-        g.appendChild(svg("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), style: "stroke:var(--hair);stroke-width:1" + (v === 80 ? ";stroke-dasharray:4 4;stroke:var(--axis)" : "") }));
-        var t = svg("text", { x: L - 8, y: y(v) + 4, "text-anchor": "end", style: "fill:var(--muted);font-size:11px" }); t.textContent = String(v); g.appendChild(t);
-      });
-      var line = pts.map(function (p, i) { return x(i).toFixed(1) + "," + y(p.score.value).toFixed(1); }).join(" ");
-      g.appendChild(svg("polygon", { points: x(0).toFixed(1) + "," + y(0) + " " + line + " " + x(pts.length - 1).toFixed(1) + "," + y(0), style: "fill:var(--accent);opacity:.10" }));
-      g.appendChild(svg("polyline", { points: line, style: "fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round" }));
-      pts.forEach(function (p, i) {
+      var bars = el("div", { class: "rondas", role: "group", "aria-label": "Puntuación de las últimas " + pts.length + " rondas" });
+      pts.forEach(function (p) {
         var cur = p.id === S.reportId;
-        var c = svg("circle", { class: "pt", cx: x(i), cy: y(p.score.value), r: cur ? 6 : 4,
-          style: "fill:" + scoreColor(p.score.value) + ";stroke:var(--surface);stroke-width:2", tabindex: "0" });
-        var tt = svg("title"); tt.textContent = fmtDate(p.finished_at) + " · " + p.score.value + "/100 " + p.score.grade + (cur ? " (en pantalla)" : "");
-        c.appendChild(tt);
-        c.addEventListener("click", function () { openReport(p.id); });
-        c.addEventListener("keydown", function (e) { if (e.key === "Enter") openReport(p.id); });
-        g.appendChild(c);
+        bars.appendChild(el("button", { type: "button", class: "ronda stone" + (cur ? " cur" : ""), style: "height:" + Math.max(6, Math.round(130 * p.score.value / 100)) + "px",
+          title: fmtDate(p.finished_at) + " · " + p.score.value + " % " + p.score.grade + (cur ? " (en pantalla)" : ""),
+          "aria-label": "Ronda del " + fmtDate(p.finished_at) + ": " + p.score.value + " %", onclick: function () { openReport(p.id); } }));
       });
       var first = pts[0], last = pts[pts.length - 1], diff = last.score.value - first.score.value;
-      body = el("div", { class: "trend" }, [g, el("div", { class: "trend-foot" }, [el("span", { text: fmtDate(first.finished_at, true) }),
-        el("span", { text: (diff >= 0 ? "+" : "") + diff + " puntos en " + pts.length + " escaneos" }), el("span", { text: fmtDate(last.finished_at, true) })])]);
+      var reg = S.report.changes ? (S.report.changes.regressions || []).length : 0;
+      body = el("div", null, [bars, el("div", { class: "trend-foot" }, [el("span", { text: fmtDate(first.finished_at, true) + " · " + first.score.value + " %" }),
+        el("span", { text: fmtDate(last.finished_at, true) + " · " + last.score.value + " %" })]),
+        el("p", { class: "lead" }, [el("strong", { text: (diff >= 0 ? "+" : "") + diff + " en " + pts.length + " rondas. ", style: "color:" + (diff >= 0 ? "var(--good-text)" : "var(--critical)") }),
+          S.report.changes ? (reg ? plural(reg, "brecha nueva", "brechas nuevas") + " desde la ronda anterior: algo ha cambiado en el equipo." : "Ninguna brecha nueva desde la ronda anterior.") :
+            "Cada punto es una ronda: púlsalo para verla."])]);
     }
-    return card("Tendencia", [body], el("a", { href: "#historial", text: "historial →" }));
+    return card("Rondas", [body], el("a", { href: "#historial", text: "todas →" }));
   }
 
-  function autofixCard(results) {
+  function repairCard(results) {
     var failed = results.filter(function (x) { return x.status === "fail"; });
-    var auto = failed.filter(function (x) { return x.rule.remediation && x.rule.remediation.actions && x.rule.remediation.actions.length; });
+    var auto = failed.filter(isAuto);
     var byWave = { 1: 0, 2: 0, 3: 0 }, remote = 0;
-    auto.forEach(function (x) {
-      if (x.rule.remediation.safety === "remote-access") remote++;
-      else byWave[WAVE_OF[x.rule.remediation.breaking_risk] || 1]++;
-    });
+    auto.forEach(function (x) { if (isRemote(x)) remote++; else byWave[waveOf(x)]++; });
     var max = Math.max(1, byWave[1], byWave[2], byWave[3], remote);
     var rows = el("div", { class: "waves" });
-    [["Ola 1", byWave[1], "var(--good)"], ["Ola 2", byWave[2], "var(--warning)"], ["Ola 3", byWave[3], "var(--critical)"], ["Remoto", remote, "var(--accent)"]].forEach(function (w) {
+    [["Ola 1", byWave[1], "var(--good)"], ["Ola 2", byWave[2], "var(--warning)"], ["Ola 3", byWave[3], "var(--critical)"], ["Remoto", remote, "var(--moon)"]].forEach(function (w) {
       rows.appendChild(el("div", { class: "wave-row" }, [el("span", { text: w[0] }),
         el("div", { class: "meter" }, [el("i", { style: "width:" + (w[1] / max * 100) + "%;background:" + w[2] })]), el("span", { class: "n", text: String(w[1]) })]));
     });
     var children = [
-      el("div", { class: "fix-big" }, [String(auto.length), el("small", { text: " de " + failed.length + " fallidos se corrigen solos" })]), rows,
+      el("div", { class: "fix-big" }, [String(auto.length), el("small", { text: " de " + plural(failed.length, "brecha la reparo yo solo", "brechas las reparo yo solo") })]), rows,
       el("p", { class: "note", text: "Ola 1: riesgo de rotura nulo o bajo. Ola 2: medio. Ola 3: alto. Remoto: SSH/RDP, con dead-man switch." })
     ];
     if (byWave[1]) {
-      children.push(cmdBox("bastion harden --apply"));
-      children.push(el("p", { class: "note", text: "En una terminal " + (S.info.family === "windows" ? "de administrador" : "con sudo") + ". Simula primero sin --apply; bastion rollback lo deshace." }));
+      children.push(cmdBox(CLI + " harden --apply"));
+      children.push(el("div", { class: "checks" }, [el("span", { text: "✓ Instantánea antes de tocar nada" }), el("span", { text: "✓ Verificación tras cada cambio" }),
+        el("span", { text: "✓ Si algo falla, lo deshago solo (" + CLI + " rollback)" })]));
+      children.push(el("p", { class: "note", text: "Desde " + sudoWhere() + ". Sin --apply solo simula." }));
     }
-    return card("Corrección automática", children, el("a", { href: "#plan", text: "ver el plan →" }));
+    return card("Reparar ahora", children, el("a", { href: "#plan", text: "ver el plan →" }));
   }
 
-  // ---- Controles (informe completo incrustado) ----
+  // ---- Brechas (informe completo incrustado) ----
   function renderControls() {
     var src = "/r/" + encodeURIComponent(S.reportId) + ".html";
     app.appendChild(el("section", null, [
-      el("div", { class: "meta", style: "margin-bottom:10px" }, [el("span", { text: "Controles del escaneo del " + fmtDate(S.report.finished_at) + ", con evidencias y remediación." }),
+      el("div", { class: "meta", style: "margin-bottom:10px" }, [el("span", { text: "Todos los controles de la ronda del " + fmtDate(S.report.finished_at) + ", con evidencias y cómo repararlos." }),
         el("a", { href: src, target: "_blank", rel: "noopener noreferrer", text: "Informe completo en una pestaña nueva ↗" })]),
       el("iframe", { class: "frame", src: src + "?view=controles", title: "Controles evaluados" })
     ]));
@@ -704,13 +882,13 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
         onclick: function () { if (!S.plan.loading) loadPlan(w[0]); } }));
     });
     var head = el("div", { style: "display:flex;flex-wrap:wrap;gap:12px;align-items:center" }, [seg,
-      el("span", { class: "note", style: "margin:0", text: "Simulación: calcular el plan no cambia nada en el equipo." })]);
+      el("span", { class: "note", style: "margin:0", text: "Es una simulación: calcular el plan no cambia nada en el equipo." })]);
     var body = [head];
     if (S.plan.loading || S.plan.items === null) {
-      body.push(loadingBox("Calculando el plan: se evalúan los controles y se lee el estado actual…"));
+      body.push(loadingBox("Calculando el plan: reviso cada brecha y leo el estado actual…"));
     } else {
       var items = S.plan.items, planned = items.filter(function (i) { return i.status === "planned"; });
-      if (!items.length) body.push(el("p", { class: "empty", text: "No hay controles fallidos: nada que corregir." }));
+      if (!items.length) body.push(el("p", { class: "empty", text: "No hay brechas: nada que reparar." }));
       GROUPS.forEach(function (g) {
         var sel = items.filter(function (i) { return i.status === g[0]; });
         if (!sel.length) return;
@@ -726,40 +904,103 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
         body.push(grp);
       });
       if (planned.length) {
-        var cmd = "bastion harden --apply" + (S.plan.wave > 1 ? " --wave " + S.plan.wave : "");
+        var cmd = CLI + " harden --apply" + (S.plan.wave > 1 ? " --wave " + S.plan.wave : "");
         body.push(el("div", { class: "plan-group" }, [el("h3", { text: "Aplicar" }), cmdBox(cmd),
-          el("p", { class: "note", text: "Aplicar se hace desde la terminal " + (S.info.family === "windows" ? "(PowerShell como administrador)" : "(sudo)") +
-            ": Bastion pide confirmación, guarda una instantánea, verifica cada control y revierte el que falle. Para deshacerlo todo: bastion rollback." })]));
+          el("p", { class: "note", text: "Se aplica desde " + sudoWhere() + ": te pido confirmación, guardo una instantánea, verifico cada control y revierto el que falle. Para deshacerlo todo: " + CLI + " rollback." })]));
       }
     }
-    app.appendChild(el("section", null, [card("Plan de hardening", body,
-      S.plan.items ? el("span", { text: plural(S.plan.items.filter(function (i) { return i.status === "planned"; }).length, "cambio", "cambios") + " en la ola " + S.plan.wave }) : null)]));
+    app.appendChild(el("section", null, [card("Plan de reparación", body,
+      S.plan.items ? el("span", { text: plural(S.plan.items.filter(function (i) { return i.status === "planned"; }).length, "reparación", "reparaciones") + " en la ola " + S.plan.wave }) : null)]));
   }
 
-  // ---- Superficie de ataque ----
+  // ---- Puertas (superficie de ataque) ----
+  var ACCESS_RANK = { open: 0, "": 0, limited: 1, filtered: 2 };
+  // gatesOf agrupa los puertos de la red por programa y servicio: cada grupo es una puerta.
+  function gatesOf(sf) {
+    var byKey = {}, list = [];
+    (sf.ports || []).forEach(function (p) {
+      if (p.scope !== "network" || p.ephemeral) return;
+      var key = (p.process || "?") + "|" + (p.known || "");
+      var g = byKey[key];
+      if (!g) { g = byKey[key] = { process: p.process || "?", known: p.known || "", ports: [], services: [], access: 2, limit: "", sample: p, findings: [] }; list.push(g); }
+      var pp = p.port + "/" + p.proto;
+      if (g.ports.indexOf(pp) < 0) g.ports.push(pp);
+      (p.services || []).forEach(function (s) { if (g.services.indexOf(s) < 0) g.services.push(s); });
+      var a = sf.firewall ? (p.firewall || "") : "";
+      var rk = ACCESS_RANK[a] === undefined ? 0 : ACCESS_RANK[a];
+      if (rk < g.access) { g.access = rk; g.sample = p; }
+      if (a === "limited" && p.firewall_limit && !g.limit) g.limit = p.firewall_limit;
+    });
+    (sf.findings || []).forEach(function (f) {
+      var subj = String(f.subject || "").split(/,\s*/);
+      list.forEach(function (g) { if (g.ports.some(function (pp) { return subj.indexOf(pp) >= 0; })) g.findings.push(f); });
+    });
+    list.forEach(function (g) {
+      g.findings.sort(function (a, b) { return (SEV[a.severity] || SEV.info).rank - (SEV[b.severity] || SEV.info).rank; });
+      g.sev = g.findings.length ? g.findings[0].severity : "";
+    });
+    list.sort(function (a, b) {
+      var sa = a.sev ? SEV[a.sev].rank : 9, sb = b.sev ? SEV[b.sev].rank : 9;
+      return (a.access - b.access) || (sa - sb) || (parseInt(a.ports[0], 10) - parseInt(b.ports[0], 10));
+    });
+    return list;
+  }
+
+  function gateCard(g, small) {
+    var door = g.access === 0 ? "door-open" : g.access === 1 ? "door-bars" : "door-shut";
+    var cls = "gate" + (g.sev === "critical" ? " crit" : g.sev === "high" ? " high" : "");
+    var stateText = g.access === 0 ? "Abierta a cualquiera" : g.access === 1 ? "Con rastrillo" : "Cerrada por el firewall";
+    var stateColor = g.access === 0 ? (g.sev ? "var(--critical)" : "var(--serious)") : g.access === 1 ? "var(--warning)" : "var(--good-text)";
+    var ports = g.ports.length > 3 ? g.ports.slice(0, 2).join(" · ") + " +" + (g.ports.length - 2) : g.ports.join(" · ");
+    var kids = [
+      el("div", { class: "top-row" }, [el("div", { class: "arch stone", "aria-hidden": "true" }, [el("span", { class: door })]),
+        el("div", { style: "display:flex;flex-direction:column;gap:2px;min-width:0" }, [
+          el("span", { class: "port", text: ports, title: g.ports.join(", ") }),
+          el("span", { class: "svc", text: g.known || g.process }),
+          el("span", { class: "proc", text: g.process + (g.services.length ? " · " + g.services.join(", ") : "") })])]),
+      el("div", { style: "display:flex;flex-wrap:wrap;gap:8px;align-items:center" }, [
+        el("span", { class: "badge" }, [dot(stateColor), stateText]), g.sev ? sevBadge(g.sev) : null]),
+      g.access === 1 && g.limit ? el("div", { class: "sub", text: "Solo desde: " + g.limit }) : null,
+      originLine(g.sample)
+    ];
+    if (!small) {
+      if (g.findings.length) {
+        kids.push(el("p", { class: "why", text: g.findings[0].detail }));
+        kids.push(el("p", { class: "fix", text: "→ " + g.findings[0].fix }));
+      } else if (g.access === 0) {
+        kids.push(el("p", { class: "why", text: "Sin hallazgos de riesgo conocidos. Si no la usas desde fuera, ciérrala o limítala a tu red." }));
+      }
+    }
+    return el("article", { class: cls }, kids);
+  }
+
   function renderSurface() {
     var sf = S.surface;
-    var again = el("button", { class: "btn copy", type: "button", text: "Volver a analizar", disabled: S.surfaceLoading ? "disabled" : null, onclick: function () { loadSurface(); } });
+    var again = el("button", { class: "btn copy", type: "button", text: "Volver a revisar", disabled: S.surfaceLoading ? "disabled" : null, onclick: function () { loadSurface(); } });
     if (!sf) {
-      app.appendChild(el("section", null, [card("Superficie de ataque", [S.surfaceLoading ? loadingBox("Analizando puertos, recursos compartidos y administradores…") :
-        el("p", { class: "empty", text: "No se pudo analizar la superficie." })], again)]));
+      app.appendChild(el("section", null, [card("Puertas", [S.surfaceLoading ? loadingBox("Revisando las puertas: puertos, firewall, recursos compartidos y administradores…") :
+        el("p", { class: "empty", text: "No he podido revisar las puertas." })], again)]));
       return;
     }
-    var color = scoreColor(sf.score), sev = { critical: 0, high: 0, medium: 0, low: 0 };
-    sf.findings.forEach(function (f) { if (f.severity in sev) sev[f.severity]++; });
-    var hero = el("div", { class: "card hero" }, [el("h2", { text: "Exposición en la red" }), el("div", null, [
-      el("div", { class: "hero-figure" }, [el("span", { class: "num", text: String(sf.score) }), el("span", { class: "of", text: "/ 100" }),
-        el("span", { class: "grade", text: sf.grade, style: "color:" + color })]),
-      el("div", { class: "meter" }, [el("i", { style: "width:" + sf.score + "%;background:" + color })]),
-      el("p", { text: sf.exposed + " servicios escuchan en la red" + (sf.firewall ? ": " + (sf.reachable - (sf.limited || 0)) + " abiertos a cualquiera, " +
-        (sf.limited || 0) + " limitados a ciertas redes y " + (sf.exposed - sf.reachable) + " filtrados por el firewall" : "") +
-        ". Cada hallazgo resta según su severidad (crítico 30, alto 15, medio 7, bajo 3)." + (sf.firewall ? "" : " No se ha podido evaluar el firewall.") })])]);
-    var kpis = el("div", { class: "kpis" });
-    [["critical", "Críticos"], ["high", "Altos"], ["medium", "Medios"], ["low", "Bajos"]].forEach(function (k) {
-      kpis.appendChild(el("div", { class: "card kpi" }, [el("div", { class: "label" }, [dot(SEV[k[0]].color), k[1]]),
-        el("div", { class: "value", text: String(sev[k[0]]) }), el("div", { class: "sub", text: "hallazgos" })]));
-    });
-    app.appendChild(el("div", { class: "hero-row" }, [hero, kpis]));
+    var gates = gatesOf(sf);
+    var open = gates.filter(function (g) { return g.access === 0; }), limited = gates.filter(function (g) { return g.access === 1; }),
+      shut = gates.filter(function (g) { return g.access === 2; });
+    var risky = open.filter(function (g) { return g.sev; });
+    var worst = (sf.findings || []).slice().sort(function (a, b) { return (SEV[a.severity] || SEV.info).rank - (SEV[b.severity] || SEV.info).rank; })[0];
+    var voice = "Tienes " + plural(gates.length, "puerta", "puertas") + " que dan a la red: " + open.length + " abiertas a cualquiera, " +
+      limited.length + " con rastrillo (solo ciertas redes) y " + shut.length + " cerradas por el firewall." +
+      (worst ? " La que yo atendería primero: «" + worst.title + "»." : " Ninguna con un riesgo conocido.") +
+      (sf.firewall ? "" : " No he podido leer el firewall, así que doy por abiertas todas.");
+    var color = scoreColor(sf.score);
+    app.appendChild(el("div", { class: "card wall-card" }, [el("div", { class: "wall-head" }, [
+      el("div", { class: "left" }, [el("h2", { text: "Exposición en la red", style: "margin:0 0 6px" }),
+        el("div", { class: "figure" }, [el("span", { class: "num", text: String(sf.score) }), el("span", { class: "pct", text: "/ 100" }),
+          el("span", { class: "grade", text: sf.grade, style: "color:" + color })]),
+        el("p", { class: "voice", text: voice }),
+        el("p", { class: "note", text: "Cada hallazgo resta según su severidad (crítico 30, alto 15, medio 7, bajo 3)." })]),
+      el("div", { class: "legend" }, [el("span", null, [el("i", { class: "door-open" }), "Abierta a cualquiera"]),
+        el("span", null, [el("i", { class: "door-bars" }), "Con rastrillo"]), el("span", null, [el("i", { class: "door-shut" }), "Cerrada"]), again])
+    ])]));
 
     // Cambios desde el último análisis guardado (bastion surface --save).
     if (sf.changes) {
@@ -771,18 +1012,36 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
       var chBody = chItems.length ? el("div", null, chItems.map(function (c) {
         var k = KIND[c.kind] || ["·", "var(--muted)", ""];
         return el("div", { class: "item" }, [el("div", { class: "h" }, [el("b", { text: k[0], style: "color:" + k[1] }), el("span", { class: "t", text: k[2] + c.title })])]);
-      })) : el("p", { class: "empty", text: "Sin cambios en la exposición." });
-      var chTitle = "Cambios desde el " + fmtDate(sf.changes.since) + (sf.changes.score_before !== sf.score ? " · exposición " + sf.changes.score_before + " → " + sf.score : "");
+      })) : el("p", { class: "empty", text: "Ninguna puerta ha cambiado." });
+      var chTitle = "Desde la revisión del " + fmtDate(sf.changes.since) + (sf.changes.score_before !== sf.score ? " · exposición " + sf.changes.score_before + " → " + sf.score : "");
       app.appendChild(el("section", null, [card(chTitle, [chBody])]));
     }
+
+    if (open.length) {
+      app.appendChild(el("section", null, [el("h2", { style: "font-size:12.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:24px 0 12px",
+        text: "Abiertas a cualquiera (" + open.length + ")" + (risky.length ? " · " + plural(risky.length, "con riesgo", "con riesgo") : "") }),
+        el("div", { class: "gates" }, open.map(function (g) { return gateCard(g, false); }))]));
+    }
+    if (limited.length) {
+      app.appendChild(el("section", null, [el("h2", { style: "font-size:12.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:24px 0 12px",
+        text: "Con rastrillo: solo desde ciertas redes (" + limited.length + ")" }),
+        el("div", { class: "gates small" }, limited.map(function (g) { return gateCard(g, true); }))]));
+    }
+    if (shut.length) {
+      app.appendChild(el("section", null, [el("h2", { style: "font-size:12.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:24px 0 12px",
+        text: "Cerradas por el firewall (" + shut.length + ")" }),
+        el("div", { class: "gates small" }, shut.map(function (g) { return gateCard(g, true); }))]));
+    }
+    if (!gates.length) app.appendChild(el("section", null, [card("Puertas", [el("p", { class: "empty", text: "Ningún servicio escucha en la red: no hay puertas." })])]));
 
     var finds = sf.findings.length ? el("div", null, sf.findings.map(function (f) {
       return el("div", { class: "item" }, [
         el("div", { class: "h" }, [sevBadge(f.severity), el("span", { class: "t", text: f.title }), el("span", { class: "rid", text: f.subject })]),
         el("p", { text: f.detail }), el("p", { style: "color:var(--good-text)", text: "→ " + f.fix })]);
     })) : el("p", { class: "empty", text: "Ningún servicio de riesgo expuesto ni recurso compartido abierto a todos." });
-    app.appendChild(el("section", null, [card("Hallazgos", [finds], again)]));
+    app.appendChild(el("section", null, [card("Hallazgos", [finds])]));
 
+    // La tabla completa, para quien necesite cada dirección y la regla que lo decide.
     var ports = sf.ports || [];
     var hidden = ports.filter(function (p) { return p.scope !== "network" || p.ephemeral; }).length;
     var rows = ports.filter(function (p) { return S.showLocal || (p.scope === "network" && !p.ephemeral); });
@@ -807,7 +1066,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     tbl.appendChild(tb);
     var toggle = el("button", { class: "btn copy", type: "button", text: S.showLocal ? "Solo los de la red" : "Mostrar también locales y de cliente (" + hidden + ")",
       onclick: function () { S.showLocal = !S.showLocal; render(); } });
-    var fwNote = "Sin evaluar el firewall, cada puerto en la red se muestra como accesible, aunque puede estar filtrado.";
+    var fwNote = "Sin leer el firewall, cada puerto en la red se muestra como accesible, aunque puede estar filtrado.";
     if (sf.firewall && sf.firewall.source && sf.firewall.source.indexOf("tables") >= 0) {
       fwNote = "Firewall de Linux (" + sf.firewall.source + "): " + (sf.firewall.input_policy === "drop" ? "entrada bloqueada por defecto" :
         sf.firewall.input_policy === "accept" ? "entrada permitida por defecto" : "sin reglas de entrada") + " · " + sf.firewall.inbound_rules + " reglas de entrada.";
@@ -816,9 +1075,11 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
         return "perfil " + p.name + (p.enabled ? (p.block_inbound ? " activo, entrada bloqueada por defecto" : " activo, entrada permitida por defecto") : " desactivado");
       }).join(" · ") + " · " + sf.firewall.inbound_rules + " reglas de entrada.";
     }
-    app.appendChild(el("section", null, [card(S.showLocal ? "Puertos a la escucha" : "Servicios en la red",
-      [rows.length ? el("div", { class: "table-wrap" }, [tbl]) : el("p", { class: "empty", text: "Ningún servicio escucha en la red." }),
-        el("p", { class: "note", text: fwNote })], toggle)]));
+    var det = el("details", { class: "more-table" }, [el("summary", { text: "Ver la tabla completa de puertos" }),
+      el("div", { style: "margin:12px 0 8px" }, [toggle]),
+      rows.length ? el("div", { class: "table-wrap" }, [tbl]) : el("p", { class: "empty", text: "Ningún servicio escucha en la red." })]);
+    if (S.showLocal) det.setAttribute("open", "");
+    app.appendChild(el("section", null, [card("Puertos a la escucha", [el("p", { class: "note", style: "margin:0", text: fwNote }), det])]));
 
     var shares = sf.shares.length ? el("ul", { class: "prio" }, sf.shares.map(function (sh) {
       var acc = (sh.access || []).map(function (a) { return a.account + ": " + a.right + (a.deny ? " (denegado)" : ""); }).concat(sh.options || []);
@@ -828,11 +1089,10 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     var admins = sf.admins.length ? el("ul", { class: "prio" }, sf.admins.map(function (a) {
       return el("li", null, [el("span", { class: "tag", text: a.source || a.kind || "admin" }), el("span", { class: "t", text: a.name })]);
     })) : el("p", { class: "empty", text: "No se pudieron leer los administradores." });
-    app.appendChild(el("section", { class: "two" }, [card("Recursos compartidos", [shares]), card("Administradores", [admins])]));
+    app.appendChild(el("section", { class: "two" }, [card("Recursos compartidos", [shares]), card("Quién tiene las llaves (administradores)", [admins])]));
     (sf.notes || []).forEach(function (n) { app.appendChild(el("div", { class: "banner" }, [el("span", { class: "ico", text: "!" }), el("span", { text: n })])); });
   }
 
-  // ---- Historial ----
   // De dónde viene el ejecutable de un puerto: firma (Windows) o paquete (Linux).
   function originLine(p) {
     var t = { valid: "firmado por " + (p.signer || "?"), unsigned: "sin firma digital", invalid: "firma no válida",
@@ -843,58 +1103,59 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     return el("div", { class: "sub", text: t, title: p.path || "", style: color ? "color:" + color : null });
   }
 
+  // ---- Rondas (historial) ----
   function scheduleCard() {
     var x = S.schedule;
-    if (x === null) return card("Análisis programado", [loadingBox("Consultando el planificador…")]);
+    if (x === null) return card("Ronda diaria", [loadingBox("Consultando el planificador…")]);
     var st = x.status || {}, body = [];
     if (x.unsupported) {
       body.push(el("p", { class: "empty", text: "Este sistema no tiene un planificador compatible." }));
     } else if (!st.mechanism && st.detail) {
       body.push(el("p", { style: "color:var(--critical)", text: st.detail }));
     } else if (!st.mechanism) {
-      body.push(el("p", { text: "No hay análisis programado. Con uno diario, el historial se llena solo y Bastion avisa de los controles que empeoran y de los puertos que se abren." }));
-      body.push(cmdBox("bastion schedule enable"));
+      body.push(el("p", { text: "No hay ronda diaria. Con ella, la historia de la muralla se llena sola y te aviso cuando aparece una brecha nueva o se abre una puerta." }));
+      body.push(cmdBox(CLI + " schedule enable"));
     } else {
-      body.push(el("p", null, [el("strong", { text: st.enabled ? "Diario a las " + st.at : "Programado pero desactivado" }),
-        " · " + st.mechanism + (st.next_run ? " · próxima ejecución: " + st.next_run : "")]));
+      body.push(el("p", null, [el("strong", { text: st.enabled ? "Ronda diaria a las " + st.at : "Programada pero desactivada" }),
+        " · " + st.mechanism + (st.next_run ? " · próxima: " + st.next_run : "")]));
       if (st.detail) body.push(el("p", { class: "note", text: st.detail }));
       if (x.notify) body.push(el("p", { class: "note", text: "Avisos: " + x.notify + "." }));
     }
     var runs = (x.runs || []).slice().reverse();
     if (runs.length) {
-      var t = el("table", null, [el("thead", null, [el("tr", null, ["Ejecución", "Postura", "Exposición", "Resultado"].map(function (h, i) {
+      var t = el("table", null, [el("thead", null, [el("tr", null, ["Ronda", "Muralla", "Exposición", "Resultado"].map(function (h, i) {
         return el("th", { text: h, style: i === 1 || i === 2 ? "text-align:right" : null });
       }))])]);
       var b = el("tbody");
       runs.forEach(function (r) {
         var worse = [];
-        if (r.regressions) worse.push(plural(r.regressions, "control empeorado", "controles empeorados"));
-        if (r.new_exposure) worse.push(plural(r.new_exposure, "cambio que aumenta la exposición", "cambios que aumentan la exposición"));
+        if (r.regressions) worse.push(plural(r.regressions, "brecha nueva", "brechas nuevas"));
+        if (r.new_exposure) worse.push(plural(r.new_exposure, "puerta más expuesta", "puertas más expuestas"));
         var res = r.errors && r.errors.length ? el("span", { style: "color:var(--critical)", text: "error: " + r.errors.join("; ") }) :
-          worse.length ? el("span", { style: "color:var(--critical)", text: worse.join(", ") }) : el("span", { class: "sub", text: "sin empeorar" });
+          worse.length ? el("span", { style: "color:var(--critical)", text: worse.join(", ") }) : el("span", { class: "sub", text: "sin novedad" });
         if (r.notify_errors && r.notify_errors.length) res = el("span", null, [res, el("div", { class: "sub", text: "aviso no enviado: " + r.notify_errors.join("; ") })]);
-        b.appendChild(el("tr", null, [el("td", { text: fmtDate(r.time) }), el("td", { class: "num", text: r.scan_score + "/100" }),
+        b.appendChild(el("tr", null, [el("td", { text: fmtDate(r.time) }), el("td", { class: "num", text: r.scan_score + " %" }),
           el("td", { class: "num", text: r.surface_score + "/100" }), el("td", null, [res])]));
       });
       t.appendChild(b);
       body.push(el("div", { class: "table-wrap" }, [t]));
     }
-    return card("Análisis programado", body);
+    return card("Ronda diaria", body);
   }
 
   function renderHistory() {
     app.appendChild(el("section", null, [scheduleCard()]));
     var rows = S.reports.slice().reverse();
-    var tbl = el("table", null, [el("thead", null, [el("tr", null, ["Fecha", "Perfil", "Puntuación", "Cambio", "Fallidos", "Sin evaluar", ""].map(function (h, i) {
+    var tbl = el("table", null, [el("thead", null, [el("tr", null, ["Fecha", "Perfil", "Muralla", "Cambio", "Brechas", "Sin revisar", ""].map(function (h, i) {
       return el("th", { text: h, style: i >= 2 && i <= 5 ? "text-align:right" : null });
     }))])]);
     var tb = el("tbody");
     rows.forEach(function (m, i) {
       var prev = rows[i + 1], d = prev && scored(m.score) && scored(prev.score) ? m.score.value - prev.score.value : null;
       tb.appendChild(el("tr", { class: m.id === S.reportId ? "current" : null }, [
-        el("td", null, [el("div", { text: fmtDate(m.finished_at) }), el("div", { class: "sub", text: "Bastion " + m.version })]),
+        el("td", null, [el("div", { text: fmtDate(m.finished_at) }), el("div", { class: "sub", text: BRAND + " " + m.version })]),
         el("td", { text: m.profile_name || m.profile }),
-        el("td", { class: "num" }, scored(m.score) ? [el("strong", { text: m.score.value + " ", style: "color:" + scoreColor(m.score.value) }), m.score.grade] : ["sin evaluar"]),
+        el("td", { class: "num" }, scored(m.score) ? [el("strong", { text: m.score.value + " % ", style: "color:" + scoreColor(m.score.value) }), m.score.grade] : ["sin evaluar"]),
         el("td", { class: "num", text: d === null ? "—" : (d > 0 ? "+" + d : String(d)), style: d > 0 ? "color:var(--good-text)" : d < 0 ? "color:var(--critical)" : null }),
         el("td", { class: "num", text: String(m.score.failed) }),
         el("td", { class: "num", text: String((m.score.skipped || 0) + (m.score.errors || 0)) }),
@@ -903,14 +1164,14 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
       ]));
     });
     tbl.appendChild(tb);
-    app.appendChild(el("section", null, [card("Escaneos", [rows.length ? el("div", { class: "table-wrap" }, [tbl]) : el("p", { class: "empty", text: "Sin escaneos guardados." }),
-      el("p", { class: "note", text: "Se conservan los últimos escaneos en " + S.info.reports_dir + "." })], el("span", { text: plural(rows.length, "escaneo", "escaneos") }))]));
+    app.appendChild(el("section", null, [card("Rondas", [rows.length ? el("div", { class: "table-wrap" }, [tbl]) : el("p", { class: "empty", text: "Todavía no hay rondas guardadas." }),
+      el("p", { class: "note", text: "Guardo las últimas rondas en " + S.info.reports_dir + "." })], el("span", { text: plural(rows.length, "ronda", "rondas") }))]));
 
     var changes;
     if (S.changes === null) changes = loadingBox("Cargando…");
-    else if (!S.changes.length) changes = el("p", { class: "empty", text: "Todavía no se ha aplicado ningún cambio de hardening en este equipo." });
+    else if (!S.changes.length) changes = el("p", { class: "empty", text: "Todavía no he reparado nada en este equipo." });
     else {
-      var t2 = el("table", null, [el("thead", null, [el("tr", null, ["Cambio", "Fecha", "Ola", "Estado", "Verificados", "Fallidos", "Deshechos"].map(function (h, i) {
+      var t2 = el("table", null, [el("thead", null, [el("tr", null, ["Reparación", "Fecha", "Ola", "Estado", "Verificados", "Fallidos", "Deshechos"].map(function (h, i) {
         return el("th", { text: h, style: i >= 4 ? "text-align:right" : null });
       }))])]);
       var b2 = el("tbody");
@@ -921,10 +1182,10 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
           el("td", { class: "num", text: String(c.verified) }), el("td", { class: "num", text: String(c.failed) }), el("td", { class: "num", text: String(c.rolled_back) })]));
       });
       t2.appendChild(b2);
-      changes = el("div", null, [el("div", { class: "table-wrap" }, [t2]), cmdBox("bastion rollback " + S.changes[0].id),
-        el("p", { class: "note", text: "Deshacer un cambio se hace desde la terminal con privilegios (sin ID, deshace el último)." })]);
+      changes = el("div", null, [el("div", { class: "table-wrap" }, [t2]), cmdBox(CLI + " rollback " + S.changes[0].id),
+        el("p", { class: "note", text: "Deshacer se hace desde " + sudoWhere() + " (sin ID, deshace la última)." })]);
     }
-    app.appendChild(el("section", null, [card("Cambios de hardening", [changes])]));
+    app.appendChild(el("section", null, [card("Reparaciones aplicadas", [changes])]));
   }
 
   // ---- Excepciones ----
@@ -933,7 +1194,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     var titles = {};
     (S.report.results || []).forEach(function (x) { titles[x.rule.id] = x.rule.title; });
     if (S.exceptions === null) body = loadingBox("Cargando…");
-    else if (!S.exceptions.length) body = el("p", { class: "empty", text: "No hay excepciones. Úsalas para aceptar de forma documentada un control que falla por un buen motivo." });
+    else if (!S.exceptions.length) body = el("p", { class: "empty", text: "No hay excepciones. Úsalas para aceptar por escrito una brecha que tiene un buen motivo." });
     else {
       var t = el("table", null, [el("thead", null, [el("tr", null, ["Control", "Vigencia", "Responsable", "Equipos", "Motivo"].map(function (h) { return el("th", { text: h }); }))])]);
       var tb = el("tbody");
@@ -948,8 +1209,8 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
       body = el("div", { class: "table-wrap" }, [t]);
     }
     app.appendChild(el("section", null, [card("Excepciones", [body,
-      el("p", { class: "note", style: "margin-top:16px", text: "Se gestionan desde la terminal con privilegios. Cada excepción caduca como mucho al año; al caducar, el control vuelve a contar como fallido." }),
-      cmdBox('bastion exceptions add <ID> --reason "motivo" --expires 90d'), cmdBox("bastion exceptions remove <ID>")])]));
+      el("p", { class: "note", style: "margin-top:16px", text: "Se gestionan desde " + sudoWhere() + ". Cada excepción caduca como mucho al año; al caducar, la brecha vuelve a contar." }),
+      cmdBox(CLI + ' exceptions add <ID> --reason "motivo" --expires 90d'), cmdBox(CLI + " exceptions remove <ID>")])]));
   }
 
   // ---- Arranque ----
@@ -957,18 +1218,18 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
   busy(true);
   Promise.all([api("/api/state"), api("/api/reports")]).then(function (res) {
     S.info = res[0]; S.reports = res[1];
-    document.title = "Bastion · " + S.info.hostname;
+    document.title = BRAND + " · " + S.info.hostname;
     var last = S.reports[S.reports.length - 1];
-    // Sin escaneos recientes (última hora) se escanea al abrir.
+    // Sin rondas recientes (última hora) se hace una al abrir.
     if (!last || Date.now() - new Date(last.finished_at).getTime() > 3600 * 1000) {
-      // Se escanea y se cargan a la vez los datos de la pestaña abierta (el
-      // servidor los sirve en cuanto termina el escaneo).
+      // Se hace la ronda y se cargan a la vez los datos de la pestaña abierta
+      // (el servidor los sirve en cuanto termina).
       busy(false); scan(); route(); return;
     }
     S.latestId = last.id;
     return openReport(last.id).then(function () { route(); });
   }).catch(function (e) {
-    S.error = "No se pudo conectar con Bastion: " + e.message + ". ¿Sigue abierta la terminal con bastion ui?";
+    S.error = "No puedo hablar con " + BRAND + ": " + e.message + ". ¿Sigue abierta la terminal con " + CLI + " ui?";
     render();
   }).then(function () { busy(false); });
 })();
