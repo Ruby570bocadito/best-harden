@@ -21,7 +21,7 @@
 | `adarve rollback [ID] [--yes]` | Deshacer un cambio de hardening (por defecto, el último) |
 | `adarve history` | Cambios de hardening aplicados |
 | `adarve exceptions [list\|add\|remove]` | Aceptar controles fallidos con motivo, responsable y caducidad (ver abajo) |
-| `adarve update [--check] [--force] [--version vX.Y.Z]` | Actualizar Adarve y sus reglas (verificado con SHA-256), o instalar una versión concreta. En Windows pide elevación si hace falta |
+| `adarve update [--check] [--force] [--version vX.Y.Z]` | Actualizar Adarve y sus reglas (con la firma de la release y el SHA-256 verificados; `--insecure` para una release sin firma), o instalar una versión concreta. En Windows pide elevación si hace falta |
 | `adarve init` | Crear directorios y configuración (lo hace el instalador) |
 | `adarve version [--short]` | Versión |
 

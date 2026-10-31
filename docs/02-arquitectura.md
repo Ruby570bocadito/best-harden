@@ -52,7 +52,7 @@ adarve
 │   ├── linux:    sysctl · file · sshd · kmod · systemd · mount · package
 │   └── windows:  registry · secpol · auditpol · service · ps (consultas fijas)
 ├── report ──────────────── consola · JSON (adarve.report/v1) · HTML autocontenido
-├── selfupdate ──────────── releases verificadas con SHA-256, reemplazo atómico
+├── selfupdate ──────────── releases firmadas y verificadas, reemplazo atómico
 └── config ──────────────── rutas, config.yaml, permisos de los directorios
 ```
 

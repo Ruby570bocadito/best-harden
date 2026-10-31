@@ -44,7 +44,7 @@ calcula una puntuación de postura, la mapea a MITRE ATT&CK y te dice qué corre
 | 🌍 **Superficie de ataque** | `adarve surface` lista qué escucha en la red y con qué proceso, evalúa el firewall (Windows, nftables e iptables, que cubren ufw y firewalld) para decir si cada puerto está abierto a cualquiera, limitado o filtrado, y señala los servicios de riesgo expuestos (SMB, RDP, Redis, Docker API…) y los recursos compartidos abiertos a todos. |
 | 🖥️ **Consola local** | `adarve ui` abre un panel en el navegador con la tendencia de la puntuación, el plan de hardening por olas, el historial y las excepciones. Solo en 127.0.0.1 y con token. |
 | ⚙️ **Listo para CI/CD** | Salida JSON estable y `--min-score` para fallar un pipeline de imágenes doradas. |
-| 🔄 **Auto-actualización verificada** | `adarve update` descarga, verifica la suma SHA-256 y se reemplaza. Las reglas viajan dentro del binario. |
+| 🔄 **Auto-actualización firmada** | `adarve update` y los instaladores comprueban la firma de la release y la suma SHA-256 antes de instalar nada. Las reglas viajan dentro del binario. |
 
 ## 🚀 Instalación en una línea
 
@@ -120,7 +120,7 @@ Detalle y estado de cada tarea en la [hoja de ruta](docs/13-hoja-de-ruta.md). La
 
 - **Nada cambia sin pedirlo.** `scan` es de solo lectura y `harden` es una simulación salvo que se use `--apply`. Cada cambio guarda antes el estado previo, se verifica y se revierte si falla.
 - **Sin ejecución arbitraria.** Las reglas son datos declarativos: un paquete de reglas no puede ejecutar comandos. Los comandos del sistema que usan los probes están fijados en el código y se invocan con ruta absoluta.
-- **Descargas verificadas** con SHA-256 en el instalador y en `adarve update`.
+- **Releases firmadas.** El instalador y `adarve update` comprueban la firma de `checksums.txt` con la clave pública que llevan dentro y después la suma SHA-256 del archivo.
 - **Informe blindado.** Los datos leídos del sistema nunca se interpretan como HTML y la página tiene una CSP con nonce.
 
 Más en [docs/08-seguridad-de-la-plataforma.md](docs/08-seguridad-de-la-plataforma.md). Para reportar vulnerabilidades: [SECURITY.md](SECURITY.md).

@@ -12,3 +12,4 @@ Registro de decisiones importantes: contexto, decisión y consecuencias. Una ADR
 | [0006](0006-informe-html-autocontenido.md) | Informe HTML autocontenido como primera UI | Aceptada |
 | [0007](0007-remediacion-transaccional.md) | Remediación transaccional con acciones tipadas | Aceptada |
 | [0008](0008-consola-local.md) | Consola local en 127.0.0.1, con token y de solo lectura | Aceptada |
+| [0009](0009-releases-firmadas.md) | Releases firmadas con una clave ECDSA propia | Aceptada |

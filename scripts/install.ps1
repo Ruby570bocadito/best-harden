@@ -19,7 +19,9 @@
    -Force               reinstalar aunque ya esté en la última versión
    -Local <archivo>     instalar desde un .zip local (sin conexión; necesita
                         checksums.txt en la misma carpeta)
-   -Insecure            con -Local, instalar aunque no haya checksums.txt
+   -Insecure            instalar aunque la release no esté firmada (las
+                        anteriores a la v0.5) o, con -Local, aunque no haya
+                        checksums.txt; una firma inválida se rechaza siempre
    -Repo <owner/nombre> repositorio de GitHub
    -ReleasesUrl <url>   espejo interno de releases (https://…)
    -Uninstall [-Purge]  desinstalar (con -Purge borra también config e informes)
@@ -27,8 +29,9 @@
  Variables equivalentes: ADARVE_VERSION, ADARVE_NO_SCAN=1, ADARVE_REPO,
  ADARVE_RELEASES_URL.
 
- Seguridad: el .zip descargado se verifica contra checksums.txt (SHA-256)
- antes de instalarse.
+ Seguridad: antes de instalar se comprueba la firma de checksums.txt
+ (checksums.txt.sig, con la clave pública de Test-Signature) y la suma SHA-256
+ del .zip descargado.
 =============================================================================
 #>
 param(
@@ -124,7 +127,12 @@ function Install-Adarve {
             if (-not (Test-Path $Local)) { throw "No existe $Local" }
             Copy-Item -LiteralPath $Local $zip
             $sums = Join-Path (Split-Path -Parent $Local) 'checksums.txt'
-            if (Test-Path -LiteralPath $sums) { Test-Checksum -File $zip -Asset $asset -Sums (Get-Content -LiteralPath $sums -Raw) }
+            if (Test-Path -LiteralPath $sums) {
+                $sig = $null
+                if (Test-Path -LiteralPath "$sums.sig") { $sig = [IO.File]::ReadAllBytes("$sums.sig") }
+                Test-Signature -Sums ([IO.File]::ReadAllBytes($sums)) -Sig $sig
+                Test-Checksum -File $zip -Asset $asset -Sums (Get-Content -LiteralPath $sums -Raw)
+            }
             elseif ($Insecure) { Write-Warn 'No hay checksums.txt junto al archivo: se instala SIN verificar la integridad (-Insecure)' }
             else { throw 'No hay checksums.txt junto al archivo: descárgalo de la misma release para verificarlo (o usa -Insecure bajo tu responsabilidad)' }
         } else {
@@ -141,7 +149,16 @@ function Install-Adarve {
                 if ($current) { Write-Step "Actualizando Adarve $current -> $Version ($arch)" }
                 else { Write-Step "Instalando Adarve $Version ($arch)" }
                 $base = "$ReleasesUrl/download/$Version"
-                $sums = [string](Invoke-RestMethod -UseBasicParsing "$base/checksums.txt")
+                # Los bytes exactos: la firma es de ese fichero, no de su texto.
+                $sumsFile = Join-Path $tmp 'checksums.txt'
+                Invoke-WebRequest -UseBasicParsing -Uri "$base/checksums.txt" -OutFile $sumsFile
+                $sig = $null
+                try {
+                    Invoke-WebRequest -UseBasicParsing -Uri "$base/checksums.txt.sig" -OutFile "$sumsFile.sig"
+                    $sig = [IO.File]::ReadAllBytes("$sumsFile.sig")
+                } catch { }
+                Test-Signature -Sums ([IO.File]::ReadAllBytes($sumsFile)) -Sig $sig
+                $sums = [IO.File]::ReadAllText($sumsFile)
                 Invoke-WebRequest -UseBasicParsing -Uri "$base/$asset" -OutFile $zip
                 Test-Checksum -File $zip -Asset $asset -Sums $sums
             }
@@ -223,6 +240,51 @@ function Get-AdarveArch {
         'ARM64' { return 'arm64' }
         default { throw "Arquitectura no soportada: $a (soportadas: AMD64, ARM64)" }
     }
+}
+
+# Test-Signature comprueba la firma de checksums.txt (ECDSA P-256 sobre
+# SHA-256, en DER) con la clave pública de las releases: la misma que
+# internal/selfupdate/release-signing.pub (un test lo comprueba), aquí como
+# las coordenadas X e Y del punto en base64. Necesita .NET Framework 4.7 o
+# posterior (Windows 10 1709 en adelante lo trae).
+function Test-Signature([byte[]]$Sums, [byte[]]$Sig) {
+    if (-not $Sig) {
+        if (-not $Insecure) { throw 'La release no está firmada (falta checksums.txt.sig). Para instalar igualmente una versión sin firma, usa -Insecure' }
+        Write-Warn 'Release sin firma: solo se verifica la suma SHA-256 (-Insecure)'
+        return
+    }
+    $q = New-Object System.Security.Cryptography.ECPoint
+    $q.X = [Convert]::FromBase64String('NavP7OxSrWmDs7jZimtPx56gl24SmPwVLAnoo+XKfzk=')
+    $q.Y = [Convert]::FromBase64String('ZfXMaVkOPyrDTzcOoKK5Cs+Vh6UASl/6nOAObVnnS0w=')
+    $p = New-Object System.Security.Cryptography.ECParameters
+    $p.Curve = [System.Security.Cryptography.ECCurve+NamedCurves]::nistP256
+    $p.Q = $q
+    $ec = [System.Security.Cryptography.ECDsa]::Create($p)
+    try {
+        $ok = $ec.VerifyData($Sums, (ConvertFrom-DerSignature $Sig), [System.Security.Cryptography.HashAlgorithmName]::SHA256)
+    } catch { $ok = $false } finally { $ec.Dispose() }
+    if (-not $ok) { throw 'La firma de checksums.txt no es válida: la release no la publicó Adarve o se ha manipulado. Instalación abortada.' }
+    Write-Ok 'Firma de la release verificada'
+}
+
+# ConvertFrom-DerSignature pasa una firma ECDSA de DER (lo que escribe
+# openssl) a r||s de 32 bytes cada uno (lo que espera .NET).
+function ConvertFrom-DerSignature([byte[]]$Der) {
+    if ($Der.Length -lt 8 -or $Der[0] -ne 0x30) { throw 'Firma con formato no válido' }
+    $i = 2
+    if ($Der[1] -band 0x80) { $i += $Der[1] -band 0x7f }
+    $out = New-Object byte[] 64
+    foreach ($half in 0, 1) {
+        if ($i + 2 -gt $Der.Length -or $Der[$i] -ne 0x02) { throw 'Firma con formato no válido' }
+        $len = [int]$Der[$i + 1]
+        if ($len -lt 1 -or $i + 2 + $len -gt $Der.Length) { throw 'Firma con formato no válido' }
+        $skip = [Math]::Max(0, $len - 32)
+        for ($k = 0; $k -lt $skip; $k++) { if ($Der[$i + 2 + $k] -ne 0) { throw 'Firma con formato no válido' } }
+        $n = $len - $skip
+        [Array]::Copy($Der, $i + 2 + $skip, $out, $half * 32 + (32 - $n), $n)
+        $i += 2 + $len
+    }
+    return ,$out
 }
 
 function Test-Checksum([string]$File, [string]$Asset, [string]$Sums) {

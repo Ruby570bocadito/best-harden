@@ -9,7 +9,7 @@ Una herramienta de hardening solo es creíble si sus resultados son correctos. U
 | Unitarias del motor | Operadores, `default`/`on_missing`, `each`, compuestas `all`/`any`, puntuación | `internal/engine/engine_test.go` | ✅ |
 | Parsers | `sshd_config` (Include, Match, tiempos), `sshd -T`, mountinfo, modprobe.d, clave/valor, INF de secedit, CSV de auditpol, UTF-16, rutas de registro | `internal/probes/parse_test.go` | ✅ |
 | Paquete de reglas | Todas las reglas y perfiles válidos, cada perfil por defecto con reglas, herencia del DC | `rules/rules_test.go` | ✅ |
-| Actualización | Comparación de versiones, `checksums.txt`, espejo simulado, **rechazo de archivo manipulado** | `internal/selfupdate/selfupdate_test.go` | ✅ |
+| Actualización | Comparación de versiones, `checksums.txt`, espejo simulado, **rechazo de archivo manipulado, de sumas sin firma y de firma inválida**, firma real de `openssl` y la misma clave en los instaladores | `internal/selfupdate/selfupdate_test.go` | ✅ |
 | Hardening (motor) | Plan por olas, aplicación, fallo con reversión, cambio sin efecto con reversión, rollback desde disco, acceso remoto no confirmado, dead-man switch, GPO, validación de acciones (incluidos intentos de inyección) | `internal/remediate/plan_test.go` | ✅ |
 | Remediadores Linux | Ciclo capturar → aplicar → restaurar en un sistema de ficheros simulado (sysctl, login.defs, permisos, modprobe, sudoers con `visudo` real) | `internal/remediate/linux_test.go` | ✅ |
 | Ciclo real en CI | `harden --apply` en Ubuntu y Windows Server de GitHub: la postura debe subir y, tras `rollback`, volver exactamente al valor inicial | `.github/workflows/ci.yml` | ✅ |

@@ -22,8 +22,8 @@ curl -fsSL https://raw.githubusercontent.com/Ruby570bocadito/adarve/main/scripts
 | `--version <tag>` | `ADARVE_VERSION` | Versión concreta (por defecto, la última) |
 | `--no-scan` | `ADARVE_NO_SCAN=1` | No lanzar el primer escaneo |
 | `--force` | | Reinstalar aunque ya esté actualizado |
-| `--local <archivo.tar.gz>` | | Instalar sin conexión. Necesita el `checksums.txt` de la release en la misma carpeta (se verifica) |
-| `--insecure` | | Con `--local`, instalar aunque falte `checksums.txt` (sin verificar) |
+| `--local <archivo.tar.gz>` | | Instalar sin conexión. Necesita `checksums.txt` y `checksums.txt.sig` de la release en la misma carpeta (se verifican) |
+| `--insecure` | | Instalar una release sin firma (anterior a la v0.5) o, con `--local`, aunque falte `checksums.txt`. Una firma inválida se rechaza siempre |
 | `--repo <owner/repo>` | `ADARVE_REPO` | Repositorio de GitHub |
 | `--releases-url <url>` | `ADARVE_RELEASES_URL` | Espejo interno de releases (`https://`; `http://` solo hacia `127.0.0.1` o `localhost`, para pruebas) |
 | `--prefix <dir>` | `ADARVE_PREFIX` | Directorio del binario (por defecto `/usr/local/bin`) |
@@ -33,7 +33,7 @@ Qué hace, paso a paso:
 
 1. Comprueba que es Linux, que se ejecuta como root y la arquitectura.
 2. Consulta la última versión en `<releases>/latest/download/version.txt` y la compara con la instalada.
-3. Descarga `checksums.txt` y `adarve_linux_<arch>.tar.gz` y **verifica el SHA-256**.
+3. Descarga `checksums.txt` y su firma, **comprueba la firma** con la clave pública que lleva el script (necesita `openssl`), descarga `adarve_linux_<arch>.tar.gz` y **verifica el SHA-256**.
 4. Instala `/usr/local/bin/adarve` con reemplazo atómico.
 5. Ejecuta `adarve init`: crea `/etc/adarve` (con `config.yaml` y `rules.d/`) y `/var/lib/adarve` (con `reports/` y `snapshots/`) con permisos `0750`.
 6. Si `sudo` usa un `secure_path` sin `/usr/local/bin` (RHEL), crea el enlace `/usr/bin/adarve`.
@@ -67,8 +67,8 @@ Con parámetros:
 | `-NoScan` | `ADARVE_NO_SCAN=1` | No lanzar el primer escaneo |
 | `-NoOpen` | | No abrir el informe HTML al terminar |
 | `-Force` | | Reinstalar aunque esté actualizado |
-| `-Local <archivo.zip>` | | Instalar sin conexión (necesita `checksums.txt` en la misma carpeta) |
-| `-Insecure` | | Con `-Local`, instalar aunque falte `checksums.txt` |
+| `-Local <archivo.zip>` | | Instalar sin conexión (necesita `checksums.txt` y `checksums.txt.sig` en la misma carpeta) |
+| `-Insecure` | | Instalar una release sin firma (anterior a la v0.5) o, con `-Local`, aunque falte `checksums.txt`. Una firma inválida se rechaza siempre |
 | `-Repo <owner/repo>` | `ADARVE_REPO` | Repositorio de GitHub |
 | `-ReleasesUrl <url>` | `ADARVE_RELEASES_URL` | Espejo interno (`https://`) |
 | `-Uninstall [-Purge]` | | Desinstalar |
@@ -79,7 +79,15 @@ Compatible con Windows PowerShell 5.1 y PowerShell 7. Los mensajes evitan símbo
 
 ## Verificar de dónde viene una descarga
 
-Además del SHA-256 que comprueban el instalador y `adarve update`, cada archivo publicado lleva una atestación de procedencia SLSA firmada en Sigstore con la identidad del workflow de GitHub que lo construyó. Con la CLI de GitHub se comprueba que salió de este repositorio, de su workflow de releases y de una etiqueta concreta:
+El instalador y `adarve update` comprueban solos la firma de la release ([ADR-0009](adr/0009-releases-firmadas.md)). Para comprobarla a mano:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/Ruby570bocadito/adarve/main/internal/selfupdate/release-signing.pub
+openssl dgst -sha256 -verify release-signing.pub -signature checksums.txt.sig checksums.txt
+sha256sum -c --ignore-missing checksums.txt
+```
+
+Además, cada archivo publicado lleva una atestación de procedencia SLSA firmada en Sigstore con la identidad del workflow de GitHub que lo construyó. Con la CLI de GitHub se comprueba que salió de este repositorio, de su workflow de releases y de una etiqueta concreta:
 
 ```bash
 gh attestation verify adarve_linux_amd64.tar.gz --repo Ruby570bocadito/adarve
@@ -108,22 +116,23 @@ https://mirror.interno/adarve/
 ├── latest/download/version.txt          ← contiene la etiqueta, p. ej. v0.2.0
 └── download/v0.2.0/
     ├── checksums.txt
+    ├── checksums.txt.sig                ← la firma: sin ella, no se instala
     ├── adarve_linux_amd64.tar.gz
     ├── adarve_linux_arm64.tar.gz
     ├── adarve_windows_amd64.zip
     └── adarve_windows_arm64.zip
 ```
 
-El espejo debe servirse por **HTTPS**: las sumas SHA-256 llegan por el mismo canal que los binarios y, sin TLS, quien intercepte la conexión podría cambiar ambos. Adarve y los instaladores rechazan `http://` salvo hacia el propio equipo (`127.0.0.1`, `localhost`), para pruebas.
+La firma protege aunque el espejo esté comprometido: quien lo controle puede cambiar los archivos, pero no firmar unas sumas nuevas. Aun así, el espejo debe servirse por **HTTPS**. Adarve y los instaladores rechazan `http://` salvo hacia el propio equipo (`127.0.0.1`, `localhost`), para pruebas.
 
-Úsalo en el instalador (`--releases-url` / `-ReleasesUrl`), en `adarve update --releases-url`, en `config.yaml` o en la variable `ADARVE_RELEASES_URL`. Con privilegios, Adarve ignora `ADARVE_RELEASES_URL`, `ADARVE_REPO` y `ADARVE_HOME` salvo con `--trust-env`: en Windows cualquier programa del usuario puede fijarlas (`HKCUnvironment`) y la consola de administrador las hereda.
+Úsalo en el instalador (`--releases-url` / `-ReleasesUrl`), en `adarve update --releases-url`, en `config.yaml` o en la variable `ADARVE_RELEASES_URL`. Con privilegios, Adarve ignora `ADARVE_RELEASES_URL`, `ADARVE_REPO` y `ADARVE_HOME` salvo con `--trust-env`: en Windows cualquier programa del usuario puede fijarlas (`HKCU\Environment`) y la consola de administrador las hereda.
 
 ```yaml
 update:
   releases_url: https://mirror.interno/adarve
 ```
 
-Sin ningún servidor: copia el archivo y su `checksums.txt` a la misma carpeta y usa `--local` / `-Local` (sin `checksums.txt` se niega; `--insecure` / `-Insecure` lo permite sin verificar).
+Sin ningún servidor: copia el archivo, `checksums.txt` y `checksums.txt.sig` a la misma carpeta y usa `--local` / `-Local` (sin ellos se niega; `--insecure` / `-Insecure` lo permite sin verificar).
 
 ## Actualizar
 

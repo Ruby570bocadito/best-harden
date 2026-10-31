@@ -23,6 +23,20 @@ jobs:
         run: mkdir -p .release && echo "${GITHUB_REF_NAME}" > .release/version.txt
       - name: Instalar Syft (SBOM)
         uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+      # La clave privada solo existe en el secreto ADARVE_SIGNING_KEY y en un
+      # fichero temporal del runner durante este job.
+      - name: Clave de firma de las releases
+        env:
+          KEY: ${{ secrets.ADARVE_SIGNING_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then echo "::error::Falta el secreto ADARVE_SIGNING_KEY: sin él la release no se puede firmar"; exit 1; fi
+          umask 077
+          printf '%s\n' "$KEY" > "$RUNNER_TEMP/signing.key"
+          echo "ADARVE_SIGNING_KEY_FILE=$RUNNER_TEMP/signing.key" >> "$GITHUB_ENV"
+          # Debe ser la pareja de la clave pública que llevan el binario y los
+          # instaladores: si no, ningún cliente aceptaría la release.
+          openssl ec -in "$RUNNER_TEMP/signing.key" -pubout 2>/dev/null | diff - internal/selfupdate/release-signing.pub \
+            || { echo "::error::ADARVE_SIGNING_KEY no corresponde a internal/selfupdate/release-signing.pub"; exit 1; }
       - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           distribution: goreleaser
@@ -30,6 +44,11 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Comprobar la firma publicada
+        run: openssl dgst -sha256 -verify internal/selfupdate/release-signing.pub -signature dist/checksums.txt.sig dist/checksums.txt
+      - name: Borrar la clave de firma
+        if: always()
+        run: rm -f "$RUNNER_TEMP/signing.key"
       # Procedencia SLSA de cada archivo publicado: prueba que lo construyó
       # este workflow a partir de esta etiqueta del repositorio. Se comprueba
       # con «gh attestation verify <archivo> --repo Ruby570bocadito/adarve».
@@ -40,3 +59,4 @@ jobs:
             dist/*.tar.gz
             dist/*.zip
             dist/checksums.txt
+            dist/checksums.txt.sig

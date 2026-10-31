@@ -82,7 +82,15 @@ Ver [02-arquitectura.md](02-arquitectura.md#estructura-del-repositorio). Reglas 
 1. Actualiza el changelog si procede y crea la etiqueta: `git tag v0.2.0 && git push origin v0.2.0`.
 2. El workflow `release.yml`:
    - genera `.release/version.txt` con la etiqueta (lo usan los instaladores);
-   - ejecuta GoReleaser: tests, binarios para 4 plataformas, `adarve_<os>_<arch>.tar.gz|zip`, `checksums.txt`, SBOM, y adjunta `install.sh` e `install.ps1`.
+   - comprueba que el secreto `ADARVE_SIGNING_KEY` corresponde a `internal/selfupdate/release-signing.pub`;
+   - ejecuta GoReleaser: tests, binarios para 4 plataformas, `adarve_<os>_<arch>.tar.gz|zip`, `checksums.txt` y su firma `checksums.txt.sig`, SBOM, y adjunta `install.sh` e `install.ps1`;
+   - vuelve a verificar la firma publicada y añade la atestación de procedencia.
 3. Comprueba la instalación con el one-liner en una VM limpia de cada plataforma.
+
+### La clave de firma
+
+Las releases se firman con una clave ECDSA P-256 ([ADR-0009](adr/0009-releases-firmadas.md)). La pública está en `internal/selfupdate/release-signing.pub` y, copiada, en `scripts/install.sh` y `scripts/install.ps1` (un test comprueba que coinciden). La privada vive solo en el secreto del repositorio `ADARVE_SIGNING_KEY` (Settings → Secrets and variables → Actions) y en una copia de seguridad fuera de línea.
+
+Para rotarla: genera la nueva (`openssl ecparam -name prime256v1 -genkey -noout -out nueva.key`), añade su pública a `release-signing.pub` **junto a** la antigua y a los dos instaladores, publica una versión firmada aún con la antigua, cambia el secreto y, cuando ya no queden versiones que solo conozcan la antigua, retírala.
 
 > El nombre de los archivos **no lleva versión** (`adarve_linux_amd64.tar.gz`): los instaladores y `adarve update` lo construyen a partir del sistema y la arquitectura.
