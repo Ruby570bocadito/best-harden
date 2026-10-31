@@ -105,18 +105,16 @@ adarve update                      # actualizar Adarve y sus reglas
 
 ## 🗺️ Hacia dónde va
 
-Adarve es una suite de 16 herramientas sobre el mismo motor, organizadas en el ciclo **Evaluar → Endurecer → Defender → Gobernar**:
+**La v1.0** es la mejor herramienta para endurecer **un equipo**: auditar Windows 11, Windows Server 2022 y Ubuntu 24.04, endurecerlos con rollback y entregar un informe defendible, sin falsos positivos conocidos y con releases firmadas.
 
-| Fase | Estado | Contenido |
-|---|---|---|
-| 0 · Fundaciones | ✅ | Motor de reglas, probes Windows/Linux, CI, instaladores, documentación |
-| 1 · Auditoría | ✅ base · 🔜 más reglas | `scan`, informes, `rules`, perfiles. Siguiente: `surface` y unas 300 reglas |
-| 2 · Hardening | ✅ base · 🔜 `studio` | `harden` con instantánea, verificación, rollback, olas y dead-man switch. Siguiente: `studio` (exportar a GPO, Intune, Ansible) |
-| 3 · Flota | 🔜 | Servidor central, agentes con mTLS, UI web (React), `guard` y `observe` |
-| 4 · Defensa | 🔜 | `telemetry`, `hunt`, `lockdown`, `vuln` |
-| 5 · Enterprise | 🔜 | `ad`, anillos de despliegue, SSO, ITSM/SIEM, informes por marco |
+| Bloque | Qué falta |
+|---|---|
+| Identidad | Renombrado a Adarve, informes con la nueva identidad, capturas y GIF |
+| Confianza | Releases firmadas, análisis de seguridad y *fuzzing* en CI, instaladores probados de punta a punta |
+| Precisión | Laboratorio con *golden files* en 3 sistemas, estado `manual`, sudo-rs |
+| Estabilidad | Esquemas congelados y guía de operación |
 
-Detalle completo en la [hoja de ruta](docs/13-hoja-de-ruta.md) y en el [diseño de las herramientas](docs/03-herramientas.md).
+Detalle y estado de cada tarea en la [hoja de ruta](docs/13-hoja-de-ruta.md). La flota, la defensa y el modo enterprise son la [visión a largo plazo](docs/15-vision-a-largo-plazo.md), después de la v1.0.
 
 ## 🔐 Principios de seguridad
 

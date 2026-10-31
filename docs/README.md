@@ -14,8 +14,9 @@
 | 10 | [Guía de uso](10-guia-de-uso.md) | Referencia de la CLI, informes, códigos de salida y ejemplos |
 | 11 | [Desarrollo](11-desarrollo.md) | Entorno, estructura, añadir probes y reglas, releases |
 | 12 | [Pruebas y laboratorio](12-pruebas-y-laboratorio.md) | Estrategia de tests, CI y laboratorio de máquinas virtuales |
-| 13 | [Hoja de ruta](13-hoja-de-ruta.md) | Fases, entregables y criterios de "terminado" |
+| 13 | [Hoja de ruta](13-hoja-de-ruta.md) | Qué significa "terminado" (v1.0), lo que falta y lo que viene después |
 | 14 | [Marcos normativos y licencias](14-marcos-y-licencias.md) | CIS, STIG, NIST, ENS, ISO 27001, NIS2 y consideraciones de licencia |
+| 15 | [Visión a largo plazo](15-vision-a-largo-plazo.md) | Flota, defensa y enterprise: fuera de la v1.0 |
 | — | [Decisiones de arquitectura (ADR)](adr/) | Por qué Go, reglas declarativas, standalone primero, etc. |
 
 ## Convenciones
