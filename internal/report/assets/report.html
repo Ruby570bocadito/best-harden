@@ -7,73 +7,116 @@
 <meta name="generator" content="Adarve">
 <title>Informe de hardening · Adarve</title>
 <style>
+/* Identidad de Adarve: piedra (la muralla) y luna (enlaces y acción). El
+   informe se comparte e imprime, así que parte del tema de día; el de noche
+   sigue al sistema o al botón Tema. Los estilos los usa también el informe
+   de superficie. */
 :root {
   color-scheme: light;
-  --page: #f6f6f3;
-  --surface: #fcfcfb;
-  --surface-2: #f0efec;
-  --ink: #0b0b0b;
-  --ink-2: #52514e;
-  --muted: #6e6c66;
-  --hair: #e1e0d9;
-  --axis: #c3c2b7;
-  --ring: rgba(11,11,11,.10);
-  --accent: #2a78d6;
-  --accent-soft: #cde2fb;
-  --good: #0ca30c;
-  --good-text: #006300;
-  --warning: #fab219;
-  --serious: #ec835a;
-  --critical: #d03b3b;
-  --info: #898781;
-  --track: #e8e7e1;
-  --code-bg: #f0efec;
-  --shadow: 0 1px 2px rgba(11,11,11,.04), 0 8px 24px rgba(11,11,11,.05);
+  --page: #f2eee5;
+  --surface: #fbf9f4;
+  --surface-2: #ebe5d8;
+  --ink: #1a1d23;
+  --ink-2: #3d4250;
+  --muted: #5d6270;
+  --hair: #ddd5c4;
+  --axis: #c4b9a3;
+  --ring: #ddd5c4;
+  --accent: #2f5fa8;
+  --accent-soft: #dbe5f5;
+  --stone: #c9b48a;
+  --mortar: #a08b62;
+  --stone-ink: #14110b;
+  --good: #2e9a5a;
+  --good-text: #1f7a43;
+  --warning: #c79a00;
+  --serious: #c2621f;
+  --critical: #b3261e;
+  --info: #6e7381;
+  --track: #e3dccd;
+  --code-bg: #ebe5d8;
+  --shadow: none;
+  --display: Bahnschrift, "DIN Alternate", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --page: #0d0d0d;
-    --surface: #1a1a19;
-    --surface-2: #232321;
-    --ink: #f0efec;
-    --ink-2: #c3c2b7;
-    --muted: #9a988f;
-    --hair: #2c2c2a;
-    --axis: #383835;
-    --ring: rgba(255,255,255,.10);
-    --accent: #3987e5;
-    --accent-soft: #184f95;
-    --good-text: #0ca30c;
-    --track: #2c2c2a;
-    --code-bg: #232321;
-    --shadow: none;
+    --page: #0e1218;
+    --surface: #151a22;
+    --surface-2: #1c2330;
+    --ink: #ece6da;
+    --ink-2: #c9cdd4;
+    --muted: #a7adb8;
+    --hair: #252c37;
+    --axis: #353e4b;
+    --ring: #252c37;
+    --accent: #9cc2ff;
+    --accent-soft: #1f2a3b;
+    --stone: #cdbb95;
+    --mortar: #a4916b;
+    --good: #6fd99a;
+    --good-text: #6fd99a;
+    --warning: #f2c94c;
+    --serious: #ffa463;
+    --critical: #ff8a7d;
+    --info: #b9bfca;
+    --track: #252c37;
+    --code-bg: #0b0f14;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page: #0d0d0d;
-  --surface: #1a1a19;
-  --surface-2: #232321;
-  --ink: #f0efec;
-  --ink-2: #c3c2b7;
-  --muted: #9a988f;
-  --hair: #2c2c2a;
-  --axis: #383835;
-  --ring: rgba(255,255,255,.10);
-  --accent: #3987e5;
-  --accent-soft: #184f95;
-  --good-text: #0ca30c;
-  --track: #2c2c2a;
-  --code-bg: #232321;
-  --shadow: none;
+  --page: #0e1218;
+  --surface: #151a22;
+  --surface-2: #1c2330;
+  --ink: #ece6da;
+  --ink-2: #c9cdd4;
+  --muted: #a7adb8;
+  --hair: #252c37;
+  --axis: #353e4b;
+  --ring: #252c37;
+  --accent: #9cc2ff;
+  --accent-soft: #1f2a3b;
+  --stone: #cdbb95;
+  --mortar: #a4916b;
+  --good: #6fd99a;
+  --good-text: #6fd99a;
+  --warning: #f2c94c;
+  --serious: #ffa463;
+  --critical: #ff8a7d;
+  --info: #b9bfca;
+  --track: #252c37;
+  --code-bg: #0b0f14;
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--page); color: var(--ink);
-  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 15px/1.5 "Segoe UI Variable Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
+.stone {
+  background-color: var(--stone);
+  background-image: linear-gradient(var(--mortar) 1px, transparent 1px), linear-gradient(90deg, var(--mortar) 1px, transparent 1px);
+  background-size: 100% 14px, 26px 14px;
+}
+
+/* La muralla: un tramo por categoría */
+.wall { overflow-x: auto; }
+.wall-row { display: grid; gap: 10px; align-items: end; }
+.wall-row.towers { border-bottom: 3px solid var(--mortar); }
+.tramo { display: flex; flex-direction: column; justify-content: flex-end; height: 196px; padding: 0 4px; }
+.merlons { display: flex; justify-content: space-between; padding: 0 3px; }
+.merlons span { display: block; width: 24%; height: 14px; }
+.tower { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; overflow: hidden; }
+.tower.weak { filter: saturate(.55) brightness(.8); }
+.tower svg { width: 22px; height: 18px; flex: none; }
+.tower .more { font: 600 11.5px ui-monospace, Consolas, monospace; color: var(--stone-ink); }
+.wall-row.labels { padding-top: 8px; }
+.wall-row.labels div { text-align: center; display: flex; flex-direction: column; min-width: 0; }
+.wall-row.labels .n { font-size: 12.5px; font-weight: 600; line-height: 1.25; overflow-wrap: break-word; hyphens: auto; }
+.wall-row.labels .v { font: 12.5px ui-monospace, Consolas, monospace; color: var(--muted); }
+.wall-row.labels .c { font-size: 12px; font-weight: 500; }
+.voice { font-size: 17px !important; line-height: 1.45; color: var(--ink) !important; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 code, pre, .mono { font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace; font-size: 13px; }
@@ -82,8 +125,9 @@ code, pre, .mono { font-family: ui-monospace, "Cascadia Code", "SF Mono", Consol
 /* Cabecera */
 .top { background: var(--surface); border-bottom: 1px solid var(--hair); position: sticky; top: 0; z-index: 5; }
 .top .wrap { display: flex; align-items: center; gap: 12px; height: 56px; }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: .2px; }
-.brand svg { width: 26px; height: 26px; color: var(--accent); }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand svg { width: 26px; height: 26px; flex: none; }
+.brand .name { font-family: var(--display); font-stretch: condensed; font-weight: 700; font-size: 22px; letter-spacing: .08em; text-transform: uppercase; }
 .brand small { color: var(--muted); font-weight: 450; }
 .spacer { flex: 1; }
 .btn {
@@ -96,7 +140,7 @@ code, pre, .mono { font-family: ui-monospace, "Cascadia Code", "SF Mono", Consol
 
 /* Equipo */
 .host { padding: 28px 0 8px; }
-.host h1 { margin: 0 0 4px; font-size: 26px; font-weight: 650; letter-spacing: -.2px; overflow-wrap: anywhere; }
+.host h1 { margin: 0 0 4px; font-family: var(--display); font-stretch: condensed; font-size: 34px; font-weight: 700; overflow-wrap: anywhere; }
 .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--ink-2); font-size: 14px; }
 .meta span { display: inline-flex; gap: 6px; }
 .meta b { color: var(--muted); font-weight: 500; }
@@ -109,21 +153,21 @@ code, pre, .mono { font-family: ui-monospace, "Cascadia Code", "SF Mono", Consol
 /* Tarjetas */
 .grid { display: grid; gap: 16px; }
 .card {
-  background: var(--surface); border: 1px solid var(--ring); border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--ring); border-radius: 18px;
   box-shadow: var(--shadow); padding: 20px;
 }
-.card h2 { margin: 0 0 14px; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); font-weight: 600; }
+.card h2 { margin: 0 0 14px; font-size: 12.5px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 600; }
 section { margin-top: 16px; }
 
 /* Héroe + KPIs */
 .hero-row { display: grid; grid-template-columns: minmax(280px, 1.1fr) 2fr; gap: 16px; margin-top: 18px; }
 .hero { display: flex; flex-direction: column; justify-content: space-between; }
 .hero-figure { display: flex; align-items: baseline; gap: 10px; }
-.hero-figure .num { font-size: 64px; line-height: 1; font-weight: 650; letter-spacing: -1.5px; }
-.hero-figure .of { color: var(--muted); font-size: 18px; }
+.hero-figure .num { font-family: var(--display); font-stretch: condensed; font-size: 84px; line-height: .9; font-weight: 700; }
+.hero-figure .of { font-family: var(--display); font-stretch: condensed; color: var(--muted); font-size: 30px; }
 .grade {
   margin-left: auto; align-self: center; min-width: 52px; height: 52px; border-radius: 12px;
-  display: grid; place-items: center; font-size: 26px; font-weight: 700; border: 2px solid currentColor;
+  display: grid; place-items: center; font-family: var(--display); font-stretch: condensed; font-size: 28px; font-weight: 700; border: 2px solid currentColor;
 }
 .hero p { margin: 10px 0 0; color: var(--ink-2); font-size: 14px; }
 .meter { height: 10px; border-radius: 99px; background: var(--track); overflow: hidden; margin-top: 16px; }
@@ -131,7 +175,7 @@ section { margin-top: 16px; }
 .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .kpi { padding: 18px; }
 .kpi .label { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 14px; }
-.kpi .value { font-size: 34px; font-weight: 650; margin-top: 6px; letter-spacing: -.5px; }
+.kpi .value { font-family: var(--display); font-stretch: condensed; font-size: 40px; font-weight: 700; margin-top: 4px; line-height: 1.1; }
 .kpi .sub { color: var(--muted); font-size: 13px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
 
@@ -185,7 +229,7 @@ section { margin-top: 16px; }
   border: 1px solid var(--hair); background: var(--surface); color: var(--ink-2); border-radius: 99px;
   padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center;
 }
-.chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--stone); color: var(--stone-ink); border-color: var(--stone); font-weight: 600; }
 .chip .c { opacity: .75; font-variant-numeric: tabular-nums; }
 input[type=search], select {
   font: inherit; font-size: 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--hair);
@@ -247,6 +291,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
   .top, .filters, .copy, #theme { display: none !important; }
   body { background: #fff; }
   .card { box-shadow: none; break-inside: avoid; }
+  .stone, .meter > i, .sev-bar > i, .dot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   details.res { break-inside: avoid; }
 }
 @media (prefers-reduced-motion: reduce) { .chev { transition: none; } }
@@ -256,8 +301,8 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
 <header class="top">
   <div class="wrap">
     <div class="brand">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3z"/><path d="m9 12 2 2 4-4"/></svg>
-      Adarve <small>· informe de hardening</small>
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 29V11h5v4h4v-4h8v4h4v-4h5v18z" style="fill:var(--stone)"/><path d="M3 19h26" style="stroke:var(--surface);stroke-width:2"/><circle cx="16" cy="6" r="2.6" style="fill:var(--accent)"/></svg>
+      <span class="name">Adarve</span> <small>· informe de la ronda</small>
     </div>
     <div class="spacer"></div>
     <button class="btn" id="print" type="button" title="Imprimir o guardar como PDF">Imprimir<span class="long"> / PDF</span></button>
@@ -303,6 +348,12 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
       else n.setAttribute(k, attrs[k]);
     }
     (children || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function svg(tag, attrs, children) {
+    var n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (var k in attrs || {}) n.setAttribute(k, attrs[k]);
+    (children || []).forEach(function (c) { if (c) n.appendChild(c); });
     return n;
   }
   function scoreColor(v) { return v >= 80 ? "var(--good)" : v >= 60 ? "var(--warning)" : "var(--critical)"; }
@@ -378,8 +429,14 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
   // traen el campo y siempre tienen puntuación).
   var unscored = sc.scored === false;
   var color = unscored ? "var(--muted)" : scoreColor(sc.value);
+  var failed = results.filter(function (r) { return r.status === "fail"; });
+  var auto = failed.filter(function (r) { return (r.rule.remediation.actions || []).length; }).length;
+  var voice = !failed.length ? "La muralla está entera: ningún control evaluado falla." :
+    "Hay " + (failed.length === 1 ? "1 brecha" : failed.length + " brechas") + " en la muralla: " +
+    (auto === failed.length ? "todas se reparan con adarve harden." : auto ? auto + " se reparan con adarve harden y " +
+      (failed.length - auto === 1 ? "1 necesita" : (failed.length - auto) + " necesitan") + " una decisión." : "ninguna se repara sola: todas necesitan una decisión.");
   var hero = el("div", { class: "card hero" }, [
-    el("h2", { text: "Postura de seguridad" }),
+    el("h2", { text: "Estado de la muralla" }),
     unscored ? el("div", null, [
       el("div", { class: "hero-figure" }, [el("span", { class: "num", text: "—" }), el("span", { class: "of", text: "sin evaluar" })]),
       el("p", { text: "Ningún control se ha podido evaluar (sin privilegios, con error o no aplicables): no hay puntuación." })
@@ -390,6 +447,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
         el("span", { class: "grade", text: sc.grade, style: "color:" + color, title: "Calificación " + sc.grade })
       ]),
       el("div", { class: "meter", role: "img", "aria-label": "Puntuación " + sc.value + " de 100" }, [el("i", { style: "width:" + sc.value + "%;background:" + color })]),
+      el("p", { class: "voice", text: voice }),
       el("p", { text: "Postura " + scoreWord(sc.value).toLowerCase() + " según el perfil " + (data.profile ? data.profile.id : "") +
         ". Puntuación ponderada por severidad (crítico 10, alto 5, medio 3, bajo 1)." + (sc.partial ? " Es parcial: hay controles " + (sc.skipped ? "sin evaluar." : "con error.") : "") +
         (sc.exceptions ? " " + (sc.exceptions === 1 ? "1 control fallido está aceptado" : sc.exceptions + " controles fallidos están aceptados") + " por excepción y no cuenta" + (sc.exceptions === 1 ? "." : "n.") : "") })
@@ -433,7 +491,6 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
   }
 
   // ---- Prioridades + severidad ----
-  var failed = results.filter(function (r) { return r.status === "fail"; });
   var prio = el("ol", { class: "prio" });
   failed.slice().sort(function (a, b) {
     return (SEV[a.rule.severity].rank - SEV[b.rule.severity].rank) ||
@@ -463,16 +520,29 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
   app.appendChild(el("section", { class: "two" }, [prioCard, sevCard]));
 
   // ---- Categorías + ATT&CK ----
-  var catCard = el("div", { class: "card" }, [el("h2", { text: "Puntuación por categoría" })]);
-  (sc.by_category || []).forEach(function (c) {
-    var ev = c.passed + c.failed;
-    if (!ev) return;
-    catCard.appendChild(el("div", { class: "cat-row" }, [
-      el("div", null, [el("div", { text: c.name }), el("div", { class: "n", text: c.passed + " de " + ev + " conformes" })]),
-      el("div", { class: "meter", title: c.name + ": " + c.value + "/100" }, [el("i", { style: "width:" + c.value + "%;background:" + scoreColor(c.value) })]),
-      el("div", { class: "v", text: String(c.value) })
-    ]));
-  });
+  var cats = (sc.by_category || []).filter(function (c) { return c.passed + c.failed > 0; });
+  var catCard = el("div", { class: "card" }, [el("h2", { text: "La muralla por tramos · puntuación por categoría" })]);
+  if (cats.length) {
+    var cols = "grid-template-columns:repeat(" + cats.length + ",minmax(76px,1fr));min-width:" + cats.length * 86 + "px";
+    var towers = el("div", { class: "wall-row towers", style: cols });
+    var labels = el("div", { class: "wall-row labels", style: cols });
+    cats.forEach(function (c) {
+      var tower = el("span", { class: "tower stone" + (c.value < 50 ? " weak" : ""), style: "height:" + Math.max(8, Math.round(160 * c.value / 100)) + "px" });
+      for (var i = 0; i < Math.min(3, c.failed); i++) {
+        tower.appendChild(svg("svg", { viewBox: "0 0 26 22", "aria-hidden": "true" }, [svg("path", { d: "M2 3l7 6-3 4 8 3-2 4 12-6",
+          style: "fill:none;stroke:var(--stone-ink);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round" })]));
+      }
+      if (c.failed > 3) tower.appendChild(el("span", { class: "more", text: "+" + (c.failed - 3) }));
+      towers.appendChild(el("div", { class: "tramo", role: "img", "aria-label": c.name + ": " + c.value + " de 100, " + c.failed + " fallidos de " + (c.passed + c.failed) }, [
+        el("span", { class: "merlons", "aria-hidden": "true" }, [el("span", { class: "stone" }), el("span", { class: "stone" }), el("span", { class: "stone" })]), tower]));
+      labels.appendChild(el("div", null, [el("span", { class: "n", text: c.name }), el("span", { class: "v", text: c.value + " / 100" }),
+        el("span", { class: "c", text: c.failed ? (c.failed === 1 ? "1 brecha" : c.failed + " brechas") : "intacto", style: "color:" + (c.failed ? "var(--serious)" : "var(--good-text)") })]));
+    });
+    catCard.appendChild(el("div", { class: "wall" }, [towers, labels]));
+    catCard.appendChild(el("p", { style: "color:var(--muted);font-size:13px;margin:12px 0 0", text: "Cada tramo es una categoría: su altura es la puntuación y cada grieta, un control fallido. De la más dañada a la más firme." }));
+  } else {
+    catCard.appendChild(el("p", { class: "empty", text: "Ninguna categoría con controles evaluados." }));
+  }
 
   var techs = {};
   failed.forEach(function (r) {
@@ -495,7 +565,8 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
   var attCard = el("div", { class: "card" }, [el("h2", { text: "Técnicas MITRE ATT&CK expuestas" }),
     techList.length ? techWrap : el("p", { class: "empty", text: "Ningún control fallido está asociado a técnicas ATT&CK." })]);
   if (techList.length > 24) attCard.appendChild(el("p", { class: "sub", style: "color:var(--muted);font-size:13px;margin:10px 0 0", text: "y " + (techList.length - 24) + " técnicas más en el detalle de los controles." }));
-  app.appendChild(el("section", { class: "two" }, [catCard, attCard]));
+  app.appendChild(el("section", null, [catCard]));
+  app.appendChild(el("section", null, [attCard]));
 
   // ---- Controles ----
   var counts = { all: results.length, fail: 0, error: 0, skipped: 0, exception: 0, pass: 0, na: 0 };
