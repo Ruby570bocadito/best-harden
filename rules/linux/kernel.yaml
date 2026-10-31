@@ -19,7 +19,7 @@ check:
 remediation:
   summary: Fijar kernel.randomize_va_space = 2 de forma persistente.
   commands: |
-    echo 'kernel.randomize_va_space = 2' > /etc/sysctl.d/60-bastion-aslr.conf
+    echo 'kernel.randomize_va_space = 2' > /etc/sysctl.d/60-adarve-aslr.conf
     sysctl -w kernel.randomize_va_space=2
   breaking_risk: none
   actions:
@@ -47,7 +47,7 @@ check:
 remediation:
   summary: Fijar kernel.kptr_restrict = 2 (o 1).
   commands: |
-    echo 'kernel.kptr_restrict = 2' > /etc/sysctl.d/60-bastion-kptr.conf
+    echo 'kernel.kptr_restrict = 2' > /etc/sysctl.d/60-adarve-kptr.conf
     sysctl -w kernel.kptr_restrict=2
   breaking_risk: none
   actions:
@@ -74,7 +74,7 @@ check:
 remediation:
   summary: Fijar kernel.dmesg_restrict = 1.
   commands: |
-    echo 'kernel.dmesg_restrict = 1' > /etc/sysctl.d/60-bastion-dmesg.conf
+    echo 'kernel.dmesg_restrict = 1' > /etc/sysctl.d/60-adarve-dmesg.conf
     sysctl -w kernel.dmesg_restrict=1
   breaking_risk: none
   actions:
@@ -103,7 +103,7 @@ check:
 remediation:
   summary: Fijar kernel.yama.ptrace_scope = 1.
   commands: |
-    echo 'kernel.yama.ptrace_scope = 1' > /etc/sysctl.d/60-bastion-ptrace.conf
+    echo 'kernel.yama.ptrace_scope = 1' > /etc/sysctl.d/60-adarve-ptrace.conf
     sysctl -w kernel.yama.ptrace_scope=1
   breaking_risk: low
   actions:
@@ -131,7 +131,7 @@ check:
 remediation:
   summary: Fijar fs.suid_dumpable = 0 y limitar los core dumps.
   commands: |
-    echo 'fs.suid_dumpable = 0' > /etc/sysctl.d/60-bastion-coredump.conf
+    echo 'fs.suid_dumpable = 0' > /etc/sysctl.d/60-adarve-coredump.conf
     sysctl -w fs.suid_dumpable=0
   breaking_risk: none
   actions:
@@ -165,7 +165,7 @@ check:
 remediation:
   summary: Activar ambos parámetros.
   commands: |
-    printf 'fs.protected_symlinks = 1\nfs.protected_hardlinks = 1\n' > /etc/sysctl.d/60-bastion-links.conf
+    printf 'fs.protected_symlinks = 1\nfs.protected_hardlinks = 1\n' > /etc/sysctl.d/60-adarve-links.conf
     sysctl --system
   breaking_risk: none
   actions:
@@ -197,7 +197,7 @@ check:
 remediation:
   summary: Fijar kernel.unprivileged_bpf_disabled = 1.
   commands: |
-    echo 'kernel.unprivileged_bpf_disabled = 1' > /etc/sysctl.d/60-bastion-bpf.conf
+    echo 'kernel.unprivileged_bpf_disabled = 1' > /etc/sysctl.d/60-adarve-bpf.conf
     sysctl -w kernel.unprivileged_bpf_disabled=1
   breaking_risk: low
   actions:
@@ -225,7 +225,7 @@ check:
 remediation:
   summary: Fijar ambos parámetros en 2 (también en directorios con escritura de grupo).
   commands: |
-    printf 'fs.protected_fifos = 2\nfs.protected_regular = 2\n' > /etc/sysctl.d/60-bastion-fifos.conf
+    printf 'fs.protected_fifos = 2\nfs.protected_regular = 2\n' > /etc/sysctl.d/60-adarve-fifos.conf
     sysctl --system
   breaking_risk: none
   actions:
@@ -256,7 +256,7 @@ check:
 remediation:
   summary: Fijar kernel.perf_event_paranoid = 2 (o más, si la distribución lo admite).
   commands: |
-    echo 'kernel.perf_event_paranoid = 2' > /etc/sysctl.d/60-bastion-perf.conf
+    echo 'kernel.perf_event_paranoid = 2' > /etc/sysctl.d/60-adarve-perf.conf
     sysctl --system
   breaking_risk: low
   actions:
@@ -286,7 +286,7 @@ check:
 remediation:
   summary: Activar kernel.kexec_load_disabled (no se puede volver a desactivar hasta reiniciar).
   commands: |
-    echo 'kernel.kexec_load_disabled = 1' > /etc/sysctl.d/60-bastion-kexec.conf
+    echo 'kernel.kexec_load_disabled = 1' > /etc/sysctl.d/60-adarve-kexec.conf
     sysctl --system
   breaking_risk: medium
   actions:
@@ -316,7 +316,7 @@ check:
 remediation:
   summary: Fijar dev.tty.ldisc_autoload = 0.
   commands: |
-    echo 'dev.tty.ldisc_autoload = 0' > /etc/sysctl.d/60-bastion-tty.conf
+    echo 'dev.tty.ldisc_autoload = 0' > /etc/sysctl.d/60-adarve-tty.conf
     sysctl --system
   breaking_risk: low
   actions:
@@ -345,7 +345,7 @@ check:
 remediation:
   summary: Fijar net.core.bpf_jit_harden = 2.
   commands: |
-    echo 'net.core.bpf_jit_harden = 2' > /etc/sysctl.d/60-bastion-bpf.conf
+    echo 'net.core.bpf_jit_harden = 2' > /etc/sysctl.d/60-adarve-bpf.conf
     sysctl --system
   breaking_risk: none
   actions:
@@ -374,7 +374,7 @@ check:
 remediation:
   summary: Fijar kernel.sysrq = 0.
   commands: |
-    echo 'kernel.sysrq = 0' > /etc/sysctl.d/60-bastion-sysrq.conf
+    echo 'kernel.sysrq = 0' > /etc/sysctl.d/60-adarve-sysrq.conf
     sysctl --system
   breaking_risk: low
   actions:

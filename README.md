@@ -1,28 +1,30 @@
 <div align="center">
 
-# 🛡️ Bastion
+# 🛡️ Adarve
 
 **Auditoría y hardening para Windows, Windows Server y Linux**
 
 Evalúa la configuración de seguridad de tus equipos frente a perfiles de hardening,
 calcula una puntuación de postura, la mapea a MITRE ATT&CK y te dice qué corregir primero.
 
-[![CI](https://github.com/Ruby570bocadito/bastion/actions/workflows/ci.yml/badge.svg)](https://github.com/Ruby570bocadito/bastion/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Ruby570bocadito/bastion?sort=semver)](https://github.com/Ruby570bocadito/bastion/releases/latest)
+[![CI](https://github.com/Ruby570bocadito/adarve/actions/workflows/ci.yml/badge.svg)](https://github.com/Ruby570bocadito/adarve/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Ruby570bocadito/adarve?sort=semver)](https://github.com/Ruby570bocadito/adarve/releases/latest)
 ![Plataformas](https://img.shields.io/badge/plataformas-Windows%20%7C%20Windows%20Server%20%7C%20Linux-2a78d6)
 
 [Instalación](#-instalación-en-una-línea) · [Uso](docs/10-guia-de-uso.md) · [Documentación](docs/README.md) · [Hoja de ruta](docs/13-hoja-de-ruta.md)
+
+<sub>Antes se llamaba <b>Bastion</b>. Al actualizar con el instalador se traslada todo: historial, excepciones, instantáneas y la ronda diaria.</sub>
 
 </div>
 
 ---
 
-![Informe HTML de Bastion](docs/assets/informe-claro.png)
+![Informe HTML de Adarve](docs/assets/informe-claro.png)
 
 <details>
-<summary>Consola local (<code>bastion ui</code>)</summary>
+<summary>Consola local (<code>adarve ui</code>)</summary>
 
-![Consola local de Bastion](docs/assets/consola.png)
+![Consola local de Adarve](docs/assets/consola.png)
 
 </details>
 
@@ -31,18 +33,18 @@ calcula una puntuación de postura, la mapea a MITRE ATT&CK y te dice qué corre
 | | |
 |---|---|
 | 🔍 **Auditoría de solo lectura** | 155 controles reales para Windows 10/11, Windows Server 2016-2025 (miembro y DC) y Linux (Ubuntu, Debian, RHEL y derivados). `scan` nunca modifica el sistema. |
-| 🛡️ **Hardening seguro** | `bastion harden` corrige 100 controles con simulación, instantánea previa, verificación y **rollback automático**; olas por riesgo de rotura y dead-man switch para SSH/RDP. |
-| 🎯 **Perfiles por rol** | Estación de trabajo, servidor miembro, controlador de dominio y servidor Linux, con niveles L1/L2. Bastion detecta el rol y elige el perfil. |
+| 🛡️ **Hardening seguro** | `adarve harden` corrige 100 controles con simulación, instantánea previa, verificación y **rollback automático**; olas por riesgo de rotura y dead-man switch para SSH/RDP. |
+| 🎯 **Perfiles por rol** | Estación de trabajo, servidor miembro, controlador de dominio y servidor Linux, con niveles L1/L2. Adarve detecta el rol y elige el perfil. |
 | 📊 **Puntuación de postura** | Puntuación ponderada por severidad (0-100, A-F), por categoría y por severidad. |
 | 📝 **Excepciones con caducidad** | Acepta un control fallido con motivo, responsable y fecha de caducidad (máximo un año): sale aparte, no cuenta y vuelve a fallar al caducar. |
 | 🧭 **MITRE ATT&CK** | Cada control enlaza técnicas y mitigaciones. El informe muestra qué técnicas quedan expuestas. |
 | 🧾 **Evidencias** | Para cada control: valor real, valor esperado y de dónde sale el dato (clave de registro, `sshd -T`, `secedit`...). |
 | 🛠️ **Remediación guiada** | Para lo que no es automático: resumen, ruta de GPO, comandos listos para copiar, riesgo de rotura e impacto. |
 | 🌐 **Informe HTML autocontenido** | Un solo fichero, modo claro y oscuro, filtros, sin conexión, imprimible a PDF. |
-| 🌍 **Superficie de ataque** | `bastion surface` lista qué escucha en la red y con qué proceso, evalúa el firewall (Windows, nftables e iptables, que cubren ufw y firewalld) para decir si cada puerto está abierto a cualquiera, limitado o filtrado, y señala los servicios de riesgo expuestos (SMB, RDP, Redis, Docker API…) y los recursos compartidos abiertos a todos. |
-| 🖥️ **Consola local** | `bastion ui` abre un panel en el navegador con la tendencia de la puntuación, el plan de hardening por olas, el historial y las excepciones. Solo en 127.0.0.1 y con token. |
+| 🌍 **Superficie de ataque** | `adarve surface` lista qué escucha en la red y con qué proceso, evalúa el firewall (Windows, nftables e iptables, que cubren ufw y firewalld) para decir si cada puerto está abierto a cualquiera, limitado o filtrado, y señala los servicios de riesgo expuestos (SMB, RDP, Redis, Docker API…) y los recursos compartidos abiertos a todos. |
+| 🖥️ **Consola local** | `adarve ui` abre un panel en el navegador con la tendencia de la puntuación, el plan de hardening por olas, el historial y las excepciones. Solo en 127.0.0.1 y con token. |
 | ⚙️ **Listo para CI/CD** | Salida JSON estable y `--min-score` para fallar un pipeline de imágenes doradas. |
-| 🔄 **Auto-actualización verificada** | `bastion update` descarga, verifica la suma SHA-256 y se reemplaza. Las reglas viajan dentro del binario. |
+| 🔄 **Auto-actualización verificada** | `adarve update` descarga, verifica la suma SHA-256 y se reemplaza. Las reglas viajan dentro del binario. |
 
 ## 🚀 Instalación en una línea
 
@@ -51,13 +53,13 @@ El mismo comando **instala, actualiza, prepara y lanza un primer escaneo**. Vuel
 **Linux** (como root):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Ruby570bocadito/bastion/main/scripts/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/Ruby570bocadito/adarve/main/scripts/install.sh | sudo bash
 ```
 
 **Windows** (PowerShell como administrador):
 
 ```powershell
-irm https://raw.githubusercontent.com/Ruby570bocadito/bastion/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/Ruby570bocadito/adarve/main/scripts/install.ps1 | iex
 ```
 
 Opciones, instalación sin conexión, espejos internos y desinstalación: [docs/09-instalacion.md](docs/09-instalacion.md).
@@ -65,27 +67,27 @@ Opciones, instalación sin conexión, espejos internos y desinstalación: [docs/
 ## 🧪 Uso rápido
 
 ```bash
-bastion info                        # plataforma, rol y perfil detectados
-bastion scan                        # auditar con el perfil por defecto
-bastion scan --save --open          # guardar y abrir el informe HTML
-bastion ui                          # consola en el navegador: tendencia, plan e historial
-bastion surface                     # qué puede tocar un atacante desde la red
-bastion surface fix --apply         # limitar a la red local lo abierto a cualquiera (Windows, con rollback)
-bastion schedule enable             # análisis diario: tendencia y aviso de cambios en la exposición
-bastion schedule notify --set URL   # avisos en el móvil o en un chat (ntfy, Slack, Discord, Teams)
-bastion scan -p win-workstation-l2  # otro perfil
-bastion scan --format json          # salida JSON (integraciones)
-bastion scan --min-score 80         # código de salida 2 si no llega (CI/CD)
-bastion rules show WIN-NET-001      # detalle y remediación de un control
-bastion harden                      # simulación: qué cambiaría (no toca nada)
-bastion harden --apply              # corregir la ola 1 (riesgo nulo o bajo)
-bastion rollback                    # deshacer el último cambio
-bastion exceptions add LNX-FW-001 --reason "Filtrado en el perímetro" --expires 90d
-bastion update                      # actualizar Bastion y sus reglas
+adarve info                        # plataforma, rol y perfil detectados
+adarve scan                        # auditar con el perfil por defecto
+adarve scan --save --open          # guardar y abrir el informe HTML
+adarve ui                          # consola en el navegador: tendencia, plan e historial
+adarve surface                     # qué puede tocar un atacante desde la red
+adarve surface fix --apply         # limitar a la red local lo abierto a cualquiera (Windows, con rollback)
+adarve schedule enable             # análisis diario: tendencia y aviso de cambios en la exposición
+adarve schedule notify --set URL   # avisos en el móvil o en un chat (ntfy, Slack, Discord, Teams)
+adarve scan -p win-workstation-l2  # otro perfil
+adarve scan --format json          # salida JSON (integraciones)
+adarve scan --min-score 80         # código de salida 2 si no llega (CI/CD)
+adarve rules show WIN-NET-001      # detalle y remediación de un control
+adarve harden                      # simulación: qué cambiaría (no toca nada)
+adarve harden --apply              # corregir la ola 1 (riesgo nulo o bajo)
+adarve rollback                    # deshacer el último cambio
+adarve exceptions add LNX-FW-001 --reason "Filtrado en el perímetro" --expires 90d
+adarve update                      # actualizar Adarve y sus reglas
 ```
 
 ```text
-  ▲ BASTION  · auditoría de hardening  0.1.0
+  ▲ ADARVE  · auditoría de hardening  0.1.0
   ────────────────────────────────────────────────────────────────────────
   Equipo    web-01 · Ubuntu 24.04.1 LTS · kernel 6.8.0 · amd64
   Perfil    Linux Servidor · Nivel 1 (linux-server-l1)
@@ -103,7 +105,7 @@ bastion update                      # actualizar Bastion y sus reglas
 
 ## 🗺️ Hacia dónde va
 
-Bastion es una suite de 16 herramientas sobre el mismo motor, organizadas en el ciclo **Evaluar → Endurecer → Defender → Gobernar**:
+Adarve es una suite de 16 herramientas sobre el mismo motor, organizadas en el ciclo **Evaluar → Endurecer → Defender → Gobernar**:
 
 | Fase | Estado | Contenido |
 |---|---|---|
@@ -120,7 +122,7 @@ Detalle completo en la [hoja de ruta](docs/13-hoja-de-ruta.md) y en el [diseño 
 
 - **Nada cambia sin pedirlo.** `scan` es de solo lectura y `harden` es una simulación salvo que se use `--apply`. Cada cambio guarda antes el estado previo, se verifica y se revierte si falla.
 - **Sin ejecución arbitraria.** Las reglas son datos declarativos: un paquete de reglas no puede ejecutar comandos. Los comandos del sistema que usan los probes están fijados en el código y se invocan con ruta absoluta.
-- **Descargas verificadas** con SHA-256 en el instalador y en `bastion update`.
+- **Descargas verificadas** con SHA-256 en el instalador y en `adarve update`.
 - **Informe blindado.** Los datos leídos del sistema nunca se interpretan como HTML y la página tiene una CSP con nonce.
 
 Más en [docs/08-seguridad-de-la-plataforma.md](docs/08-seguridad-de-la-plataforma.md). Para reportar vulnerabilidades: [SECURITY.md](SECURITY.md).
@@ -132,7 +134,7 @@ Toda la documentación está en [`docs/`](docs/README.md): visión, arquitectura
 ## 🧑‍💻 Desarrollo
 
 ```bash
-make build        # bin/bastion
+make build        # bin/adarve
 make test         # tests
 make lint         # gofmt + go vet (Linux y Windows)
 make rules-lint   # validar el paquete de reglas

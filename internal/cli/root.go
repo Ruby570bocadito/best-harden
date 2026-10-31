@@ -1,4 +1,4 @@
-// Package cli implementa la línea de comandos de Bastion.
+// Package cli implementa la línea de comandos de Adarve.
 package cli
 
 import (
@@ -11,14 +11,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Ruby570bocadito/bastion/internal/config"
-	"github.com/Ruby570bocadito/bastion/internal/platform"
-	"github.com/Ruby570bocadito/bastion/internal/probes"
-	"github.com/Ruby570bocadito/bastion/internal/remediate"
-	"github.com/Ruby570bocadito/bastion/internal/report"
-	"github.com/Ruby570bocadito/bastion/internal/version"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
-	"github.com/Ruby570bocadito/bastion/rules"
+	"github.com/Ruby570bocadito/adarve/internal/config"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
+	"github.com/Ruby570bocadito/adarve/internal/remediate"
+	"github.com/Ruby570bocadito/adarve/internal/report"
+	"github.com/Ruby570bocadito/adarve/internal/version"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/rules"
 )
 
 // ExitError permite devolver un código de salida concreto.
@@ -32,8 +32,8 @@ func (e *ExitError) Error() string { return e.Msg }
 type globalFlags struct {
 	noColor  bool
 	rulesDir []string
-	// trustEnv permite, con privilegios, las variables BASTION_HOME,
-	// BASTION_RELEASES_URL y BASTION_REPO.
+	// trustEnv permite, con privilegios, las variables ADARVE_HOME,
+	// ADARVE_RELEASES_URL y ADARVE_REPO.
 	trustEnv bool
 }
 
@@ -58,19 +58,19 @@ func Execute() int {
 
 func newRoot() *cobra.Command {
 	root := &cobra.Command{
-		Use:   "bastion",
-		Short: "Bastion · auditoría y hardening para Windows, Windows Server y Linux",
-		Long: `Bastion evalúa la configuración de seguridad del equipo frente a perfiles de
+		Use:   "adarve",
+		Short: "Adarve · auditoría y hardening para Windows, Windows Server y Linux",
+		Long: `Adarve evalúa la configuración de seguridad del equipo frente a perfiles de
 hardening (CIS, STIG, baselines de Microsoft), calcula una puntuación de postura
 y genera informes con evidencias y pasos de remediación.
 
-Bastion solo LEE la configuración del sistema: "scan" nunca modifica nada.
+Adarve solo LEE la configuración del sistema: "scan" nunca modifica nada.
 
 Primeros pasos:
-  bastion info                      qué plataforma y perfil se han detectado
-  bastion scan                      auditar con el perfil por defecto
-  bastion scan --save --open        guardar el informe HTML y abrirlo
-  bastion rules show LNX-SSH-001    detalle de un control`,
+  adarve info                      qué plataforma y perfil se han detectado
+  adarve scan                      auditar con el perfil por defecto
+  adarve scan --save --open        guardar el informe HTML y abrirlo
+  adarve rules show LNX-SSH-001    detalle de un control`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Version:       version.Version,
@@ -78,7 +78,7 @@ Primeros pasos:
 	root.SetVersionTemplate(version.String() + "\n")
 	root.PersistentFlags().BoolVar(&gf.noColor, "no-color", false, "desactivar colores")
 	root.PersistentFlags().StringSliceVar(&gf.rulesDir, "rules-dir", nil, "directorios adicionales de reglas (*.yaml)")
-	root.PersistentFlags().BoolVar(&gf.trustEnv, "trust-env", false, "con privilegios, usar igualmente BASTION_HOME, BASTION_RELEASES_URL y BASTION_REPO (desarrollo y laboratorios)")
+	root.PersistentFlags().BoolVar(&gf.trustEnv, "trust-env", false, "con privilegios, usar igualmente ADARVE_HOME, ADARVE_RELEASES_URL y ADARVE_REPO (desarrollo y laboratorios)")
 	root.PersistentPreRun = func(cmd *cobra.Command, _ []string) { dropUntrustedEnv(cmd) }
 	root.AddCommand(newScanCmd(), newHardenCmd(), newRollbackCmd(), newHistoryCmd(), newDeadmanCmd(), newExceptionsCmd(), newSurfaceCmd(), newScheduleCmd(), newUICmd(), newInfoCmd(), newRulesCmd(), newProfilesCmd(), newUpdateCmd(), newInitCmd(), newVersionCmd())
 	root.CompletionOptions.HiddenDefaultCmd = true
@@ -92,7 +92,7 @@ Primeros pasos:
 // Con privilegios, si otro usuario puede modificar la carpeta de
 // configuración o config.yaml, no se usa: podría apuntar las
 // actualizaciones a un espejo suyo o añadir reglas. Se avisa y se usan los
-// valores por defecto ("bastion init" restablece los permisos).
+// valores por defecto ("adarve init" restablece los permisos).
 func loadConfig() config.Config {
 	if !configTrusted() {
 		c := config.Default()
@@ -112,12 +112,12 @@ var (
 )
 
 // configTrusted indica si la configuración (config.yaml, exceptions.yaml,
-// rules.d) es fiable. Solo se comprueba con privilegios: sin ellos Bastion
+// rules.d) es fiable. Solo se comprueba con privilegios: sin ellos Adarve
 // no aplica cambios y la carpeta de un usuario es suya. Con --trust-env y
-// BASTION_HOME (desarrollo) no se comprueba.
+// ADARVE_HOME (desarrollo) no se comprueba.
 func configTrusted() bool {
 	trustOnce.Do(func() {
-		if !probes.Privileged() || (gf.trustEnv && os.Getenv("BASTION_HOME") != "") {
+		if !probes.Privileged() || (gf.trustEnv && config.Env("HOME") != "") {
 			return
 		}
 		probs := config.TrustProblems()
@@ -129,16 +129,16 @@ func configTrusted() bool {
 		for _, p := range probs {
 			fmt.Fprintln(os.Stderr, "  ·", p.Err)
 		}
-		fmt.Fprintln(os.Stderr, "  Revisa su contenido y ejecuta \"bastion init\" para restablecer los permisos.")
+		fmt.Fprintln(os.Stderr, "  Revisa su contenido y ejecuta \"adarve init\" para restablecer los permisos.")
 	})
 	return trusted
 }
 
 // reportsDir es donde "scan --save" guarda los informes: el directorio de
 // la configuración o, sin privilegios, la carpeta del usuario (en Windows
-// solo los administradores pueden escribir en %ProgramData%\Bastion).
+// solo los administradores pueden escribir en %ProgramData%\Adarve).
 func reportsDir(cfg config.Config) (dir string, user bool) {
-	if probes.Privileged() || os.Getenv("BASTION_HOME") != "" {
+	if probes.Privileged() || config.Env("HOME") != "" {
 		return cfg.Reports.Dir, false
 	}
 	if d, err := config.UserReportsDir(); err == nil {
@@ -147,10 +147,10 @@ func reportsDir(cfg config.Config) (dir string, user bool) {
 	return cfg.Reports.Dir, false
 }
 
-// ensureDataDirs prepara las carpetas de Bastion con sus permisos
+// ensureDataDirs prepara las carpetas de Adarve con sus permisos
 // restringidos antes de que un comando con privilegios escriba en ellas.
 //
-//   - Si no existen (nadie ejecutó "bastion init"), las crea con "init": así
+//   - Si no existen (nadie ejecutó "adarve init"), las crea con "init": así
 //     no heredan los permisos de %ProgramData%, donde cualquier usuario
 //     puede crear ficheros.
 //   - Si existen pero otro usuario puede modificarlas (las creó él antes,
@@ -161,7 +161,7 @@ func ensureDataDirs() error {
 	for _, d := range []string{config.ConfigDir(), config.DataDir()} {
 		if _, err := os.Stat(d); errors.Is(err, fs.ErrNotExist) {
 			if _, err := config.Init(); err != nil {
-				return fmt.Errorf("no se pudieron preparar las carpetas de Bastion: %w", err)
+				return fmt.Errorf("no se pudieron preparar las carpetas de Adarve: %w", err)
 			}
 			return nil
 		}
@@ -171,16 +171,16 @@ func ensureDataDirs() error {
 
 // secureDataDirs aparta los ficheros de configuración no fiables y
 // restablece los permisos si otro usuario puede modificar las carpetas de
-// Bastion (ver ensureDataDirs).
+// Adarve (ver ensureDataDirs).
 func secureDataDirs() error {
-	if !probes.Privileged() || (gf.trustEnv && os.Getenv("BASTION_HOME") != "") {
+	if !probes.Privileged() || (gf.trustEnv && config.Env("HOME") != "") {
 		return nil
 	}
 	probs := config.TrustProblems()
 	if len(probs) == 0 {
 		return nil
 	}
-	fmt.Fprintln(os.Stderr, "aviso: las carpetas de Bastion tenían permisos inseguros:")
+	fmt.Fprintln(os.Stderr, "aviso: las carpetas de Adarve tenían permisos inseguros:")
 	for _, p := range probs {
 		fmt.Fprintln(os.Stderr, "  ·", p.Err)
 		if p.Path == config.ConfigDir() || p.Path == config.DataDir() {
@@ -193,10 +193,10 @@ func secureDataDirs() error {
 		}
 	}
 	if _, err := config.Init(); err != nil {
-		return fmt.Errorf("no se pudieron restablecer los permisos de las carpetas de Bastion: %w", err)
+		return fmt.Errorf("no se pudieron restablecer los permisos de las carpetas de Adarve: %w", err)
 	}
 	if probs := config.TrustProblems(); len(probs) > 0 {
-		return fmt.Errorf("las carpetas de Bastion siguen sin ser seguras: %v", probs[0].Err)
+		return fmt.Errorf("las carpetas de Adarve siguen sin ser seguras: %v", probs[0].Err)
 	}
 	fmt.Fprintln(os.Stderr, "  Permisos restablecidos: solo los administradores pueden modificarlas.")
 	return nil
@@ -248,9 +248,9 @@ func resolveProfile(c *rule.Catalog, info platform.Info, requested string) (*rul
 func stdoutStyle() report.Style { return report.NewStyle(os.Stdout, gf.noColor) }
 func stderrStyle() report.Style { return report.NewStyle(os.Stderr, gf.noColor) }
 
-// envOverrides son las variables que cambian de dónde lee Bastion su
+// envOverrides son las variables que cambian de dónde lee Adarve su
 // configuración, sus datos o sus actualizaciones.
-var envOverrides = []string{"BASTION_HOME", "BASTION_RELEASES_URL", "BASTION_REPO"}
+var envOverrides = []string{"ADARVE_HOME", "ADARVE_RELEASES_URL", "ADARVE_REPO"}
 
 // dropUntrustedEnv descarta, con privilegios, las variables que redirigen
 // la configuración, las instantáneas o las actualizaciones, salvo con
@@ -268,8 +268,8 @@ func dropUntrustedEnv(cmd *cobra.Command) {
 	for _, k := range envOverrides {
 		if v := os.Getenv(k); v != "" {
 			fmt.Fprintf(os.Stderr, "aviso: con privilegios se ignora %s=%s (usa --trust-env si es intencionado", k, v)
-			if k == "BASTION_RELEASES_URL" || k == "BASTION_REPO" {
-				fmt.Fprint(os.Stderr, ", o --releases-url / --repo en bastion update")
+			if k == "ADARVE_RELEASES_URL" || k == "ADARVE_REPO" {
+				fmt.Fprint(os.Stderr, ", o --releases-url / --repo en adarve update")
 			}
 			fmt.Fprintln(os.Stderr, ")")
 			_ = os.Unsetenv(k)

@@ -4,9 +4,9 @@
 // Una excepción siempre lleva un motivo, un responsable y una fecha de
 // caducidad de como mucho un año: es una decisión que se revisa, no una
 // forma de esconder un fallo. Al caducar, el control vuelve a contar como
-// fallido y Bastion avisa.
+// fallido y Adarve avisa.
 //
-// Se guardan en <config>/exceptions.yaml (bastion.exceptions/v1), con los
+// Se guardan en <config>/exceptions.yaml (adarve.exceptions/v1), con los
 // mismos permisos que config.yaml: solo un administrador puede modificarlas.
 package exceptions
 
@@ -28,7 +28,11 @@ import (
 )
 
 // Schema es la versión del formato del fichero.
-const Schema = "bastion.exceptions/v1"
+const Schema = "adarve.exceptions/v1"
+
+// legacySchema es el formato de Bastion, el nombre anterior de Adarve: es
+// el mismo, solo cambia el nombre.
+const legacySchema = "bastion.exceptions/v1"
 
 // DateLayout es el formato de las fechas (AAAA-MM-DD).
 const DateLayout = "2006-01-02"
@@ -150,7 +154,7 @@ func Load(path string) (*File, error) {
 	if err := yaml.Unmarshal(b, f); err != nil {
 		return &File{Schema: Schema}, fmt.Errorf("%s: %w", path, err)
 	}
-	if f.Schema != "" && f.Schema != Schema {
+	if f.Schema != "" && f.Schema != Schema && f.Schema != legacySchema {
 		return &File{Schema: Schema}, fmt.Errorf("%s: formato %q no soportado (se esperaba %s)", path, f.Schema, Schema)
 	}
 	f.Schema = Schema
@@ -170,9 +174,9 @@ func Load(path string) (*File, error) {
 	return f, nil
 }
 
-const header = `# Excepciones de Bastion (bastion.exceptions/v1)
+const header = `# Excepciones de Adarve (adarve.exceptions/v1)
 # Controles fallidos aceptados de forma documentada. Gestiónalas con
-#   bastion exceptions add|list|remove
+#   adarve exceptions add|list|remove
 # Cada excepción caduca (como mucho al año): entonces el control vuelve a
 # contar como fallido. Este fichero solo debe poder modificarlo un administrador.
 `
@@ -192,7 +196,7 @@ func (f *File) Save(path string) error {
 		return err
 	}
 	// Temporal único y sincronizado a disco antes de renombrar: dos
-	// "bastion exceptions add" a la vez no comparten temporal y un corte de
+	// "adarve exceptions add" a la vez no comparten temporal y un corte de
 	// luz no deja el fichero vacío.
 	tf, err := os.CreateTemp(filepath.Dir(path), ".exceptions-*.tmp")
 	if err != nil {

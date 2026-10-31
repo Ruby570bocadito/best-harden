@@ -342,7 +342,7 @@ func (r *nfRule) labels() []string {
 		out = append(out, parseAddrs(r.dst).describe(true)...)
 	}
 	if r.unknown {
-		out = append(out, "con condiciones que Bastion no evalúa")
+		out = append(out, "con condiciones que Adarve no evalúa")
 	}
 	return out
 }

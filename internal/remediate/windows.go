@@ -21,7 +21,7 @@ import (
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
 
-	"github.com/Ruby570bocadito/bastion/internal/probes"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
 )
 
 func init() {
@@ -123,7 +123,7 @@ func (registrySet) Capture(_ context.Context, p probes.Params) (State, error) {
 					entry["type"], entry["value"] = map[uint32]string{registry.SZ: "SZ", registry.EXPAND_SZ: "EXPAND_SZ"}[typ], v
 				default:
 					k.Close()
-					return nil, fmt.Errorf("%s\\%s es de un tipo que Bastion no restaura (%d)", sub, name, typ)
+					return nil, fmt.Errorf("%s\\%s es de un tipo que Adarve no restaura (%d)", sub, name, typ)
 				}
 			}
 			k.Close()
@@ -250,11 +250,11 @@ func secpolConfigure(ctx context.Context, section, key, value string) error {
 	for _, c := range u {
 		buf = append(buf, byte(c), byte(c>>8))
 	}
-	cfg := filepath.Join(dir, "bastion.inf")
+	cfg := filepath.Join(dir, "adarve.inf")
 	if err := os.WriteFile(cfg, buf, 0o600); err != nil {
 		return err
 	}
-	_, err = run(ctx, probes.System32("secedit.exe"), "/configure", "/db", filepath.Join(dir, "bastion.sdb"),
+	_, err = run(ctx, probes.System32("secedit.exe"), "/configure", "/db", filepath.Join(dir, "adarve.sdb"),
 		"/cfg", cfg, "/areas", "SECURITYPOLICY", "/quiet")
 	return err
 }

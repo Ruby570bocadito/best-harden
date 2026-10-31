@@ -1,7 +1,7 @@
-// Package schedule programa el análisis diario de Bastion en el planificador
+// Package schedule programa el análisis diario de Adarve en el planificador
 // del sistema: el Programador de tareas en Windows y un temporizador de
 // systemd (o cron, si no hay systemd) en Linux. La tarea ejecuta
-// "bastion schedule run", que guarda un escaneo y un análisis de superficie
+// "adarve schedule run", que guarda un escaneo y un análisis de superficie
 // y anota el resultado en schedule.log.
 package schedule
 

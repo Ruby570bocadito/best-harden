@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // SeverityLabel traduce la severidad para mostrarla.
@@ -33,7 +33,7 @@ func Console(w io.Writer, rep *engine.Report, o ConsoleOptions) {
 	host := rep.Host
 
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, "  %s  %s %s\n", s.Bold(s.Cyan(Sym("▲")+" BASTION")), s.Dim("·"), s.Dim("auditoría de hardening  "+rep.Tool.Version))
+	fmt.Fprintf(w, "  %s  %s %s\n", s.Bold(s.Cyan(Sym("▲")+" ADARVE")), s.Dim("·"), s.Dim("auditoría de hardening  "+rep.Tool.Version))
 	fmt.Fprintln(w, "  "+line)
 
 	desc := []string{host.Name}
@@ -86,7 +86,7 @@ func Console(w io.Writer, rep *engine.Report, o ConsoleOptions) {
 			msg = fmt.Sprintf("%d excepciones han caducado: %s vuelven a contar como fallidos.", len(expired), strings.Join(expired, ", "))
 		}
 		fmt.Fprintf(w, "  %s %s\n", s.Yellow(Sym("⚠")), s.Yellow(msg))
-		fmt.Fprintf(w, "    %s\n", s.Dim("Corrige el control o renueva la excepción: bastion exceptions add <ID> --reason … --expires …"))
+		fmt.Fprintf(w, "    %s\n", s.Dim("Corrige el control o renueva la excepción: adarve exceptions add <ID> --reason … --expires …"))
 	}
 
 	// Puntuación
@@ -208,14 +208,14 @@ func Console(w io.Writer, rep *engine.Report, o ConsoleOptions) {
 		fmt.Fprintln(w)
 		if sc.Skipped > 0 {
 			fmt.Fprintf(w, "  %s %s %s\n", s.Yellow(Sym("⊘")), fmt.Sprintf("%s sin evaluar por falta de privilegios.", plural(sc.Skipped, "control", "controles")),
-				s.Dim("Lista: bastion scan --all"))
+				s.Dim("Lista: adarve scan --all"))
 		}
 		if sc.Exceptions > 0 {
 			msg := "1 control fallido aceptado por excepción."
 			if sc.Exceptions > 1 {
 				msg = fmt.Sprintf("%d controles fallidos aceptados por excepción.", sc.Exceptions)
 			}
-			fmt.Fprintf(w, "  %s %s %s\n", s.Blue(Sym("◇")), msg, s.Dim("Lista: bastion exceptions list"))
+			fmt.Fprintf(w, "  %s %s %s\n", s.Blue(Sym("◇")), msg, s.Dim("Lista: adarve exceptions list"))
 		}
 	}
 	fmt.Fprintln(w)

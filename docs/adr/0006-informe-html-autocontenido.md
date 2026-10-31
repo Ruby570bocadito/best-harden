@@ -11,5 +11,5 @@ Un informe HTML **de un único fichero** generado por el binario: datos incrusta
 ## Consecuencias
 - ✅ Funciona sin conexión, se envía por correo y se imprime a PDF.
 - ✅ Valida el diseño visual (tokens, paleta de estado, jerarquía) que heredará la consola web.
-- ✅ El JSON incrustado es el mismo `bastion.report/v1`: la futura UI reutiliza los datos.
+- ✅ El JSON incrustado es el mismo `adarve.report/v1`: la futura UI reutiliza los datos.
 - ⚠️ Plantilla HTML/JS escrita a mano; cuando exista `ui/` (React), el informe podrá generarse desde ese mismo código.

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/platform"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
 )
 
 func TestSafeWriterStripsEscapes(t *testing.T) {
@@ -69,10 +69,10 @@ func TestPrunePerHost(t *testing.T) {
 	for d := 1; d <= 4; d++ {
 		save("zeta", d)
 	}
-	if n := len(hostFiles(dir, "bastion-", "alpha", ".json")); n != 1 {
+	if n := len(hostFiles(dir, "adarve-", "alpha", ".json")); n != 1 {
 		t.Errorf("alpha: %d informes, quiero 1", n)
 	}
-	if n := len(hostFiles(dir, "bastion-", "zeta", ".json")); n != 2 {
+	if n := len(hostFiles(dir, "adarve-", "zeta", ".json")); n != 2 {
 		t.Errorf("zeta: %d informes, quiero 2", n)
 	}
 }

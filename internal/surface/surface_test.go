@@ -9,8 +9,8 @@ import (
 
 	"net"
 
-	"github.com/Ruby570bocadito/bastion/internal/platform"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 func TestParseProcNet(t *testing.T) {
@@ -612,7 +612,7 @@ func TestLabelsAndShortLists(t *testing.T) {
 }
 
 // TestRealMachine reproduce el equipo de la prueba con v0.3.6: reglas como
-// las del registro y los puertos que mostró «bastion surface».
+// las del registro y los puertos que mostró «adarve surface».
 func TestRealMachine(t *testing.T) {
 	const rafag = "S-1-5-21-1236394060-1900707475-1329702642-1001"
 	reg := map[string]string{

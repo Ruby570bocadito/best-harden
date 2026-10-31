@@ -12,14 +12,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Ruby570bocadito/bastion/internal/config"
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/notify"
-	"github.com/Ruby570bocadito/bastion/internal/platform"
-	"github.com/Ruby570bocadito/bastion/internal/probes"
-	"github.com/Ruby570bocadito/bastion/internal/report"
-	"github.com/Ruby570bocadito/bastion/internal/schedule"
-	"github.com/Ruby570bocadito/bastion/internal/surface"
+	"github.com/Ruby570bocadito/adarve/internal/config"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/notify"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
+	"github.com/Ruby570bocadito/adarve/internal/report"
+	"github.com/Ruby570bocadito/adarve/internal/schedule"
+	"github.com/Ruby570bocadito/adarve/internal/surface"
 )
 
 func newScheduleCmd() *cobra.Command {
@@ -30,18 +30,18 @@ func newScheduleCmd() *cobra.Command {
 de tareas en Windows (como SYSTEM) y un temporizador de systemd en Linux (o
 cron, si no hay systemd).
 
-Cada día guarda un escaneo y un análisis de superficie. Así "bastion ui"
-muestra la tendencia de la postura y "bastion surface" avisa de lo que ha
+Cada día guarda un escaneo y un análisis de superficie. Así "adarve ui"
+muestra la tendencia de la postura y "adarve surface" avisa de lo que ha
 cambiado: un programa recién instalado que abre un puerto, una regla del
 firewall modificada… Cada ejecución queda anotada en schedule.log y en el
 Visor de eventos (o syslog); si algún control ha empeorado o la exposición
 ha crecido, la tarea termina con código 3 y, si se ha configurado, avisa a
-un webhook (bastion schedule notify).`,
-		Example: `  bastion schedule enable              # cada día a las 09:00
-  bastion schedule enable --at 13:30
-  bastion schedule                     # estado y últimas ejecuciones
-  bastion schedule notify --set https://ntfy.sh/<tema>   # avisos en el móvil
-  bastion schedule disable`,
+un webhook (adarve schedule notify).`,
+		Example: `  adarve schedule enable              # cada día a las 09:00
+  adarve schedule enable --at 13:30
+  adarve schedule                     # estado y últimas ejecuciones
+  adarve schedule notify --set https://ntfy.sh/<tema>   # avisos en el móvil
+  adarve schedule disable`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return scheduleStatus() },
 	}
 	var at string
@@ -100,7 +100,7 @@ func scheduleEnable(at string, unsafePath bool) error {
 	// La tarea se ejecuta como SYSTEM o root: si un usuario sin privilegios
 	// puede sustituir el ejecutable, obtiene esos privilegios.
 	if err := schedule.SafeExecutable(exe); err != nil && !unsafePath {
-		return fmt.Errorf("no se programa: %w. Instala Bastion con el instalador (Program Files o /usr/local/bin) y vuelve a intentarlo", err)
+		return fmt.Errorf("no se programa: %w. Instala Adarve con el instalador (Program Files o /usr/local/bin) y vuelve a intentarlo", err)
 	}
 	if err := ensureDataDirs(); err != nil {
 		return err
@@ -116,13 +116,13 @@ func scheduleEnable(at string, unsafePath bool) error {
 	printScheduleStatus(s, st)
 	cfg := loadConfig()
 	if err := notify.InstallLocal(); err != nil {
-		fmt.Printf("    %s %s\n", s.Yellow("!"), s.Yellow("No se pudo registrar el origen Bastion en el Visor de eventos: "+err.Error()))
+		fmt.Printf("    %s %s\n", s.Yellow("!"), s.Yellow("No se pudo registrar el origen Adarve en el Visor de eventos: "+err.Error()))
 	}
 	fmt.Printf("    %s %s\n", s.Dim(pad12("Avisos")), notifyText(cfg.Notify))
 	if cfg.Notify.Webhook == "" {
-		fmt.Printf("    %s %s\n", s.Dim(pad12("")), s.Dim("Para recibirlos en el móvil o en un chat: bastion schedule notify --set <url>"))
+		fmt.Printf("    %s %s\n", s.Dim(pad12("")), s.Dim("Para recibirlos en el móvil o en un chat: adarve schedule notify --set <url>"))
 	}
-	fmt.Printf("    %s\n\n", s.Dim("Para probarlo ahora: bastion schedule run · los resultados se ven en bastion ui"))
+	fmt.Printf("    %s\n\n", s.Dim("Para probarlo ahora: adarve schedule run · los resultados se ven en adarve ui"))
 	return nil
 }
 
@@ -175,7 +175,7 @@ func scheduleStatus() error {
 	case err != nil:
 		fmt.Printf("  %s No se pudo consultar la tarea: %v\n", s.Yellow("!"), err)
 	case st.Mechanism == "":
-		fmt.Printf("  %s No hay análisis programado. Para programarlo: %s\n", s.Dim("·"), s.Bold("bastion schedule enable"))
+		fmt.Printf("  %s No hay análisis programado. Para programarlo: %s\n", s.Dim("·"), s.Bold("adarve schedule enable"))
 	case st.Enabled:
 		fmt.Printf("  %s Análisis diario a las %s\n", s.Green(report.Sym("✓")), s.Bold(st.At))
 		printScheduleStatus(s, st)
@@ -215,7 +215,7 @@ func scheduleStatus() error {
 		tb.Write(os.Stdout)
 		if last := runs[len(runs)-1]; len(last.NotifyErrors) > 0 {
 			fmt.Printf("\n  %s El último aviso no llegó: %s\n    %s\n", s.Yellow("!"), strings.Join(last.NotifyErrors, "; "),
-				s.Dim("Para probarlo: bastion schedule notify"))
+				s.Dim("Para probarlo: adarve schedule notify"))
 		}
 	}
 	fmt.Println()
@@ -296,7 +296,7 @@ func scheduleRun() error {
 	case len(run.Errors) > 0:
 		return &ExitError{Code: 1, Msg: strings.Join(run.Errors, "; ")}
 	case run.NewExposure > 0 || run.Regressions > 0:
-		return &ExitError{Code: 3, Msg: "la postura o la exposición han empeorado desde el análisis anterior (bastion scan y bastion surface lo detallan)"}
+		return &ExitError{Code: 3, Msg: "la postura o la exposición han empeorado desde el análisis anterior (adarve scan y adarve surface lo detallan)"}
 	}
 	if logErr != nil {
 		return fmt.Errorf("no se pudo anotar la ejecución: %w", logErr)

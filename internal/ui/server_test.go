@@ -13,13 +13,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/report"
-	"github.com/Ruby570bocadito/bastion/internal/schedule"
-	"github.com/Ruby570bocadito/bastion/internal/surface"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/report"
+	"github.com/Ruby570bocadito/adarve/internal/schedule"
+	"github.com/Ruby570bocadito/adarve/internal/surface"
 )
 
-const goodID = "bastion-pc-01-20261015-100000"
+const goodID = "adarve-pc-01-20261015-100000"
 
 type fakeBackend struct {
 	scans   int
@@ -116,7 +116,7 @@ func TestToken(t *testing.T) {
 	s, h, _ := newTest(t)
 	for name, hdr := range map[string]map[string]string{
 		"sin token":     nil,
-		"token erróneo": {"X-Bastion-Token": "x" + s.Token()[1:]},
+		"token erróneo": {"X-Adarve-Token": "x" + s.Token()[1:]},
 		"en la query":   nil, // la API no acepta el token en la URL
 	} {
 		target := "/api/state"
@@ -127,7 +127,7 @@ func TestToken(t *testing.T) {
 			t.Errorf("%s: %d, quiero 401", name, rec.Code)
 		}
 	}
-	rec := do(h, "GET", "/api/state", map[string]string{"X-Bastion-Token": s.Token()})
+	rec := do(h, "GET", "/api/state", map[string]string{"X-Adarve-Token": s.Token()})
 	var st State
 	if rec.Code != 200 || json.Unmarshal(rec.Body.Bytes(), &st) != nil || st.Hostname != "pc-01" {
 		t.Errorf("con token: %d %s", rec.Code, rec.Body)
@@ -136,9 +136,9 @@ func TestToken(t *testing.T) {
 
 func TestHostAndOrigin(t *testing.T) {
 	s, h, fb := newTest(t)
-	tok := map[string]string{"X-Bastion-Token": s.Token()}
+	tok := map[string]string{"X-Adarve-Token": s.Token()}
 	with := func(extra map[string]string) map[string]string {
-		m := map[string]string{"X-Bastion-Token": s.Token()}
+		m := map[string]string{"X-Adarve-Token": s.Token()}
 		for k, v := range extra {
 			m[k] = v
 		}
@@ -168,11 +168,11 @@ func TestHostAndOrigin(t *testing.T) {
 
 func TestReportIDs(t *testing.T) {
 	s, h, _ := newTest(t)
-	tok := map[string]string{"X-Bastion-Token": s.Token()}
+	tok := map[string]string{"X-Adarve-Token": s.Token()}
 	if rec := do(h, "GET", "/api/reports/"+goodID, tok); rec.Code != 200 {
 		t.Errorf("informe válido: %d", rec.Code)
 	}
-	for _, id := range []string{"..%2F..%2Fetc%2Fpasswd", "bastion-x", "%2E%2E"} {
+	for _, id := range []string{"..%2F..%2Fetc%2Fpasswd", "adarve-x", "%2E%2E"} {
 		if rec := do(h, "GET", "/api/reports/"+id, tok); rec.Code == 200 {
 			t.Errorf("%s debería rechazarse", id)
 		}
@@ -186,7 +186,7 @@ func TestReportIDs(t *testing.T) {
 	}
 	cookie := map[string]string{"Cookie": s.cookie + "=" + s.Token()}
 	rec := do(h, "GET", "/r/"+goodID+".html", cookie)
-	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "bastion-data") {
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "adarve-data") {
 		t.Errorf("informe HTML: %d", rec.Code)
 	}
 	if csp := rec.Header().Get("Content-Security-Policy"); csp != "frame-ancestors 'self'" {
@@ -215,12 +215,12 @@ func TestSessionCookieAndLaunchCode(t *testing.T) {
 	cookie := s.cookie + "=" + s.Token()
 	// La cookie sola no basta para la API (CSRF): hace falta la cabecera.
 	if rec := do(h, "GET", "/api/state", map[string]string{"Cookie": cookie}); rec.Code != http.StatusUnauthorized {
-		t.Errorf("cookie sin X-Bastion-Request: %d, quiero 401", rec.Code)
+		t.Errorf("cookie sin X-Adarve-Request: %d, quiero 401", rec.Code)
 	}
-	if rec := do(h, "GET", "/api/state", map[string]string{"Cookie": cookie, "X-Bastion-Request": "1"}); rec.Code != 200 {
-		t.Errorf("cookie con X-Bastion-Request: %d", rec.Code)
+	if rec := do(h, "GET", "/api/state", map[string]string{"Cookie": cookie, "X-Adarve-Request": "1"}); rec.Code != 200 {
+		t.Errorf("cookie con X-Adarve-Request: %d", rec.Code)
 	}
-	if rec := do(h, "GET", "/api/state", map[string]string{"Cookie": s.cookie + "=otro", "X-Bastion-Request": "1"}); rec.Code != http.StatusUnauthorized {
+	if rec := do(h, "GET", "/api/state", map[string]string{"Cookie": s.cookie + "=otro", "X-Adarve-Request": "1"}); rec.Code != http.StatusUnauthorized {
 		t.Errorf("cookie errónea: %d", rec.Code)
 	}
 
@@ -261,7 +261,7 @@ func TestScanDetachedFromRequest(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	req := httptest.NewRequest("POST", "/api/scan", nil).WithContext(ctx)
 	req.Host = "127.0.0.1:8790"
-	req.Header.Set("X-Bastion-Token", s.Token())
+	req.Header.Set("X-Adarve-Token", s.Token())
 	cancel()
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -272,7 +272,7 @@ func TestScanDetachedFromRequest(t *testing.T) {
 
 func TestPlanAndBusy(t *testing.T) {
 	s, h, fb := newTest(t)
-	tok := map[string]string{"X-Bastion-Token": s.Token()}
+	tok := map[string]string{"X-Adarve-Token": s.Token()}
 	for _, w := range []string{"0", "4", "x", ""} {
 		if rec := do(h, "GET", "/api/plan?wave="+w, tok); rec.Code != http.StatusBadRequest {
 			t.Errorf("wave=%q: %d, quiero 400", w, rec.Code)

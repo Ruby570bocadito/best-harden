@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-__NONCE__'; img-src data:; base-uri 'none'; form-action 'none'">
-<meta name="generator" content="Bastion">
-<title>Superficie de ataque · Bastion</title>
+<meta name="generator" content="Adarve">
+<title>Superficie de ataque · Adarve</title>
 <style>
 __STYLE__
 /* Superficie */
@@ -36,7 +36,7 @@ __STYLE__
   <div class="wrap">
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3z"/><path d="m9 12 2 2 4-4"/></svg>
-      Bastion <small>· superficie de ataque</small>
+      Adarve <small>· superficie de ataque</small>
     </div>
     <div class="spacer"></div>
     <button class="btn" id="print" type="button" title="Imprimir o guardar como PDF">Imprimir<span class="long"> / PDF</span></button>
@@ -46,14 +46,14 @@ __STYLE__
 
 <main class="wrap" id="app" aria-live="polite"></main>
 
-<script type="application/json" id="bastion-data">__BASTION_DATA__</script>
+<script type="application/json" id="adarve-data">__ADARVE_DATA__</script>
 <script nonce="__NONCE__">
 (function () {
   "use strict";
   // Todo el contenido procedente del sistema auditado (nombres de procesos,
   // reglas, recursos compartidos…) se inserta con textContent: nunca se
   // interpreta como HTML.
-  var data = JSON.parse(document.getElementById("bastion-data").textContent);
+  var data = JSON.parse(document.getElementById("adarve-data").textContent);
   var app = document.getElementById("app");
   var root = document.documentElement;
 
@@ -97,7 +97,7 @@ __STYLE__
       return host.version && n.indexOf(host.version) < 0 ? n + " " + host.version : n;
     })()]),
     el("span", null, [el("b", { text: "Analizado" }), fmtDate(data.finished_at)]),
-    el("span", null, [el("b", { text: "Bastion" }), data.version || ""])
+    el("span", null, [el("b", { text: "Adarve" }), data.version || ""])
   ]);
   if (fw) {
     var fwText;
@@ -167,7 +167,7 @@ __STYLE__
       f.fix ? el("p", { class: "fix", text: "→ " + f.fix }) : null
     ]);
     if (f.firewall_rules && f.firewall_rules.length) {
-      var cmd = "bastion surface fix " + f.id + (/^SURF-PORT-(22|3389|5985|5986|5900)$/.test(f.id) ? " --include-remote" : "") + " --apply";
+      var cmd = "adarve surface fix " + f.id + (/^SURF-PORT-(22|3389|5985|5986|5900)$/.test(f.id) ? " --include-remote" : "") + " --apply";
       var copy = el("button", { class: "btn copy", type: "button", text: "Copiar" });
       copy.addEventListener("click", function () {
         if (navigator.clipboard) navigator.clipboard.writeText(cmd).then(function () { copy.textContent = "Copiado"; setTimeout(function () { copy.textContent = "Copiar"; }, 1500); });
@@ -221,16 +221,16 @@ __STYLE__
   })) : el("p", { class: "empty", text: "No se pudieron leer los administradores." });
   app.appendChild(el("section", { class: "two" }, [card("Recursos compartidos (" + shares.length + ")", [shareList]), card("Administradores (" + admins.length + ")", [adminList])]));
 
-  app.appendChild(el("footer", { text: "Generado por Bastion " + (data.version || "") + " el " + fmtDate(data.finished_at) +
+  app.appendChild(el("footer", { text: "Generado por Adarve " + (data.version || "") + " el " + fmtDate(data.finished_at) +
     ". Solo lectura: el análisis no ha cambiado nada en el equipo." }));
 
-  try { var saved = localStorage.getItem("bastion-theme"); if (saved) root.setAttribute("data-theme", saved); } catch (e) {}
+  try { var saved = localStorage.getItem("adarve-theme"); if (saved) root.setAttribute("data-theme", saved); } catch (e) {}
   document.getElementById("theme").addEventListener("click", function () {
     var dark = root.getAttribute("data-theme") === "dark" ||
       (!root.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
     var next = dark ? "light" : "dark";
     root.setAttribute("data-theme", next);
-    try { localStorage.setItem("bastion-theme", next); } catch (e) {}
+    try { localStorage.setItem("adarve-theme", next); } catch (e) {}
   });
   document.getElementById("print").addEventListener("click", function () { window.print(); });
 })();

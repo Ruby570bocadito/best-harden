@@ -337,14 +337,14 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
 
   // ---- Token de la sesión ----
   // La sesión va en una cookie HttpOnly que el servidor fija al abrir la
-  // dirección de "bastion ui" (y la quita de la URL con una redirección): el
-  // script nunca ve el token. Cada petición lleva X-Bastion-Request, que una
+  // dirección de "adarve ui" (y la quita de la URL con una redirección): el
+  // script nunca ve el token. Cada petición lleva X-Adarve-Request, que una
   // web ajena no puede añadir sin una comprobación CORS que no se concede.
 
   // Nombre del producto en la interfaz y del ejecutable en los comandos que
-  // se muestran para copiar. Cuando el binario cambie de nombre, solo cambia CLI.
+  // se muestran para copiar.
   var BRAND = "Adarve";
-  var CLI = "bastion";
+  var CLI = "adarve";
 
   var SEV = {
     critical: { label: "Crítico", color: "var(--critical)", rank: 0, weight: 10 },
@@ -453,7 +453,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
 
   function api(path, opts) {
     opts = opts || {};
-    return fetch(path, { method: opts.method || "GET", headers: { "X-Bastion-Request": "1" }, credentials: "same-origin", cache: "no-store" }).then(function (r) {
+    return fetch(path, { method: opts.method || "GET", headers: { "X-Adarve-Request": "1" }, credentials: "same-origin", cache: "no-store" }).then(function (r) {
       if (r.status === 401) throw new Error("la sesión no es válida o ha caducado. Abre de nuevo la dirección que muestra \"" + CLI + " ui\" en la terminal");
       return r.json().catch(function () { return {}; }).then(function (body) {
         if (!r.ok) throw new Error(body.error || ("HTTP " + r.status));
@@ -1002,7 +1002,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
         el("span", null, [el("i", { class: "door-bars" }), "Con rastrillo"]), el("span", null, [el("i", { class: "door-shut" }), "Cerrada"]), again])
     ])]));
 
-    // Cambios desde el último análisis guardado (bastion surface --save).
+    // Cambios desde el último análisis guardado (adarve surface --save).
     if (sf.changes) {
       var KIND = {
         worse: ["↑", "var(--critical)", ""], "new": ["+", "var(--critical)", ""], finding: ["!", "var(--critical)", "Hallazgo nuevo: "],

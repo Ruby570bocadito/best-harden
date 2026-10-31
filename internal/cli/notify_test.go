@@ -9,18 +9,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/config"
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/notify"
-	"github.com/Ruby570bocadito/bastion/internal/schedule"
-	"github.com/Ruby570bocadito/bastion/internal/surface"
+	"github.com/Ruby570bocadito/adarve/internal/config"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/notify"
+	"github.com/Ruby570bocadito/adarve/internal/schedule"
+	"github.com/Ruby570bocadito/adarve/internal/surface"
 )
 
 func TestScheduleEvent(t *testing.T) {
 	run := schedule.Run{Time: time.Now().UTC(), ScanScore: 78, SurfaceScore: 53}
 
 	ev := scheduleEvent("Rby", run, true, true, nil, nil)
-	if ev.Level != notify.LevelInfo || ev.Title != "Bastion · Rby: análisis diario sin cambios a peor" || ev.Lines[0] != "Postura 78/100 · exposición 53/100" {
+	if ev.Level != notify.LevelInfo || ev.Title != "Adarve · Rby: análisis diario sin cambios a peor" || ev.Lines[0] != "Postura 78/100 · exposición 53/100" {
 		t.Errorf("sin cambios: %+v", ev)
 	}
 

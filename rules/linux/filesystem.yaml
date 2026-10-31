@@ -20,7 +20,7 @@ remediation:
   commands: |
     systemctl unmask tmp.mount 2>/dev/null
     mkdir -p /etc/systemd/system/tmp.mount.d
-    printf '[Mount]\nOptions=mode=1777,strictatime,nosuid,nodev,noexec,size=25%%\n' > /etc/systemd/system/tmp.mount.d/bastion.conf
+    printf '[Mount]\nOptions=mode=1777,strictatime,nosuid,nodev,noexec,size=25%%\n' > /etc/systemd/system/tmp.mount.d/adarve.conf
     systemctl daemon-reload && systemctl enable --now tmp.mount
   breaking_risk: medium
   reboot_required: true

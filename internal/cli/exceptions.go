@@ -13,13 +13,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Ruby570bocadito/bastion/internal/config"
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/exceptions"
-	"github.com/Ruby570bocadito/bastion/internal/platform"
-	"github.com/Ruby570bocadito/bastion/internal/probes"
-	"github.com/Ruby570bocadito/bastion/internal/report"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/config"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/exceptions"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
+	"github.com/Ruby570bocadito/adarve/internal/report"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 func exceptionsPath() string { return exceptions.Path(config.ConfigDir()) }
@@ -55,7 +55,7 @@ asumido, control compensatorio o incompatibilidad conocida. El control
 aparece como "excepción", no cuenta en la puntuación y "harden" no lo toca.
 
 Cada excepción lleva un motivo, un responsable y una caducidad de como
-mucho un año. Al caducar, el control vuelve a contar como fallido y Bastion
+mucho un año. Al caducar, el control vuelve a contar como fallido y Adarve
 avisa en cada escaneo.
 
 Se guardan en exceptions.yaml, junto a config.yaml; solo un administrador
@@ -76,9 +76,9 @@ puede modificarlas.`,
 	add := &cobra.Command{
 		Use:   "add <ID>",
 		Short: "Añadir o renovar la excepción de un control",
-		Example: `  bastion exceptions add WIN-SYS-003 --reason "Equipo sin UEFI; se sustituye en enero" --expires 2027-01-31
-  bastion exceptions add LNX-FW-001 --reason "Filtrado en el cortafuegos perimetral (FW-02)" --expires 90d
-  bastion exceptions add WIN-RDP-001 --reason "Cliente RDP heredado del proveedor" --expires 6m --host SRV-ERP01`,
+		Example: `  adarve exceptions add WIN-SYS-003 --reason "Equipo sin UEFI; se sustituye en enero" --expires 2027-01-31
+  adarve exceptions add LNX-FW-001 --reason "Filtrado en el cortafuegos perimetral (FW-02)" --expires 90d
+  adarve exceptions add WIN-RDP-001 --reason "Cliente RDP heredado del proveedor" --expires 6m --host SRV-ERP01`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return addException(strings.ToUpper(args[0]), reason, expires, owner, hosts)
@@ -108,7 +108,7 @@ puede modificarlas.`,
 }
 
 func requireConfigWrite() error {
-	if probes.Privileged() || os.Getenv("BASTION_HOME") != "" {
+	if probes.Privileged() || config.Env("HOME") != "" {
 		return ensureDataDirs()
 	}
 	return fmt.Errorf("modificar excepciones requiere privilegios. %s", report.AdminHint(platform.Detect().Family))
@@ -222,7 +222,7 @@ func listExceptions(asJSON bool) error {
 	s := stdoutStyle()
 	if len(f.Exceptions) == 0 {
 		fmt.Printf("\n  No hay excepciones. Para aceptar un control fallido:\n    %s\n\n",
-			s.Bold(`bastion exceptions add <ID> --reason "motivo" --expires 90d`))
+			s.Bold(`adarve exceptions add <ID> --reason "motivo" --expires 90d`))
 		return nil
 	}
 	cat, _ := loadCatalog(loadConfig())

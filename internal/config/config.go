@@ -1,11 +1,15 @@
-// Package config gestiona las rutas de Bastion y el fichero config.yaml.
+// Package config gestiona las rutas de Adarve y el fichero config.yaml.
 //
 // Rutas por defecto:
 //
-//	Linux:   /etc/bastion (configuración)  ·  /var/lib/bastion (datos)
-//	Windows: %ProgramData%\Bastion (ambos)
+//	Linux:   /etc/adarve (configuración)  ·  /var/lib/adarve (datos)
+//	Windows: %ProgramData%\Adarve (ambos)
 //
-// BASTION_HOME sustituye ambas rutas (útil para desarrollo y pruebas).
+// ADARVE_HOME sustituye ambas rutas (útil para desarrollo y pruebas).
+//
+// Adarve se llamaba antes Bastion: las carpetas de Bastion se trasladan a
+// las nuevas la primera vez que se usan (ver migrated) y las variables
+// BASTION_* se siguen aceptando (ver Env).
 package config
 
 import (
@@ -54,24 +58,24 @@ type Notify struct {
 
 // ConfigDir es el directorio de configuración.
 func ConfigDir() string {
-	if h := os.Getenv("BASTION_HOME"); h != "" {
+	if h := Env("HOME"); h != "" {
 		return h
 	}
 	if runtime.GOOS == "windows" {
 		return programData()
 	}
-	return "/etc/bastion"
+	return migrated("/etc/adarve", "/etc/bastion")
 }
 
 // DataDir es el directorio de datos (informes, instantáneas).
 func DataDir() string {
-	if h := os.Getenv("BASTION_HOME"); h != "" {
+	if h := Env("HOME"); h != "" {
 		return h
 	}
 	if runtime.GOOS == "windows" {
 		return programData()
 	}
-	return "/var/lib/bastion"
+	return migrated("/var/lib/adarve", "/var/lib/bastion")
 }
 
 func programData() string {
@@ -79,29 +83,57 @@ func programData() string {
 	if pd == "" {
 		pd = `C:\ProgramData`
 	}
-	return filepath.Join(pd, "Bastion")
+	return migrated(filepath.Join(pd, "Adarve"), filepath.Join(pd, "Bastion"))
+}
+
+// Env lee la variable ADARVE_<name> o, si no está definida, la antigua
+// BASTION_<name>.
+func Env(name string) string {
+	if v := os.Getenv("ADARVE_" + name); v != "" {
+		return v
+	}
+	return os.Getenv("BASTION_" + name)
+}
+
+// migrated devuelve dir. Si no existe y sí existe legacy (la carpeta de
+// Bastion), la traslada a dir conservando sus permisos; si no se puede
+// (sin privilegios, ficheros en uso), sigue usando legacy para no perder
+// el historial, las excepciones ni las instantáneas de rollback.
+func migrated(dir, legacy string) string {
+	if _, err := os.Lstat(dir); err == nil {
+		return dir
+	}
+	fi, err := os.Lstat(legacy)
+	if err != nil || !fi.IsDir() {
+		return dir
+	}
+	if err := os.Rename(legacy, dir); err != nil {
+		return legacy
+	}
+	return dir
 }
 
 // UserReportsDir es el directorio de informes del usuario actual. Se usa
-// cuando Bastion se ejecuta sin privilegios y no puede escribir en DataDir:
+// cuando Adarve se ejecuta sin privilegios y no puede escribir en DataDir:
 //
-//	Windows: %LOCALAPPDATA%\Bastion\reports
-//	Linux:   $XDG_DATA_HOME/bastion/reports (~/.local/share/bastion/reports)
+//	Windows: %LOCALAPPDATA%\Adarve\reports
+//	Linux:   $XDG_DATA_HOME/adarve/reports (~/.local/share/adarve/reports)
 func UserReportsDir() (string, error) {
 	if runtime.GOOS == "windows" {
 		if d := os.Getenv("LOCALAPPDATA"); d != "" {
-			return filepath.Join(d, "Bastion", "reports"), nil
+			return filepath.Join(migrated(filepath.Join(d, "Adarve"), filepath.Join(d, "Bastion")), "reports"), nil
 		}
 		return "", errors.New("LOCALAPPDATA no está definido")
 	}
-	if d := os.Getenv("XDG_DATA_HOME"); d != "" {
-		return filepath.Join(d, "bastion", "reports"), nil
+	d := os.Getenv("XDG_DATA_HOME")
+	if d == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		d = filepath.Join(home, ".local", "share")
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, ".local", "share", "bastion", "reports"), nil
+	return filepath.Join(migrated(filepath.Join(d, "adarve"), filepath.Join(d, "bastion")), "reports"), nil
 }
 
 // File es la ruta de config.yaml.
@@ -139,15 +171,15 @@ func Load() (Config, error) {
 	return c, nil
 }
 
-const defaultFile = `# Configuración de Bastion · https://github.com/Ruby570bocadito/bastion
+const defaultFile = `# Configuración de Adarve · https://github.com/Ruby570bocadito/adarve
 # Este fichero solo debe poder modificarlo un administrador.
 
-# Perfil por defecto para "bastion scan". "auto" lo elige según la plataforma
+# Perfil por defecto para "adarve scan". "auto" lo elige según la plataforma
 # (win-workstation-l1, win-server-l1, win-dc-l1, linux-server-l1...).
 profile: auto
 
 reports:
-  # Dónde se guardan los informes HTML y JSON de "bastion scan --save".
+  # Dónde se guardan los informes HTML y JSON de "adarve scan --save".
   dir: %q
   # Número de escaneos que se conservan (los más antiguos se borran).
   keep: 30
@@ -159,14 +191,14 @@ rules:
 
 update:
   # Repositorio de GitHub del que se descargan las actualizaciones.
-  # repo: Ruby570bocadito/bastion
+  # repo: Ruby570bocadito/adarve
   # Espejo interno de releases (redes corporativas o aisladas).
   # Debe servir <url>/latest/download/version.txt y <url>/download/<tag>/<fichero>.
-  # releases_url: https://mirror.interno/bastion/releases
+  # releases_url: https://mirror.interno/adarve/releases
 
-# Avisos del análisis programado ("bastion schedule"). Cada ejecución queda en
+# Avisos del análisis programado ("adarve schedule"). Cada ejecución queda en
 # el Visor de eventos (Windows) o en syslog (Linux); además, un webhook
-# opcional. Se configura con: bastion schedule notify --set <url>
+# opcional. Se configura con: adarve schedule notify --set <url>
 # notify:
 #   webhook: https://ntfy.sh/<tema-secreto>
 #   format: ntfy      # ntfy, slack, discord, teams o json (se deduce de la url)

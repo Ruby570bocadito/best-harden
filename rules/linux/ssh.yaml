@@ -1,5 +1,5 @@
 # Servidor OpenSSH. Se evalúa la configuración EFECTIVA (sshd -T) cuando
-# Bastion se ejecuta como root; si no, se interpreta sshd_config.
+# Adarve se ejecuta como root; si no, se interpreta sshd_config.
 id: LNX-SSH-001
 title: Prohibir el acceso de root por SSH
 description: PermitRootLogin debe ser "no".
@@ -21,7 +21,7 @@ check:
 remediation:
   summary: Añadir "PermitRootLogin no" en un fichero drop-in y recargar sshd.
   commands: |
-    echo 'PermitRootLogin no' > /etc/ssh/sshd_config.d/00-bastion.conf
+    echo 'PermitRootLogin no' > /etc/ssh/sshd_config.d/00-adarve.conf
     sshd -t && systemctl reload ssh 2>/dev/null || systemctl reload sshd
   breaking_risk: medium
   safety: remote-access
@@ -179,7 +179,7 @@ check:
 remediation:
   summary: Definir una lista de cifrados modernos.
   commands: |
-    echo 'Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr' >> /etc/ssh/sshd_config.d/00-bastion.conf
+    echo 'Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr' >> /etc/ssh/sshd_config.d/00-adarve.conf
   breaking_risk: low
   safety: remote-access
   actions:
@@ -207,7 +207,7 @@ check:
 remediation:
   summary: Definir una lista de MAC modernos.
   commands: |
-    echo 'MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256' >> /etc/ssh/sshd_config.d/00-bastion.conf
+    echo 'MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256' >> /etc/ssh/sshd_config.d/00-adarve.conf
   breaking_risk: low
   safety: remote-access
   actions:

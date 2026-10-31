@@ -5,8 +5,8 @@
 *.test
 *.out
 /report.*
-/bastion-*.html
-/bastion-*.json
+/adarve-*.html
+/adarve-*.json
 .DS_Store
 .idea/
 .vscode/

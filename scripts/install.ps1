@@ -1,16 +1,16 @@
 <#
 =============================================================================
- Bastion · instalador para Windows 10/11 y Windows Server 2016-2025
+ Adarve · instalador para Windows 10/11 y Windows Server 2016-2025
 
- Instala o actualiza Bastion, lo prepara y lanza un primer escaneo.
+ Instala o actualiza Adarve, lo prepara y lanza un primer escaneo.
  Abre PowerShell como administrador y pega:
 
-   irm https://raw.githubusercontent.com/Ruby570bocadito/bastion/main/scripts/install.ps1 | iex
+   irm https://raw.githubusercontent.com/Ruby570bocadito/adarve/main/scripts/install.ps1 | iex
 
  Con opciones:
 
-   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/Ruby570bocadito/bastion/main/scripts/install.ps1))) -NoScan
-   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/Ruby570bocadito/bastion/main/scripts/install.ps1))) -Uninstall
+   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/Ruby570bocadito/adarve/main/scripts/install.ps1))) -NoScan
+   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/Ruby570bocadito/adarve/main/scripts/install.ps1))) -Uninstall
 
  Parámetros:
    -Version <tag>       versión concreta (por defecto: la última)
@@ -24,17 +24,17 @@
    -ReleasesUrl <url>   espejo interno de releases (https://…)
    -Uninstall [-Purge]  desinstalar (con -Purge borra también config e informes)
 
- Variables equivalentes: BASTION_VERSION, BASTION_NO_SCAN=1, BASTION_REPO,
- BASTION_RELEASES_URL.
+ Variables equivalentes: ADARVE_VERSION, ADARVE_NO_SCAN=1, ADARVE_REPO,
+ ADARVE_RELEASES_URL.
 
  Seguridad: el .zip descargado se verifica contra checksums.txt (SHA-256)
  antes de instalarse.
 =============================================================================
 #>
 param(
-    [string]$Version = $(if ($env:BASTION_VERSION) { $env:BASTION_VERSION } else { 'latest' }),
-    [string]$Repo = $(if ($env:BASTION_REPO) { $env:BASTION_REPO } else { 'Ruby570bocadito/bastion' }),
-    [string]$ReleasesUrl = $env:BASTION_RELEASES_URL,
+    [string]$Version = $(if ($env:ADARVE_VERSION) { $env:ADARVE_VERSION } else { 'latest' }),
+    [string]$Repo = $(if ($env:ADARVE_REPO) { $env:ADARVE_REPO } else { 'Ruby570bocadito/adarve' }),
+    [string]$ReleasesUrl = $env:ADARVE_RELEASES_URL,
     [string]$Local,
     [switch]$NoScan,
     [switch]$NoOpen,
@@ -44,7 +44,7 @@ param(
     [switch]$Insecure
 )
 
-function Install-Bastion {
+function Install-Adarve {
     $ErrorActionPreference = 'Stop'
     $ProgressPreference = 'SilentlyContinue'   # Invoke-WebRequest es mucho más rápido sin barra
 
@@ -62,13 +62,13 @@ function Install-Bastion {
     if ($ReleasesUrl -notmatch '^https://' -and $ReleasesUrl -notmatch '^http://(127\.0\.0\.1|localhost)(:\d+)?(/|$)') {
         throw "La dirección de releases debe usar https:// ($ReleasesUrl)"
     }
-    if ($Version -ne 'latest') { $Version = ConvertTo-BastionTag $Version }
+    if ($Version -ne 'latest') { $Version = ConvertTo-AdarveTag $Version }
     # El proceso elevado arranca en otra carpeta: una ruta relativa dejaría
     # de apuntar al archivo.
     if ($Local) { $Local = (Resolve-Path -LiteralPath $Local -ErrorAction Stop).Path }
-    $InstallDir = Join-Path $env:ProgramFiles 'Bastion'
-    $Exe        = Join-Path $InstallDir 'bastion.exe'
-    $DataDir    = Join-Path $env:ProgramData 'Bastion'
+    $InstallDir = Join-Path $env:ProgramFiles 'Adarve'
+    $Exe        = Join-Path $InstallDir 'adarve.exe'
+    $DataDir    = Join-Path $env:ProgramData 'Adarve'
 
     Write-Banner
 
@@ -100,14 +100,14 @@ function Install-Bastion {
         return
     }
 
-    if ($Uninstall) { Uninstall-Bastion -InstallDir $InstallDir -DataDir $DataDir; return }
+    if ($Uninstall) { Uninstall-Adarve -InstallDir $InstallDir -DataDir $DataDir; return }
 
-    $arch = Get-BastionArch
-    $asset = "bastion_windows_$arch.zip"
-    $tmp = Join-Path ([IO.Path]::GetTempPath()) ("bastion-" + [Guid]::NewGuid().ToString('N'))
+    $arch = Get-AdarveArch
+    $asset = "adarve_windows_$arch.zip"
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ("adarve-" + [Guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $tmp | Out-Null
 
-    # bastion.exe escribe UTF-8; sin esto PowerShell lee su salida con la
+    # adarve.exe escribe UTF-8; sin esto PowerShell lee su salida con la
     # página de códigos OEM y los acentos salen corruptos.
     $prevEncoding = [Console]::OutputEncoding
     try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch { }
@@ -132,14 +132,14 @@ function Install-Bastion {
                 Write-Step "Buscando la última versión en $ReleasesUrl"
                 $Version = ([string](Invoke-RestMethod -UseBasicParsing "$ReleasesUrl/latest/download/version.txt")).Trim()
                 if (-not $Version) { throw 'version.txt vacío' }
-                $Version = ConvertTo-BastionTag $Version
+                $Version = ConvertTo-AdarveTag $Version
             }
             if ($current -and ($current.TrimStart('v') -eq $Version.TrimStart('v')) -and -not $Force) {
-                Write-Ok "Bastion $Version ya está instalado y actualizado"
+                Write-Ok "Adarve $Version ya está instalado y actualizado"
                 $doInstall = $false
             } else {
-                if ($current) { Write-Step "Actualizando Bastion $current -> $Version ($arch)" }
-                else { Write-Step "Instalando Bastion $Version ($arch)" }
+                if ($current) { Write-Step "Actualizando Adarve $current -> $Version ($arch)" }
+                else { Write-Step "Instalando Adarve $Version ($arch)" }
                 $base = "$ReleasesUrl/download/$Version"
                 $sums = [string](Invoke-RestMethod -UseBasicParsing "$base/checksums.txt")
                 Invoke-WebRequest -UseBasicParsing -Uri "$base/$asset" -OutFile $zip
@@ -150,12 +150,12 @@ function Install-Bastion {
         if ($doInstall) {
             $extract = Join-Path $tmp 'x'
             Expand-Archive -Path $zip -DestinationPath $extract -Force
-            $new = Get-ChildItem -Path $extract -Recurse -Filter 'bastion.exe' | Select-Object -First 1
-            if (-not $new) { throw 'El archivo no contiene bastion.exe' }
+            $new = Get-ChildItem -Path $extract -Recurse -Filter 'adarve.exe' | Select-Object -First 1
+            if (-not $new) { throw 'El archivo no contiene adarve.exe' }
             New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
             # Un ejecutable en uso no se puede sobrescribir pero sí renombrar.
             # Si la copia falla, se recupera el anterior: nunca queda la
-            # instalación sin bastion.exe.
+            # instalación sin adarve.exe.
             $hadOld = Test-Path -LiteralPath $Exe
             if ($hadOld) {
                 Remove-Item -LiteralPath "$Exe.old" -Force -ErrorAction SilentlyContinue
@@ -168,7 +168,7 @@ function Install-Bastion {
                     Remove-Item -LiteralPath $Exe -Force -ErrorAction SilentlyContinue
                     Move-Item -LiteralPath "$Exe.old" $Exe -Force
                 }
-                throw "No se pudo copiar bastion.exe en $InstallDir (se mantiene la versión anterior): $($_.Exception.Message)"
+                throw "No se pudo copiar adarve.exe en $InstallDir (se mantiene la versión anterior): $($_.Exception.Message)"
             }
             Unblock-File $Exe -ErrorAction SilentlyContinue
             Remove-Item -LiteralPath "$Exe.old" -Force -ErrorAction SilentlyContinue
@@ -177,9 +177,10 @@ function Install-Bastion {
         }
 
         # --- 2. Preparación -------------------------------------------------
-        Write-Step 'Preparando Bastion'
+        Write-Step 'Preparando Adarve'
         & $Exe init --no-color | ForEach-Object { "  $_" }
-        if ($LASTEXITCODE -ne 0) { throw 'bastion init falló' }
+        if ($LASTEXITCODE -ne 0) { throw 'adarve init falló' }
+        Remove-Bastion -Exe $Exe
 
         # --- 3. Primer escaneo (solo lectura) ---------------------------------
         if (-not $NoScan) {
@@ -201,7 +202,7 @@ function ConvertTo-PSLiteral([string]$s) {
     return "'" + ($s -replace "'", "''") + "'"
 }
 
-function ConvertTo-BastionTag([string]$v) {
+function ConvertTo-AdarveTag([string]$v) {
     # vX.Y.Z[-pre] (acepta 0.2.0); nada más, porque va en las URLs.
     $t = 'v' + $v.Trim().TrimStart('v')
     if ($t -notmatch '^v\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$') { throw "Versión no válida: $v (ejemplo: v0.3.2)" }
@@ -214,7 +215,7 @@ function Get-PowerShellExe {
     return (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe')
 }
 
-function Get-BastionArch {
+function Get-AdarveArch {
     $a = $env:PROCESSOR_ARCHITEW6432
     if (-not $a) { $a = $env:PROCESSOR_ARCHITECTURE }
     switch ($a) {
@@ -246,15 +247,40 @@ function Add-ToMachinePath([string]$Dir) {
     if (($env:Path -split ';') -notcontains $Dir) { $env:Path = "$env:Path;$Dir" }
 }
 
-function Uninstall-Bastion([string]$InstallDir, [string]$DataDir) {
-    Write-Step 'Desinstalando Bastion'
+# Adarve se llamaba antes Bastion: retira el ejecutable antiguo y pasa el
+# análisis programado al nombre nuevo, a la misma hora. Las carpetas de
+# datos las traslada "adarve init".
+function Remove-Bastion([string]$Exe) {
+    $old = Get-ScheduledTask -TaskPath '\Bastion\' -TaskName 'Escaneo diario' -ErrorAction SilentlyContinue
+    if ($old) {
+        $at = '09:00'
+        if ($old.Triggers.Count -gt 0 -and $old.Triggers[0].StartBoundary) { $at = ([datetime]$old.Triggers[0].StartBoundary).ToString('HH:mm') }
+        # "schedule enable" retira también la tarea de Bastion.
+        & $Exe schedule enable --at $at | Out-Null
+        if ($LASTEXITCODE -eq 0) { Write-Ok "Análisis diario de Bastion pasado a Adarve ($at)" }
+        else { Write-Warn "No se pudo pasar el análisis diario de Bastion: ejecuta 'adarve schedule enable --at $at'" }
+    }
+    Remove-Item 'HKLM:\SYSTEM\CurrentControlSet\Services\EventLog\Application\Bastion' -Recurse -ErrorAction SilentlyContinue
+    $oldDir = Join-Path $env:ProgramFiles 'Bastion'
+    if (Test-Path -LiteralPath (Join-Path $oldDir 'bastion.exe')) {
+        Remove-Item -Recurse -Force -LiteralPath $oldDir -ErrorAction SilentlyContinue
+        if (-not (Test-Path -LiteralPath $oldDir)) { Write-Ok "Retirado $oldDir (Bastion es ahora Adarve)" }
+        else { Write-Warn "No se pudo borrar $oldDir (¿bastion.exe en uso?): bórralo a mano" }
+    }
+    $path = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $new = ($path -split ';' | Where-Object { $_ -and $_ -ne $oldDir }) -join ';'
+    if ($new -ne $path) { [Environment]::SetEnvironmentVariable('Path', $new, 'Machine') }
+}
+
+function Uninstall-Adarve([string]$InstallDir, [string]$DataDir) {
+    Write-Step 'Desinstalando Adarve'
     # El análisis programado y el origen del Visor de eventos.
-    $task = Get-ScheduledTask -TaskPath '\Bastion\' -TaskName 'Escaneo diario' -ErrorAction SilentlyContinue
+    $task = Get-ScheduledTask -TaskPath '\Adarve\' -TaskName 'Escaneo diario' -ErrorAction SilentlyContinue
     if ($task) {
         $task | Unregister-ScheduledTask -Confirm:$false
         Write-Ok 'Quitado el análisis programado'
     }
-    Remove-Item 'HKLM:\SYSTEM\CurrentControlSet\Services\EventLog\Application\Bastion' -Recurse -ErrorAction SilentlyContinue
+    Remove-Item 'HKLM:\SYSTEM\CurrentControlSet\Services\EventLog\Application\Adarve' -Recurse -ErrorAction SilentlyContinue
     if (Test-Path $InstallDir) {
         Remove-Item -Recurse -Force $InstallDir
         Write-Ok "Eliminado $InstallDir"
@@ -274,7 +300,7 @@ function Uninstall-Bastion([string]$InstallDir, [string]$DataDir) {
 
 function Write-Banner {
     Write-Host ''
-    Write-Host '  BASTION' -ForegroundColor Cyan -NoNewline
+    Write-Host '  ADARVE' -ForegroundColor Cyan -NoNewline
     Write-Host '  · hardening para Windows, Windows Server y Linux' -ForegroundColor DarkGray
     Write-Host ''
 }
@@ -284,22 +310,22 @@ function Write-Warn([string]$m) { Write-Host '  [!] ' -ForegroundColor Yellow -N
 
 function Write-Summary {
     Write-Host ''
-    Write-Host '  Bastion está listo.' -ForegroundColor Green
+    Write-Host '  Adarve está listo.' -ForegroundColor Green
     Write-Host ''
     Write-Host '  Comandos útiles (PowerShell como administrador)'
-    Write-Host '    bastion scan                 auditar el equipo'
-    Write-Host '    bastion scan --save --open   informe visual (HTML)'
-    Write-Host '    bastion rules show <ID>      detalle y remediación de un control'
-    Write-Host '    bastion update               actualizar Bastion y sus reglas'
+    Write-Host '    adarve scan                 auditar el equipo'
+    Write-Host '    adarve scan --save --open   informe visual (HTML)'
+    Write-Host '    adarve rules show <ID>      detalle y remediación de un control'
+    Write-Host '    adarve update               actualizar Adarve y sus reglas'
     Write-Host ''
     Write-Host '  Vuelve a ejecutar este mismo comando en cualquier momento para actualizar.' -ForegroundColor DarkGray
     Write-Host ''
 }
 
-if ($env:BASTION_NO_SCAN -eq '1') { $NoScan = [switch]$true }
+if ($env:ADARVE_NO_SCAN -eq '1') { $NoScan = [switch]$true }
 
 try {
-    Install-Bastion
+    Install-Adarve
 } catch {
     Write-Host ''
     Write-Host "  [ERROR] $($_.Exception.Message)" -ForegroundColor Red

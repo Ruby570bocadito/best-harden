@@ -5,7 +5,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // sigInfo es el origen de un ejecutable.
@@ -204,7 +204,7 @@ func binaryFindings(bins []*exposedBinary) []Finding {
 		"Sin firma no se puede comprobar quién ha hecho un programa ni que no se haya modificado después. Es lo habitual en puertas traseras, "+
 			"pero también en herramientas pequeñas, juegos y programas hechos con Python o Node.",
 		"Comprueba que reconoces cada programa y su carpeta. Si alguno no te suena, analízalo con Microsoft Defender "+
-			"(Start-MpScan -ScanType CustomScan -ScanPath '<ruta>') antes de seguir usándolo; si lo usas, limita su regla del firewall a la red local (bastion surface fix).")
+			"(Start-MpScan -ScanType CustomScan -ScanPath '<ruta>') antes de seguir usándolo; si lo usas, limita su regla del firewall a la red local (adarve surface fix).")
 	group(unpackaged, "SURF-UNPACKAGED", "%s no es de ningún paquete y acepta conexiones desde la red",
 		"%d programas que no son de ningún paquete aceptan conexiones desde la red: %s",
 		"Lo que no viene de un paquete no recibe las actualizaciones de seguridad del sistema y nada garantiza su origen: hay que mantenerlo al día a mano.",

@@ -23,7 +23,7 @@ import (
 )
 
 // Schema identifica el JSON del formato genérico.
-const Schema = "bastion.notify/v1"
+const Schema = "adarve.notify/v1"
 
 // Niveles del aviso.
 const (
@@ -151,7 +151,7 @@ func request(ctx context.Context, u *url.URL, format, userAgent string, ev Event
 	case FormatSlack:
 		body = map[string]any{"text": "*" + ev.Title + "*\n" + strings.Join(ev.Lines, "\n")}
 	case FormatDiscord:
-		body = map[string]any{"username": "Bastion", "content": truncate("**"+ev.Title+"**\n"+strings.Join(ev.Lines, "\n"), 1900)}
+		body = map[string]any{"username": "Adarve", "content": truncate("**"+ev.Title+"**\n"+strings.Join(ev.Lines, "\n"), 1900)}
 	case FormatTeams:
 		// Tarjeta adaptable: la admiten los flujos de Teams (Workflows) y
 		// los conectores de webhook entrante.

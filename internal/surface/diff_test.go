@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 func TestDiff(t *testing.T) {

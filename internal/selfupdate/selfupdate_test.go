@@ -37,8 +37,8 @@ func TestNewer(t *testing.T) {
 
 func TestParseChecksums(t *testing.T) {
 	sum := strings.Repeat("a", 64)
-	m := ParseChecksums(sum + "  bastion_linux_amd64.tar.gz\nbasura\n")
-	if m["bastion_linux_amd64.tar.gz"] != sum || len(m) != 1 {
+	m := ParseChecksums(sum + "  adarve_linux_amd64.tar.gz\nbasura\n")
+	if m["adarve_linux_amd64.tar.gz"] != sum || len(m) != 1 {
 		t.Errorf("checksums: %v", m)
 	}
 }
@@ -51,8 +51,8 @@ func TestDownloadVerifiesChecksum(t *testing.T) {
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)
-	payload := []byte("#!/bin/sh\necho bastion\n")
-	tw.WriteHeader(&tar.Header{Name: "bastion", Mode: 0o755, Size: int64(len(payload)), Typeflag: tar.TypeReg})
+	payload := []byte("#!/bin/sh\necho adarve\n")
+	tw.WriteHeader(&tar.Header{Name: "adarve", Mode: 0o755, Size: int64(len(payload)), Typeflag: tar.TypeReg})
 	tw.Write(payload)
 	tw.Close()
 	gz.Close()
@@ -109,8 +109,8 @@ func TestDownloadVerifiesChecksum(t *testing.T) {
 
 func TestSourceValidate(t *testing.T) {
 	for _, s := range []Source{
-		{Repo: "Ruby570bocadito/bastion"},
-		{BaseURL: "https://mirror.interno/bastion/releases"},
+		{Repo: "Ruby570bocadito/adarve"},
+		{BaseURL: "https://mirror.interno/adarve/releases"},
 		{BaseURL: "http://127.0.0.1:8765"},
 		{BaseURL: "http://localhost:8765/"},
 	} {

@@ -32,25 +32,25 @@ jobs:
         if: runner.os == 'Linux'
         run: go test -race ./...
       - name: Validar reglas
-        run: go run ./cmd/bastion rules lint
+        run: go run ./cmd/adarve rules lint
       - name: Compilar
-        run: go build -o bin/ ./cmd/bastion
+        run: go build -o bin/ ./cmd/adarve
       # Escaneo real en el runner: prueba todos los probes contra un
       # Ubuntu y un Windows Server reales.
       - name: Escaneo real (Linux)
         if: runner.os == 'Linux'
-        run: sudo ./bin/bastion scan --all -o report.html -o report.json
+        run: sudo ./bin/adarve scan --all -o report.html -o report.json
       - name: Escaneo real (Windows)
         if: runner.os == 'Windows'
-        run: .\bin\bastion.exe scan --all -o report.html -o report.json
+        run: .\bin\adarve.exe scan --all -o report.html -o report.json
       # Superficie de ataque en un sistema real (en Windows ejercita netstat,
       # tasklist y las consultas PowerShell de recursos y administradores).
       - name: Superficie de ataque (Linux)
         if: runner.os == 'Linux'
         run: |
           set -euo pipefail
-          sudo ./bin/bastion surface --all --no-color
-          sudo ./bin/bastion surface --format json | jq -e '.schema == "bastion.surface/v1" and (.listeners | length) > 0 and (.ports | length) > 0 and (.admins | length) > 0 and (.firewall.source | test("tables"))'
+          sudo ./bin/adarve surface --all --no-color
+          sudo ./bin/adarve surface --format json | jq -e '.schema == "adarve.surface/v1" and (.listeners | length) > 0 and (.ports | length) > 0 and (.admins | length) > 0 and (.firewall.source | test("tables"))'
       # Reglas de ufw reales (iptables-nft) en un espacio de red aislado, con
       # servicios escuchando: SSH abierto, MySQL solo desde la LAN y Tailscale,
       # 8080 solo por Tailscale.
@@ -62,7 +62,7 @@ jobs:
             iptables-nft-restore < internal/surface/testdata/ufw.rules
             for p in 22 3306 8080; do python3 -m http.server $p --bind 0.0.0.0 >/dev/null 2>&1 & done
             sleep 2
-            ./bin/bastion surface --format json > fw.json
+            ./bin/adarve surface --format json > fw.json
             kill $(jobs -p)'
           jq -r '.ports[] | select(.scope == "network") | "\(.port)/\(.proto) \(.firewall) \(.firewall_limit // "") · \(.firewall_why)"' fw.json
           jq -e '.firewall.source == "iptables" and .firewall.input_policy == "drop"
@@ -89,30 +89,30 @@ jobs:
             HOOK=$!
             sleep 1
           }
-          sudo ./bin/bastion schedule enable --at 03:00 --unsafe-path --no-color
-          systemctl list-timers bastion-scan.timer --all --no-pager
+          sudo ./bin/adarve schedule enable --at 03:00 --unsafe-path --no-color
+          systemctl list-timers adarve-scan.timer --all --no-pager
           hook
-          sudo ./bin/bastion schedule notify --set http://127.0.0.1:8099/hook --format json --when always --no-color
+          sudo ./bin/adarve schedule notify --set http://127.0.0.1:8099/hook --format json --when always --no-color
           wait $HOOK
-          jq -e '.schema == "bastion.notify/v1" and .test == true' hook.json
+          jq -e '.schema == "adarve.notify/v1" and .test == true' hook.json
           hook
-          sudo systemctl start bastion-scan.service
+          sudo systemctl start adarve-scan.service
           wait $HOOK
-          jq -e '.schema == "bastion.notify/v1" and (.test | not) and .scan_score > 0 and (.level | IN("info", "warning"))' hook.json
-          sudo ./bin/bastion schedule --no-color
-          sudo tail -n 1 /var/lib/bastion/schedule.log | jq -e '.scan_score > 0 and .surface_score > 0 and (.errors | not) and (.notify_errors | not)'
-          journalctl -t bastion --since '-15min' --no-pager | tail -n 3
-          journalctl -t bastion --since '-15min' --no-pager | grep -q 'Bastion ·'
-          sudo ./bin/bastion schedule notify --clear --no-color
-          sudo ./bin/bastion schedule disable --no-color
-          test ! -e /etc/systemd/system/bastion-scan.timer
+          jq -e '.schema == "adarve.notify/v1" and (.test | not) and .scan_score > 0 and (.level | IN("info", "warning"))' hook.json
+          sudo ./bin/adarve schedule --no-color
+          sudo tail -n 1 /var/lib/adarve/schedule.log | jq -e '.scan_score > 0 and .surface_score > 0 and (.errors | not) and (.notify_errors | not)'
+          journalctl -t adarve --since '-15min' --no-pager | tail -n 3
+          journalctl -t adarve --since '-15min' --no-pager | grep -q 'Adarve ·'
+          sudo ./bin/adarve schedule notify --clear --no-color
+          sudo ./bin/adarve schedule disable --no-color
+          test ! -e /etc/systemd/system/adarve-scan.timer
       - name: Superficie de ataque (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          .\bin\bastion.exe surface --all --no-color
+          .\bin\adarve.exe surface --all --no-color
           if ($LASTEXITCODE -ne 0) { throw 'surface falló' }
-          $r = .\bin\bastion.exe surface --format json | ConvertFrom-Json
+          $r = .\bin\adarve.exe surface --format json | ConvertFrom-Json
           if ($r.listeners.Count -eq 0) { throw 'no se detectó ningún puerto a la escucha' }
           if ($r.admins.Count -eq 0) { throw 'no se leyeron los administradores' }
           if (-not ($r.listeners | Where-Object { $_.process })) { throw 'ningún puerto asociado a su proceso' }
@@ -127,7 +127,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           set -euo pipefail
-          b=./bin/bastion
+          b=./bin/adarve
           id=$(sudo $b scan --format json | jq -r '[.results[] | select(.status=="fail")][0].rule.id')
           sudo $b exceptions add "$id" --reason "Prueba de CI: riesgo aceptado temporalmente" --expires 7d --no-color
           sudo $b exceptions list --no-color
@@ -140,26 +140,26 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           set -euo pipefail
-          sudo ./bin/bastion ui --no-open --port 8790 --no-color > ui.log 2>&1 &
+          sudo ./bin/adarve ui --no-open --port 8790 --no-color > ui.log 2>&1 &
           pid=$!
           for i in $(seq 1 40); do grep -q '?t=' ui.log && break; sleep 0.5; done
           tok=$(grep -o '?t=[A-Za-z0-9_-]*' ui.log | head -1 | cut -c4-)
           base=http://127.0.0.1:8790
           test "$(curl -s -o /dev/null -w '%{http_code}' $base/api/state)" = 401
           test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: evil.example' $base/)" = 403
-          curl -sf -H "X-Bastion-Token: $tok" $base/api/state | jq -e '.hostname'
-          curl -sf -X POST -H "X-Bastion-Token: $tok" $base/api/scan | jq -e '.report.score.value >= 0'
-          curl -sf -H "X-Bastion-Token: $tok" "$base/api/plan?wave=1" | jq -e 'length > 0'
-          curl -sf -H "X-Bastion-Token: $tok" $base/api/reports | jq -e 'length >= 1'
+          curl -sf -H "X-Adarve-Token: $tok" $base/api/state | jq -e '.hostname'
+          curl -sf -X POST -H "X-Adarve-Token: $tok" $base/api/scan | jq -e '.report.score.value >= 0'
+          curl -sf -H "X-Adarve-Token: $tok" "$base/api/plan?wave=1" | jq -e 'length > 0'
+          curl -sf -H "X-Adarve-Token: $tok" $base/api/reports | jq -e 'length >= 1'
           # Navegador: la dirección de la terminal abre una sesión con cookie
           # HttpOnly y redirige sin el token; la cookie sola no basta para la
-          # API (hace falta X-Bastion-Request) y el informe ya no acepta ?t=.
-          id=$(curl -sf -H "X-Bastion-Token: $tok" $base/api/reports | jq -r '.[-1].id')
+          # API (hace falta X-Adarve-Request) y el informe ya no acepta ?t=.
+          id=$(curl -sf -H "X-Adarve-Token: $tok" $base/api/reports | jq -r '.[-1].id')
           test "$(curl -s -o /dev/null -w '%{http_code}' "$base/r/$id.html?t=$tok")" = 401
           test "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -c jar.txt "$base/?t=$tok")" = "303 $base/"
           test "$(curl -s -o /dev/null -w '%{http_code}' -b jar.txt $base/api/state)" = 401
-          curl -sf -b jar.txt -H 'X-Bastion-Request: 1' $base/api/state | jq -e '.hostname'
-          curl -sf -b jar.txt "$base/r/$id.html" | grep -q 'bastion-data'
+          curl -sf -b jar.txt -H 'X-Adarve-Request: 1' $base/api/state | jq -e '.hostname'
+          curl -sf -b jar.txt "$base/r/$id.html" | grep -q 'adarve-data'
           sudo kill "$pid" || true
       # Ciclo completo de hardening en la máquina desechable del runner:
       # aplicar la ola 1 debe mejorar la postura y el rollback debe dejarla
@@ -168,7 +168,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           set -euo pipefail
-          b=./bin/bastion
+          b=./bin/adarve
           before=$(sudo $b scan --format json | jq .score.value)
           sudo $b harden --wave 1 --no-color
           sudo $b harden --wave 1 --apply --yes --no-color
@@ -183,7 +183,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $b = '.\bin\bastion.exe'
+          $b = '.\bin\adarve.exe'
           $before = (& $b scan --format json | ConvertFrom-Json).score.value
           & $b harden --wave 1 --no-color
           & $b harden --wave 1 --apply --yes --no-color
@@ -202,7 +202,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $b = (Resolve-Path '.\bin\bastion.exe').Path
+          $b = (Resolve-Path '.\bin\adarve.exe').Path
           # Webhook local: un trabajo que devuelve el primer POST que recibe.
           function Start-Hook {
             $j = Start-Job {
@@ -223,9 +223,9 @@ jobs:
           & $b schedule notify --set http://127.0.0.1:8099/hook --format json --when always --no-color
           if ($LASTEXITCODE -ne 0) { throw 'schedule notify falló' }
           $n = Receive-Hook $hook
-          if ($n.schema -ne 'bastion.notify/v1' -or -not $n.test) { throw "aviso de prueba inesperado: $($n | ConvertTo-Json -Compress)" }
+          if ($n.schema -ne 'adarve.notify/v1' -or -not $n.test) { throw "aviso de prueba inesperado: $($n | ConvertTo-Json -Compress)" }
           $hook = Start-Hook
-          $tp = '\Bastion\'; $tn = 'Escaneo diario'
+          $tp = '\Adarve\'; $tn = 'Escaneo diario'
           (Get-ScheduledTask -TaskPath $tp -TaskName $tn).Principal | Format-List UserId, LogonType, RunLevel | Out-String | Write-Host
           $before = (Get-ScheduledTaskInfo -TaskPath $tp -TaskName $tn).LastRunTime
           Start-ScheduledTask -TaskPath $tp -TaskName $tn
@@ -238,28 +238,28 @@ jobs:
           "Estado: $state · última ejecución: $($i.LastRunTime) · resultado: $($i.LastTaskResult)"
           if ($i.LastTaskResult -ne 0 -and $i.LastTaskResult -ne 3) { throw "la tarea terminó con el código $($i.LastTaskResult)" }
           & $b schedule --no-color
-          $last = Get-Content (Join-Path $env:ProgramData 'Bastion\schedule.log') | Select-Object -Last 1 | ConvertFrom-Json
+          $last = Get-Content (Join-Path $env:ProgramData 'Adarve\schedule.log') | Select-Object -Last 1 | ConvertFrom-Json
           if ($last.scan_score -le 0 -or $last.errors -or $last.notify_errors) { throw "ejecución con errores: $($last | ConvertTo-Json -Compress)" }
           # El aviso de la tarea (como SYSTEM) llega al webhook y al Visor de eventos.
           $n = Receive-Hook $hook
           if ($n.test -or $n.scan_score -le 0 -or $n.level -notin 'info', 'warning') { throw "aviso de la tarea inesperado: $($n | ConvertTo-Json -Compress)" }
-          $ev = Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'Bastion' } -MaxEvents 1
+          $ev = Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'Adarve' } -MaxEvents 1
           "Evento $($ev.Id): $($ev.Message)"
-          if ($ev.Id -notin 100, 200 -or $ev.Message -notmatch 'Bastion ·') { throw 'el aviso no está en el Visor de eventos' }
+          if ($ev.Id -notin 100, 200 -or $ev.Message -notmatch 'Adarve ·') { throw 'el aviso no está en el Visor de eventos' }
           & $b schedule notify --clear --no-color
           & $b schedule disable --no-color
           if (Get-ScheduledTask -TaskPath $tp -TaskName $tn -ErrorAction SilentlyContinue) { throw 'la tarea sigue existiendo' }
-      # bastion surface fix de verdad: una regla que abre un puerto a
+      # adarve surface fix de verdad: una regla que abre un puerto a
       # cualquiera, con un programa escuchando detrás; se limita a la red
       # local y el rollback la deja como estaba.
       - name: Ciclo surface fix → rollback (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $b = '.\bin\bastion.exe'
+          $b = '.\bin\adarve.exe'
           $profiles = Get-NetFirewallProfile | Select-Object Name, Enabled, DefaultInboundAction
           $profiles | Format-Table | Out-String | Write-Host
-          New-NetFirewallRule -Name 'Bastion-CI-Test' -DisplayName 'Bastion CI' -Direction Inbound -Protocol TCP -LocalPort 48765 -Action Allow | Out-Null
+          New-NetFirewallRule -Name 'Adarve-CI-Test' -DisplayName 'Adarve CI' -Direction Inbound -Protocol TCP -LocalPort 48765 -Action Allow | Out-Null
           $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Any, 48765)
           $listener.Start()
           try {
@@ -267,21 +267,21 @@ jobs:
             Set-NetFirewallProfile -All -Enabled True -DefaultInboundAction Block
             $r = & $b surface --format json | ConvertFrom-Json
             $f = $r.findings | Where-Object { $_.id -eq 'SURF-APPS-OPEN' }
-            if (-not $f -or $f.firewall_rules -notcontains 'Bastion-CI-Test') { throw "la regla de prueba no aparece en SURF-APPS-OPEN: $($r.findings | ConvertTo-Json -Depth 4)" }
+            if (-not $f -or $f.firewall_rules -notcontains 'Adarve-CI-Test') { throw "la regla de prueba no aparece en SURF-APPS-OPEN: $($r.findings | ConvertTo-Json -Depth 4)" }
             & $b surface fix SURF-APPS-OPEN --no-color
             & $b surface fix SURF-APPS-OPEN --apply --yes --no-color
             if ($LASTEXITCODE -ne 0) { throw 'surface fix falló' }
-            $after = (Get-NetFirewallRule -Name 'Bastion-CI-Test' | Get-NetFirewallAddressFilter).RemoteAddress
+            $after = (Get-NetFirewallRule -Name 'Adarve-CI-Test' | Get-NetFirewallAddressFilter).RemoteAddress
             if ($after -ne 'LocalSubnet') { throw "la regla no quedó limitada: $after" }
             & $b history --no-color
             & $b rollback --yes --no-color
             if ($LASTEXITCODE -ne 0) { throw 'rollback falló' }
-            $restored = (Get-NetFirewallRule -Name 'Bastion-CI-Test' | Get-NetFirewallAddressFilter).RemoteAddress
+            $restored = (Get-NetFirewallRule -Name 'Adarve-CI-Test' | Get-NetFirewallAddressFilter).RemoteAddress
             "RemoteAddress: Any -> $after -> $restored"
             if ($restored -ne 'Any') { throw "rollback no restauró la regla: $restored" }
           } finally {
             $listener.Stop()
-            Remove-NetFirewallRule -Name 'Bastion-CI-Test' -ErrorAction SilentlyContinue
+            Remove-NetFirewallRule -Name 'Adarve-CI-Test' -ErrorAction SilentlyContinue
             foreach ($p in $profiles) { Set-NetFirewallProfile -Name $p.Name -Enabled $p.Enabled -DefaultInboundAction $p.DefaultInboundAction }
           }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -323,6 +323,6 @@ jobs:
           go-version-file: go.mod
       - run: |
           for target in linux/amd64 linux/arm64 windows/amd64 windows/arm64; do
-            GOOS=${target%/*} GOARCH=${target#*/} CGO_ENABLED=0 go build -o /dev/null ./cmd/bastion
+            GOOS=${target%/*} GOARCH=${target#*/} CGO_ENABLED=0 go build -o /dev/null ./cmd/adarve
             echo "ok $target"
           done

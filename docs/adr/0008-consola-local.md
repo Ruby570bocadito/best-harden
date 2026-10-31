@@ -11,10 +11,10 @@ Un servidor HTTP local abre superficie de ataque nueva en una herramienta que su
 - en un equipo compartido, otro usuario local puede conectarse al puerto.
 
 ## Decisión
-`bastion ui` levanta un servidor embebido en el binario con estas reglas:
+`adarve ui` levanta un servidor embebido en el binario con estas reglas:
 
 1. **Solo loopback.** Escucha en `127.0.0.1`, en un puerto libre al azar (o `--port`).
-2. **Token por sesión.** 256 bits aleatorios que solo conoce quien lanzó el comando: van en la dirección que se abre (`?t=`) y la página los guarda en `sessionStorage` y los quita de la barra de direcciones. Toda la API exige la cabecera `X-Bastion-Token` (comparación en tiempo constante). El informe HTML incrustado, que va en un iframe, lo recibe en la URL.
+2. **Token por sesión.** 256 bits aleatorios que solo conoce quien lanzó el comando: van en la dirección que se abre (`?t=`) y la página los guarda en `sessionStorage` y los quita de la barra de direcciones. Toda la API exige la cabecera `X-Adarve-Token` (comparación en tiempo constante). El informe HTML incrustado, que va en un iframe, lo recibe en la URL.
 3. **Host y Origin.** Se rechaza cualquier `Host` que no sea `127.0.0.1`, `localhost` o `::1` (DNS rebinding) y cualquier petición de escritura con un `Origin` ajeno. No se responde a CORS: una web maliciosa no puede enviar la cabecera del token ni leer respuestas.
 4. **CSP estricta con nonce**, `frame-ancestors 'none'` (el informe incrustado, `'self'`), `nosniff`, `no-referrer`, `no-store`, COOP/CORP. Los datos del sistema auditado se insertan siempre con `textContent`.
 5. **Solo lee y escanea.** Desde la consola se puede escanear y calcular el plan de hardening (simulación), pero no aplicar cambios, deshacerlos ni editar excepciones. Eso sigue en la terminal, donde están la confirmación, la instantánea, el dead-man switch y el control de privilegios.

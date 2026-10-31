@@ -15,12 +15,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Ruby570bocadito/bastion/internal/config"
-	"github.com/Ruby570bocadito/bastion/internal/platform"
-	"github.com/Ruby570bocadito/bastion/internal/report"
-	"github.com/Ruby570bocadito/bastion/internal/surface"
-	"github.com/Ruby570bocadito/bastion/internal/version"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/config"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
+	"github.com/Ruby570bocadito/adarve/internal/report"
+	"github.com/Ruby570bocadito/adarve/internal/surface"
+	"github.com/Ruby570bocadito/adarve/internal/version"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 type surfaceFlags struct {
@@ -49,16 +49,16 @@ nuevos, puertos que el firewall deja más o menos abiertos y hallazgos
 nuevos o resueltos.
 
 Es de SOLO LECTURA; para corregir lo que abren las reglas del firewall,
-"bastion surface fix". Ejecuta como administrador o root para ver el
+"adarve surface fix". Ejecuta como administrador o root para ver el
 proceso de cada puerto.`,
-		Example: `  bastion surface
-  bastion surface --all                 # incluir lo que solo escucha en localhost
-  bastion surface --format json > superficie.json
-  bastion surface -o superficie.html    # informe autocontenido para compartir o imprimir
-  bastion surface --save                # guardarlo para comparar con el próximo
-  bastion surface --save --fail-on-new  # código 3 si la exposición ha crecido (tareas programadas)
-  bastion surface --fail-on high        # código 2 si hay hallazgos altos o críticos (CI/CD)
-  bastion surface fix                   # plan para limitar a la red local lo abierto a cualquiera`,
+		Example: `  adarve surface
+  adarve surface --all                 # incluir lo que solo escucha en localhost
+  adarve surface --format json > superficie.json
+  adarve surface -o superficie.html    # informe autocontenido para compartir o imprimir
+  adarve surface --save                # guardarlo para comparar con el próximo
+  adarve surface --save --fail-on-new  # código 3 si la exposición ha crecido (tareas programadas)
+  adarve surface --fail-on high        # código 2 si hay hallazgos altos o críticos (CI/CD)
+  adarve surface fix                   # plan para limitar a la red local lo abierto a cualquiera`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return runSurface(f) },
 	}
 	fl := cmd.Flags()

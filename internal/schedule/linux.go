@@ -20,11 +20,29 @@ type unixScheduler struct {
 }
 
 const (
-	unitName    = "bastion-scan"
-	servicePath = "/etc/systemd/system/bastion-scan.service"
-	timerPath   = "/etc/systemd/system/bastion-scan.timer"
-	cronPath    = "/etc/cron.d/bastion"
+	unitName    = "adarve-scan"
+	servicePath = "/etc/systemd/system/adarve-scan.service"
+	timerPath   = "/etc/systemd/system/adarve-scan.timer"
+	cronPath    = "/etc/cron.d/adarve"
+
+	// El análisis programado de Bastion, el nombre anterior de Adarve.
+	legacyUnit    = "bastion-scan"
+	legacyService = "/etc/systemd/system/bastion-scan.service"
+	legacyTimer   = "/etc/systemd/system/bastion-scan.timer"
+	legacyCron    = "/etc/cron.d/bastion"
 )
+
+// removeLegacy retira el análisis programado de Bastion, que ejecutaría un
+// binario antiguo (o ya desinstalado).
+func (u *unixScheduler) removeLegacy(ctx context.Context) {
+	if _, err := os.Stat(u.path(legacyTimer)); err == nil {
+		_, _ = u.run(ctx, "systemctl", "disable", "--now", legacyUnit+".timer")
+		_ = os.Remove(u.path(legacyTimer))
+		_ = os.Remove(u.path(legacyService))
+		_, _ = u.run(ctx, "systemctl", "daemon-reload")
+	}
+	_ = os.Remove(u.path(legacyCron))
+}
 
 func newUnix() *unixScheduler {
 	return &unixScheduler{run: func(ctx context.Context, name string, args ...string) (string, error) {
@@ -46,9 +64,9 @@ func (u *unixScheduler) systemd() bool {
 }
 
 func serviceUnit(exe string) string {
-	return fmt.Sprintf(`# Creado por «bastion schedule enable». Se elimina con «bastion schedule disable».
+	return fmt.Sprintf(`# Creado por «adarve schedule enable». Se elimina con «adarve schedule disable».
 [Unit]
-Description=Bastion: escaneo y superficie de ataque diarios
+Description=Adarve: escaneo y superficie de ataque diarios
 After=network-online.target
 
 [Service]
@@ -64,9 +82,9 @@ SuccessExitStatus=3
 }
 
 func timerUnit(at string) string {
-	return fmt.Sprintf(`# Creado por «bastion schedule enable». Se elimina con «bastion schedule disable».
+	return fmt.Sprintf(`# Creado por «adarve schedule enable». Se elimina con «adarve schedule disable».
 [Unit]
-Description=Bastion: análisis diario
+Description=Adarve: análisis diario
 
 [Timer]
 OnCalendar=*-*-* %s:00
@@ -80,7 +98,7 @@ WantedBy=timers.target
 
 func cronEntry(exe, at string) string {
 	hh, mm, _ := strings.Cut(at, ":")
-	return fmt.Sprintf("# Creado por «bastion schedule enable». Se elimina con «bastion schedule disable».\n"+
+	return fmt.Sprintf("# Creado por «adarve schedule enable». Se elimina con «adarve schedule disable».\n"+
 		"%s %s * * * root %s schedule run >/dev/null 2>&1\n", strings.TrimPrefix(mm, "0"), strings.TrimPrefix(hh, "0"), shellQuote(exe))
 }
 
@@ -107,6 +125,7 @@ func shellQuote(p string) string {
 }
 
 func (u *unixScheduler) Enable(ctx context.Context, exe, at string) (Status, error) {
+	u.removeLegacy(ctx)
 	if u.systemd() {
 		if err := writeFile(u.path(servicePath), serviceUnit(exe)); err != nil {
 			return Status{}, err
@@ -130,6 +149,7 @@ func (u *unixScheduler) Enable(ctx context.Context, exe, at string) (Status, err
 }
 
 func (u *unixScheduler) Disable(ctx context.Context) error {
+	u.removeLegacy(ctx)
 	if _, err := os.Stat(u.path(timerPath)); err == nil {
 		_, _ = u.run(ctx, "systemctl", "disable", "--now", unitName+".timer")
 		for _, p := range []string{timerPath, servicePath} {
@@ -157,7 +177,7 @@ func (u *unixScheduler) Get(ctx context.Context) (Status, error) {
 		}
 		if out, err := u.run(ctx, "systemctl", "is-enabled", unitName+".timer"); err != nil || strings.TrimSpace(out) != "enabled" {
 			st.Enabled = false
-			st.Detail = "el temporizador existe pero no está activado: bastion schedule enable lo activa"
+			st.Detail = "el temporizador existe pero no está activado: adarve schedule enable lo activa"
 		}
 		if out, err := u.run(ctx, "systemctl", "show", "-p", "NextElapseUSecRealtime", "--value", unitName+".timer"); err == nil {
 			st.NextRun = strings.TrimSpace(out)

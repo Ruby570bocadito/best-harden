@@ -419,4 +419,4 @@ remediation:
   commands: |
     Set-Service wuauserv -StartupType Manual
   breaking_risk: low
-impact: Bastion no cambia el servicio automáticamente por si lo gestiona otra herramienta de parches (WSUS, Intune, un agente de terceros); compruébalo antes.
+impact: Adarve no cambia el servicio automáticamente por si lo gestiona otra herramienta de parches (WSUS, Intune, un agente de terceros); compruébalo antes.

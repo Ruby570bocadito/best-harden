@@ -1,6 +1,6 @@
 # 07 · UI y diseño
 
-Bastion tiene hoy dos superficies visuales: la **consola** y el **informe HTML**. La **consola web de flota** llegará en la fase 3. Las tres comparten el mismo lenguaje visual.
+Adarve tiene hoy dos superficies visuales: la **consola** y el **informe HTML**. La **consola web de flota** llegará en la fase 3. Las tres comparten el mismo lenguaje visual.
 
 | | |
 |---|---|
@@ -27,7 +27,7 @@ Bastion tiene hoy dos superficies visuales: la **consola** y el **informe HTML**
 
 ### Paleta de estado (fija, nunca tematizada)
 
-| Rol | Color | Uso en Bastion |
+| Rol | Color | Uso en Adarve |
 |---|---|---|
 | good | `#0ca30c` | Superado, puntuación ≥ 80 |
 | warning | `#fab219` | Severidad media, errores, puntuación 60-79 |
@@ -57,9 +57,9 @@ Características técnicas:
 - **Seguro ante datos hostiles**: ver [08-seguridad-de-la-plataforma.md](08-seguridad-de-la-plataforma.md#informe-html).
 - El tema elegido se recuerda en `localStorage` (si está disponible).
 
-## Consola local: `bastion ui` (✅)
+## Consola local: `adarve ui` (✅)
 
-![Consola local de Bastion](assets/consola.png)
+![Consola local de Adarve](assets/consola.png)
 
 Un panel en el navegador para trabajar con un equipo, no solo mirar una foto. Se sirve desde el propio binario en `127.0.0.1` con un token por sesión y no tiene dependencias externas ([ADR-0008](adr/0008-consola-local.md)).
 
@@ -84,7 +84,7 @@ Al abrirla escanea si el último escaneo tiene más de una hora. El botón **Esc
 **Stack:** React + TypeScript + Vite + Tailwind + shadcn/ui + TanStack Query/Table + ECharts + Framer Motion. El mismo sistema de tokens que el informe.
 
 ```
-┌─ BASTION ──────────────────────────────────────────── Ctrl+K   🔔   👤 ┐
+┌─ ADARVE ──────────────────────────────────────────── Ctrl+K   🔔   👤 ┐
 │              │  Postura global          Por plataforma                 │
 │ ▸ Dashboard  │    ╭──────╮              Windows 11   ████████░░  82    │
 │   Activos    │    │  78  │  ▲ +6 / 30d  Server 2022  ██████░░░░  64    │

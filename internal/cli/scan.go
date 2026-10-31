@@ -11,13 +11,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Ruby570bocadito/bastion/internal/config"
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/platform"
-	"github.com/Ruby570bocadito/bastion/internal/probes"
-	"github.com/Ruby570bocadito/bastion/internal/report"
-	"github.com/Ruby570bocadito/bastion/internal/version"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/config"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
+	"github.com/Ruby570bocadito/adarve/internal/report"
+	"github.com/Ruby570bocadito/adarve/internal/version"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 type scanFlags struct {
@@ -43,12 +43,12 @@ func newScanCmd() *cobra.Command {
 El escaneo es de SOLO LECTURA: no modifica nada en el sistema.
 Ejecuta como administrador (Windows) o root (Linux) para que todos los
 controles se puedan leer.`,
-		Example: `  bastion scan
-  bastion scan --profile win-workstation-l2
-  bastion scan --save --open
-  bastion scan -o informe.html -o informe.json
-  bastion scan --format json > resultado.json
-  bastion scan --min-score 80          # código de salida 2 si la puntuación es menor (CI/CD)`,
+		Example: `  adarve scan
+  adarve scan --profile win-workstation-l2
+  adarve scan --save --open
+  adarve scan -o informe.html -o informe.json
+  adarve scan --format json > resultado.json
+  adarve scan --min-score 80          # código de salida 2 si la puntuación es menor (CI/CD)`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return runScan(f) },
 	}
 	fl := cmd.Flags()
@@ -141,9 +141,9 @@ func runScan(f scanFlags) error {
 		}
 	}
 	if f.format == "console" && !f.quiet && rep.Score.Failed > 0 {
-		fmt.Fprintf(msgs, "  %s Detalle y remediación de un control: %s\n", s.Dim("·"), s.Bold("bastion rules show <ID>"))
+		fmt.Fprintf(msgs, "  %s Detalle y remediación de un control: %s\n", s.Dim("·"), s.Bold("adarve rules show <ID>"))
 		if htmlOut == "" {
-			fmt.Fprintf(msgs, "  %s Informe visual con evidencias:       %s\n", s.Dim("·"), s.Bold("bastion scan --save --open"))
+			fmt.Fprintf(msgs, "  %s Informe visual con evidencias:       %s\n", s.Dim("·"), s.Bold("adarve scan --save --open"))
 		}
 		fmt.Fprintln(msgs)
 	}
@@ -189,7 +189,7 @@ func scanReport(ctx context.Context, cfg config.Config, profile string, ids, cat
 	finished := time.Now()
 	return &engine.Report{
 		Schema:     engine.SchemaVersion,
-		Tool:       engine.ToolInfo{Name: "bastion", Version: version.Version, Commit: version.Commit},
+		Tool:       engine.ToolInfo{Name: "adarve", Version: version.Version, Commit: version.Commit},
 		Host:       info,
 		Profile:    prof,
 		StartedAt:  started.UTC(),

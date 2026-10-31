@@ -11,13 +11,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Ruby570bocadito/bastion/internal/config"
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/notify"
-	"github.com/Ruby570bocadito/bastion/internal/report"
-	"github.com/Ruby570bocadito/bastion/internal/schedule"
-	"github.com/Ruby570bocadito/bastion/internal/surface"
-	"github.com/Ruby570bocadito/bastion/internal/version"
+	"github.com/Ruby570bocadito/adarve/internal/config"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/notify"
+	"github.com/Ruby570bocadito/adarve/internal/report"
+	"github.com/Ruby570bocadito/adarve/internal/schedule"
+	"github.com/Ruby570bocadito/adarve/internal/surface"
+	"github.com/Ruby570bocadito/adarve/internal/version"
 )
 
 func newScheduleNotifyCmd() *cobra.Command {
@@ -27,8 +27,8 @@ func newScheduleNotifyCmd() *cobra.Command {
 		Use:   "notify",
 		Short: "Configurar y probar los avisos del análisis programado",
 		Long: `Cada análisis programado queda anotado en el Visor de eventos de Windows
-(Registros de Windows › Aplicación, origen Bastion) o en syslog en Linux
-(journalctl -t bastion): como aviso si la postura o la exposición han
+(Registros de Windows › Aplicación, origen Adarve) o en syslog en Linux
+(journalctl -t adarve): como aviso si la postura o la exposición han
 empeorado y como error si ha fallado.
 
 Además, puede avisar a un webhook: ntfy (notificaciones en el móvil, sin
@@ -43,11 +43,11 @@ primero prueba el webhook y solo lo guarda si el aviso llega.
 La dirección suele llevar un secreto (el tema de ntfy, el token de Slack):
 con --set - se lee de la entrada estándar y no queda en el historial de la
 shell ni en la lista de procesos, que otros usuarios pueden ver.`,
-		Example: `  bastion schedule notify                                  # probar los avisos
-  bastion schedule notify --set https://ntfy.sh/bastion-casa-7f3k9
-  bastion schedule notify --set https://hooks.slack.com/services/… --when always
-  sudo bastion schedule notify --set - < webhook.txt         # sin la dirección en la línea de órdenes
-  bastion schedule notify --clear`,
+		Example: `  adarve schedule notify                                  # probar los avisos
+  adarve schedule notify --set https://ntfy.sh/adarve-casa-7f3k9
+  adarve schedule notify --set https://hooks.slack.com/services/… --when always
+  sudo adarve schedule notify --set - < webhook.txt         # sin la dirección en la línea de órdenes
+  adarve schedule notify --clear`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return scheduleNotify(set, format, when, clear) },
 	}
 	cmd.Flags().StringVar(&set, "set", "", "dirección del webhook (https://…), o - para leerla de la entrada estándar; para ntfy, https://ntfy.sh/<tema difícil de adivinar>")
@@ -114,8 +114,8 @@ func scheduleNotify(set, format, when string, clear bool) error {
 	}
 	if n.Webhook == "" {
 		fmt.Printf("  %s Sin webhook. Para recibir los avisos en el móvil (app ntfy, sin cuenta): %s\n",
-			s.Dim("·"), s.Bold("bastion schedule notify --set https://ntfy.sh/<tema-difícil-de-adivinar>"))
-	} else if err := notify.Webhook(ctx, n.Webhook, n.Format, "bastion/"+version.Version, ev); err != nil {
+			s.Dim("·"), s.Bold("adarve schedule notify --set https://ntfy.sh/<tema-difícil-de-adivinar>"))
+	} else if err := notify.Webhook(ctx, n.Webhook, n.Format, "adarve/"+version.Version, ev); err != nil {
 		fmt.Printf("  %s Webhook %s: %v\n", s.Red("×"), webhookName(n), err)
 		if set != "" {
 			fmt.Printf("    %s\n", s.Dim("No se ha guardado. Revisa la dirección y vuelve a intentarlo."))
@@ -141,7 +141,7 @@ func scheduleNotify(set, format, when string, clear bool) error {
 func testEvent() notify.Event {
 	host, _ := os.Hostname()
 	ev := notify.Event{Host: host, Time: time.Now().UTC(), Level: notify.LevelInfo, Test: true,
-		Title: fmt.Sprintf("Bastion · %s: aviso de prueba", host),
+		Title: fmt.Sprintf("Adarve · %s: aviso de prueba", host),
 		Lines: []string{"Si lees esto, los avisos del análisis programado llegan bien."}}
 	if runs, err := schedule.ReadRuns(schedule.LogPath(config.DataDir())); err == nil && len(runs) > 0 {
 		r := runs[len(runs)-1]
@@ -215,16 +215,16 @@ func scheduleEvent(host string, run schedule.Run, scanOK, surfaceOK bool, regres
 	if len(run.Errors) > 0 {
 		ev.Lines = append(ev.Lines, "Errores: "+strings.Join(run.Errors, "; "))
 	}
-	ev.Lines = append(ev.Lines, "Detalle en el equipo: bastion surface · bastion scan · bastion ui")
+	ev.Lines = append(ev.Lines, "Detalle en el equipo: adarve surface · adarve scan · adarve ui")
 	switch {
 	case len(run.Errors) > 0:
 		ev.Level = notify.LevelError
-		ev.Title = fmt.Sprintf("Bastion · %s: el análisis programado ha fallado", host)
+		ev.Title = fmt.Sprintf("Adarve · %s: el análisis programado ha fallado", host)
 	case len(regressions) > 0 || len(exposure) > 0:
 		ev.Level = notify.LevelWarning
-		ev.Title = fmt.Sprintf("Bastion · %s: la postura o la exposición han empeorado", host)
+		ev.Title = fmt.Sprintf("Adarve · %s: la postura o la exposición han empeorado", host)
 	default:
-		ev.Title = fmt.Sprintf("Bastion · %s: análisis diario sin cambios a peor", host)
+		ev.Title = fmt.Sprintf("Adarve · %s: análisis diario sin cambios a peor", host)
 	}
 	return ev
 }
@@ -240,7 +240,7 @@ func deliver(ctx context.Context, n config.Notify, ev notify.Event) []string {
 	if n.Webhook != "" && (ev.Level != notify.LevelInfo || n.When == "always") {
 		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
-		if err := notify.Webhook(ctx, n.Webhook, n.Format, "bastion/"+version.Version, ev); err != nil {
+		if err := notify.Webhook(ctx, n.Webhook, n.Format, "adarve/"+version.Version, ev); err != nil {
 			errs = append(errs, "webhook: "+err.Error())
 		}
 	}

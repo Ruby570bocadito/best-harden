@@ -11,9 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/exceptions"
-	"github.com/Ruby570bocadito/bastion/internal/probes"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/exceptions"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // Status es el resultado de una comprobación.

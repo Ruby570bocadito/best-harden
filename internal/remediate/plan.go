@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/probes"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // ItemStatus clasifica un control fallido dentro del plan.
@@ -43,7 +43,7 @@ type Step struct {
 	Desc   string
 }
 
-// Item es un control fallido y lo que Bastion hará con él.
+// Item es un control fallido y lo que Adarve hará con él.
 type Item struct {
 	Rule    *rule.Rule
 	Eval    engine.Result
@@ -98,7 +98,7 @@ func BuildPlan(ctx context.Context, results []engine.Result, o Options) []*Item 
 }
 
 // PlanRule prepara un elemento con las acciones de una regla que no sale de
-// un escaneo (p. ej. las que construye "bastion surface fix"): captura el
+// un escaneo (p. ej. las que construye "adarve surface fix"): captura el
 // estado previo de cada acción (solo lectura).
 func PlanRule(ctx context.Context, r *rule.Rule) *Item {
 	it := &Item{Rule: r}
@@ -305,7 +305,7 @@ func (x *Executor) applyItem(ctx context.Context, m *Manifest, it *Item, remote 
 	var done []*Entry
 	fail := func(kind, outcome, msg string, err error) {
 		if rerr := x.revert(ctx, m, done); rerr != nil {
-			msg += "; NO se pudo revertir del todo (" + rerr.Error() + "): usa bastion rollback " + m.ID
+			msg += "; NO se pudo revertir del todo (" + rerr.Error() + "): usa adarve rollback " + m.ID
 		} else if len(done) > 0 {
 			msg += "; cambio revertido"
 		}

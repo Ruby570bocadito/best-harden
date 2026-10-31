@@ -1,4 +1,4 @@
-// Package rule define el formato declarativo de los controles de Bastion
+// Package rule define el formato declarativo de los controles de Adarve
 // (reglas y perfiles) y su validación. Es el contrato público entre los
 // paquetes de reglas y el motor de evaluación.
 package rule
@@ -74,7 +74,7 @@ type Remediation struct {
 	Commands       string `yaml:"commands,omitempty" json:"commands,omitempty"`
 	BreakingRisk   string `yaml:"breaking_risk" json:"breaking_risk"`
 	RebootRequired bool   `yaml:"reboot_required,omitempty" json:"reboot_required,omitempty"`
-	// Actions son los cambios tipados que aplica "bastion harden". Si no hay,
+	// Actions son los cambios tipados que aplica "adarve harden". Si no hay,
 	// la remediación es manual. Nunca existe un tipo "ejecutar comando".
 	Actions []Action `yaml:"actions,omitempty" json:"actions,omitempty"`
 	// Safety "remote-access" marca cambios que pueden cortar el acceso

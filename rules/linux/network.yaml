@@ -26,7 +26,7 @@ check:
 remediation:
   summary: Deshabilitar el reenvío IPv4/IPv6 si el equipo no es un router.
   commands: |
-    printf 'net.ipv4.ip_forward = 0\nnet.ipv6.conf.all.forwarding = 0\n' > /etc/sysctl.d/60-bastion-forward.conf
+    printf 'net.ipv4.ip_forward = 0\nnet.ipv6.conf.all.forwarding = 0\n' > /etc/sysctl.d/60-adarve-forward.conf
     sysctl --system
   breaking_risk: medium
   actions:
@@ -59,7 +59,7 @@ check:
 remediation:
   summary: Fijar accept_redirects = 0 en all y default para IPv4 e IPv6.
   commands: |
-    cat > /etc/sysctl.d/60-bastion-redirects.conf <<'CONF'
+    cat > /etc/sysctl.d/60-adarve-redirects.conf <<'CONF'
     net.ipv4.conf.all.accept_redirects = 0
     net.ipv4.conf.default.accept_redirects = 0
     net.ipv6.conf.all.accept_redirects = 0
@@ -100,7 +100,7 @@ check:
 remediation:
   summary: Fijar send_redirects = 0.
   commands: |
-    printf 'net.ipv4.conf.all.send_redirects = 0\nnet.ipv4.conf.default.send_redirects = 0\n' > /etc/sysctl.d/60-bastion-sendredirects.conf
+    printf 'net.ipv4.conf.all.send_redirects = 0\nnet.ipv4.conf.default.send_redirects = 0\n' > /etc/sysctl.d/60-adarve-sendredirects.conf
     sysctl --system
   breaking_risk: none
   actions:
@@ -163,7 +163,7 @@ check:
 remediation:
   summary: Fijar rp_filter = 1.
   commands: |
-    printf 'net.ipv4.conf.all.rp_filter = 1\nnet.ipv4.conf.default.rp_filter = 1\n' > /etc/sysctl.d/60-bastion-rpfilter.conf
+    printf 'net.ipv4.conf.all.rp_filter = 1\nnet.ipv4.conf.default.rp_filter = 1\n' > /etc/sysctl.d/60-adarve-rpfilter.conf
     sysctl --system
   breaking_risk: medium
   # rp_filter estricto corta el tráfico con rutas asimétricas o varias

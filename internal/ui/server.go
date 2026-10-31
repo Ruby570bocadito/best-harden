@@ -1,13 +1,13 @@
-// Package ui sirve la consola local de Bastion ("bastion ui"): un panel en
+// Package ui sirve la consola local de Adarve ("adarve ui"): un panel en
 // el navegador con la postura, la tendencia, el plan de hardening, el
 // historial y las excepciones del equipo.
 //
 // Seguridad (ver docs/adr/0008-consola-local.md):
 //   - Solo escucha en la interfaz de loopback (127.0.0.1).
 //   - Toda la API exige un token aleatorio de 256 bits que solo conoce
-//     quien lanzó "bastion ui": en la cabecera X-Bastion-Token (scripts) o
+//     quien lanzó "adarve ui": en la cabecera X-Adarve-Token (scripts) o
 //     en una cookie de sesión HttpOnly y SameSite=Strict (el navegador),
-//     acompañada de la cabecera X-Bastion-Request. La dirección con el
+//     acompañada de la cabecera X-Adarve-Request. La dirección con el
 //     token solo se muestra en la terminal; el navegador se abre con un
 //     fichero local 0600 que redirige con un código de un solo uso, así que
 //     el token nunca aparece en la línea de órdenes del navegador (visible
@@ -45,10 +45,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/report"
-	"github.com/Ruby570bocadito/bastion/internal/schedule"
-	"github.com/Ruby570bocadito/bastion/internal/surface"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/report"
+	"github.com/Ruby570bocadito/adarve/internal/schedule"
+	"github.com/Ruby570bocadito/adarve/internal/surface"
 )
 
 //go:embed assets/ui.html
@@ -119,7 +119,7 @@ type ScheduleInfo struct {
 	Notify string `json:"notify,omitempty"`
 }
 
-// Backend es lo que la consola necesita de Bastion. Lo implementa la CLI.
+// Backend es lo que la consola necesita de Adarve. Lo implementa la CLI.
 type Backend interface {
 	State() State
 	// Scan evalúa el perfil, guarda el informe y lo devuelve con su ID.
@@ -131,7 +131,7 @@ type Backend interface {
 	Exceptions() ([]Exception, error)
 	// Surface analiza la superficie de ataque (puertos, recursos, administradores).
 	Surface(ctx context.Context) (*surface.Report, error)
-	// Schedule describe el análisis programado (bastion schedule).
+	// Schedule describe el análisis programado (adarve schedule).
 	Schedule(ctx context.Context) (*ScheduleInfo, error)
 }
 
@@ -195,7 +195,7 @@ func New(b Backend) (*Server, error) {
 	}
 	tok := base64.RawURLEncoding.EncodeToString(t)
 	sum := sha256.Sum256([]byte(tok))
-	return &Server{backend: b, token: tok, cookie: "bastion_" + hex.EncodeToString(sum[:6]),
+	return &Server{backend: b, token: tok, cookie: "adarve_" + hex.EncodeToString(sum[:6]),
 		codes: map[string]time.Time{}, busy: make(chan struct{}, 1)}, nil
 }
 
@@ -251,15 +251,15 @@ func (s *Server) WriteLauncher(base string) (path string, cleanup func(), err er
 	if err != nil {
 		return "", nil, err
 	}
-	dir, err := os.MkdirTemp("", "bastion-ui-")
+	dir, err := os.MkdirTemp("", "adarve-ui-")
 	if err != nil {
 		return "", nil, err
 	}
 	target := strings.TrimRight(base, "/") + "/?c=" + code
 	page := `<!doctype html><meta charset="utf-8"><meta name="referrer" content="no-referrer">` +
 		`<meta http-equiv="refresh" content="0;url=` + html.EscapeString(target) + `">` +
-		`<title>Bastion</title><p>Abriendo la consola de Bastion… <a href="` + html.EscapeString(target) + `">continuar</a></p>`
-	path = filepath.Join(dir, "bastion-ui.html")
+		`<title>Adarve</title><p>Abriendo la consola de Adarve… <a href="` + html.EscapeString(target) + `">continuar</a></p>`
+	path = filepath.Join(dir, "adarve-ui.html")
 	if err := os.WriteFile(path, []byte(page), 0o600); err != nil {
 		os.RemoveAll(dir)
 		return "", nil, err
@@ -431,15 +431,15 @@ func (s *Server) session(r *http.Request) bool {
 	return err == nil && s.validToken(c.Value)
 }
 
-// authAPI acepta el token en la cabecera X-Bastion-Token (scripts, curl) o
-// la cookie de sesión con la cabecera X-Bastion-Request: una web ajena no
+// authAPI acepta el token en la cabecera X-Adarve-Token (scripts, curl) o
+// la cookie de sesión con la cabecera X-Adarve-Request: una web ajena no
 // puede añadir esa cabecera sin una comprobación CORS que no se concede, así
 // que la cookie sola no sirve para una petición cruzada.
 func (s *Server) authAPI(r *http.Request) bool {
-	if s.validToken(r.Header.Get("X-Bastion-Token")) {
+	if s.validToken(r.Header.Get("X-Adarve-Token")) {
 		return true
 	}
-	return r.Header.Get("X-Bastion-Request") == "1" && s.session(r)
+	return r.Header.Get("X-Adarve-Request") == "1" && s.session(r)
 }
 
 // setSession fija la cookie de sesión del navegador.
@@ -459,7 +459,7 @@ func (s *Server) api(fn func(http.ResponseWriter, *http.Request) (any, error)) h
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 		if !s.authAPI(r) {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "sesión ausente o incorrecta: abre la dirección que muestra \"bastion ui\""})
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "sesión ausente o incorrecta: abre la dirección que muestra \"adarve ui\""})
 			return
 		}
 		v, err := fn(w, r)
@@ -514,8 +514,8 @@ func (s *Server) handleShell(w http.ResponseWriter, r *http.Request) {
 // cookie de sesión, nunca con el token en la URL. La cookie es SameSite=
 // Strict y el informe solo se puede incrustar en la consola.
 func (s *Server) handleReportHTML(w http.ResponseWriter, r *http.Request) {
-	if !s.session(r) && !s.validToken(r.Header.Get("X-Bastion-Token")) {
-		http.Error(w, "sesión ausente o incorrecta: abre la dirección que muestra \"bastion ui\"", http.StatusUnauthorized)
+	if !s.session(r) && !s.validToken(r.Header.Get("X-Adarve-Token")) {
+		http.Error(w, "sesión ausente o incorrecta: abre la dirección que muestra \"adarve ui\"", http.StatusUnauthorized)
 		return
 	}
 	id, ok := strings.CutSuffix(r.PathValue("file"), ".html")

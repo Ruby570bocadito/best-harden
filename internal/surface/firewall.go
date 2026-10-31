@@ -346,7 +346,7 @@ func ruleSelector(rules []FirewallRule) string {
 
 // limitCmd es el comando para limitar unas reglas a la red local.
 func limitCmd(ids []string) string {
-	return fmt.Sprintf("Para que solo se llegue desde tu red local: bastion surface fix (con instantánea y rollback) o, a mano, "+
+	return fmt.Sprintf("Para que solo se llegue desde tu red local: adarve surface fix (con instantánea y rollback) o, a mano, "+
 		"Set-NetFirewallRule -Name %s -RemoteAddress LocalSubnet (se deshace con -RemoteAddress Any).", psList(ids))
 }
 

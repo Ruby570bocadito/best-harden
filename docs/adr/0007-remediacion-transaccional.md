@@ -14,7 +14,7 @@ Endurecer un sistema en producción da miedo por una razón: los cambios rompen 
 - Los cambios que pueden cortar el acceso remoto llevan un **dead-man switch** en un proceso independiente.
 
 ## Consecuencias
-- ✅ Rollback exacto, también desde otro proceso o tras un corte (`bastion rollback`).
+- ✅ Rollback exacto, también desde otro proceso o tras un corte (`adarve rollback`).
 - ✅ Resultados honestos: "aplicado y verificado", "sin efecto (revertido)", "error (revertido)".
 - ✅ La CI prueba el ciclo completo en sistemas reales desechables.
 - ⚠️ Cada nuevo tipo de cambio requiere implementar y probar su `Restore`. Es intencionado.

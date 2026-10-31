@@ -1,11 +1,11 @@
-// Package selfupdate actualiza el binario de Bastion desde las releases de
+// Package selfupdate actualiza el binario de Adarve desde las releases de
 // GitHub (o un espejo interno) verificando la suma SHA-256 publicada.
 //
 // Contrato de releases (lo cumple GitHub y cualquier espejo estático):
 //
 //	<base>/latest/download/version.txt         → etiqueta de la última versión
 //	<base>/download/<tag>/checksums.txt        → sumas SHA-256
-//	<base>/download/<tag>/bastion_<os>_<arch>.tar.gz | .zip
+//	<base>/download/<tag>/adarve_<os>_<arch>.tar.gz | .zip
 package selfupdate
 
 import (
@@ -30,7 +30,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/version"
+	"github.com/Ruby570bocadito/adarve/internal/version"
 )
 
 const maxDownload = 200 << 20 // 200 MiB
@@ -110,7 +110,7 @@ func get(ctx context.Context, url string, w io.Writer, limit int64) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "bastion/"+version.Version)
+	req.Header.Set("User-Agent", "adarve/"+version.Version)
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -164,9 +164,9 @@ func (s Source) Latest(ctx context.Context) (string, error) {
 // AssetName es el nombre del archivo de release para una plataforma.
 func AssetName(goos, goarch string) string {
 	if goos == "windows" {
-		return fmt.Sprintf("bastion_%s_%s.zip", goos, goarch)
+		return fmt.Sprintf("adarve_%s_%s.zip", goos, goarch)
 	}
-	return fmt.Sprintf("bastion_%s_%s.tar.gz", goos, goarch)
+	return fmt.Sprintf("adarve_%s_%s.tar.gz", goos, goarch)
 }
 
 // Download descarga y verifica la release tag y devuelve la ruta del binario
@@ -176,7 +176,7 @@ func (s Source) Download(ctx context.Context, tag string) (binPath, tmpDir strin
 		return "", "", fmt.Errorf("versión %q no válida", tag)
 	}
 	asset := AssetName(runtime.GOOS, runtime.GOARCH)
-	tmpDir, err = os.MkdirTemp("", "bastion-update-")
+	tmpDir, err = os.MkdirTemp("", "adarve-update-")
 	if err != nil {
 		return "", "", err
 	}
@@ -211,9 +211,9 @@ func (s Source) Download(ctx context.Context, tag string) (binPath, tmpDir strin
 		return "", "", fmt.Errorf("la suma SHA-256 no coincide (esperada %s, obtenida %s): descarga abortada", want, got)
 	}
 
-	exe := "bastion"
+	exe := "adarve"
 	if runtime.GOOS == "windows" {
-		exe = "bastion.exe"
+		exe = "adarve.exe"
 	}
 	binPath = filepath.Join(tmpDir, exe+".new")
 	if strings.HasSuffix(asset, ".zip") {
@@ -337,7 +337,7 @@ func InstallDirWritable() (string, error) {
 		return "", err
 	}
 	dir := filepath.Dir(exe)
-	f, err := os.CreateTemp(dir, ".bastion-write-test-*")
+	f, err := os.CreateTemp(dir, ".adarve-write-test-*")
 	if err != nil {
 		return dir, err
 	}

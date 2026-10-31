@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/surface"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/surface"
 )
 
-// JSON escribe el informe en el formato estable bastion.report/v1.
+// JSON escribe el informe en el formato estable adarve.report/v1.
 func JSON(w io.Writer, rep *engine.Report) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
@@ -89,7 +89,7 @@ var unsafeName = regexp.MustCompile(`[^A-Za-z0-9._-]+`)
 // conserva solo los keep escaneos más recientes. Devuelve (html, json).
 func Save(dir string, rep *engine.Report, keep int) (string, string, error) {
 	host := unsafeName.ReplaceAllString(rep.Host.Hostname, "_")
-	base := fmt.Sprintf("bastion-%s-%s", host, rep.FinishedAt.Local().Format("20060102-150405"))
+	base := fmt.Sprintf("adarve-%s-%s", host, rep.FinishedAt.Local().Format("20060102-150405"))
 	htmlPath := filepath.Join(dir, base+".html")
 	jsonPath := filepath.Join(dir, base+".json")
 	if err := WriteFile(htmlPath, rep); err != nil {
@@ -109,7 +109,7 @@ func Save(dir string, rep *engine.Report, keep int) (string, string, error) {
 // equipo renombrado, una carpeta compartida) no se borran los de otro.
 func prune(dir, host string, keep int) {
 	for _, ext := range []string{".html", ".json"} {
-		files := hostFiles(dir, "bastion-", host, ext)
+		files := hostFiles(dir, "adarve-", host, ext)
 		if len(files) > keep {
 			for _, f := range files[:len(files)-keep] {
 				os.Remove(f)
@@ -162,7 +162,7 @@ type Meta struct {
 	Score       engine.Score `json:"score"`
 }
 
-var reReportID = regexp.MustCompile(`^bastion-[A-Za-z0-9._-]+-[0-9]{8}-[0-9]{6}$`)
+var reReportID = regexp.MustCompile(`^adarve-[A-Za-z0-9._-]+-[0-9]{8}-[0-9]{6}$`)
 
 // ValidReportID indica si id es el nombre (sin extensión) de un informe
 // guardado. Impide rutas fuera del directorio de informes.
@@ -171,7 +171,7 @@ func ValidReportID(id string) bool { return reReportID.MatchString(id) && !strin
 // ListSaved devuelve los informes JSON guardados en dir, del más antiguo
 // al más reciente. Si host no está vacío, solo los de ese equipo.
 func ListSaved(dir, host string) ([]Meta, error) {
-	files, err := filepath.Glob(filepath.Join(dir, "bastion-*.json"))
+	files, err := filepath.Glob(filepath.Join(dir, "adarve-*.json"))
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +288,7 @@ func LatestSurface(dir, host string) (*surface.Report, error) {
 	if err := json.Unmarshal(b, &rep); err != nil {
 		return nil, fmt.Errorf("%s: %w", filepath.Base(files[len(files)-1]), err)
 	}
-	if rep.Schema != surface.Schema {
+	if rep.Schema != surface.Schema && rep.Schema != surface.LegacySchema {
 		return nil, fmt.Errorf("%s: formato %q desconocido", filepath.Base(files[len(files)-1]), rep.Schema)
 	}
 	if !strings.EqualFold(rep.Host.Hostname, host) {

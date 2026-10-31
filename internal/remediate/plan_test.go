@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/probes"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // Sistema simulado: un almacén clave/valor que leen el probe y el remediador.
@@ -423,7 +423,7 @@ func TestRevertFailureIsReported(t *testing.T) {
 		t.Errorf("mensaje: %q", items[0].Message)
 	}
 	if m.pending(nil) != 1 {
-		t.Error("la entrada no restaurada debe seguir pendiente para bastion rollback")
+		t.Error("la entrada no restaurada debe seguir pendiente para adarve rollback")
 	}
 	b, _ := os.ReadFile(filepath.Join(st.Dir, "changes.log"))
 	if !strings.Contains(string(b), "rollback-failed") {

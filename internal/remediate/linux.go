@@ -19,7 +19,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/probes"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
 )
 
 func init() {
@@ -32,8 +32,13 @@ func init() {
 	Register(sudoersDefaults{})
 }
 
-// Rutas de los ficheros drop-in que gestiona Bastion. Son variables para
+// Rutas de los ficheros drop-in que gestiona Adarve. Son variables para
 // poder redirigirlas en los tests.
+//
+// Conservan el nombre de Bastion (el anterior de Adarve): las instantáneas
+// de los equipos ya endurecidos apuntan a ellos, y con otro nombre "rollback"
+// restauraría el fichero equivocado y quedarían dos drop-ins con los mismos
+// ajustes.
 //
 // El drop-in de sysctl se llama 99-zz-bastion.conf para cargarse el ÚLTIMO
 // (systemd-sysctl y "sysctl --system" ordenan por nombre todos los
@@ -50,7 +55,7 @@ var (
 	sudoersDropIn      = "/etc/sudoers.d/00-bastion"
 )
 
-const dropInHeader = "# Gestionado por Bastion (bastion harden). Para deshacer: bastion rollback\n"
+const dropInHeader = "# Gestionado por Adarve (adarve harden). Para deshacer: adarve rollback\n"
 
 func run(ctx context.Context, name string, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
@@ -116,7 +121,7 @@ func writeAtomic(path string, content []byte, mode fs.FileMode, uid, gid int) er
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	tmp := path + ".bastion-tmp"
+	tmp := path + ".adarve-tmp"
 	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
 	if err != nil {
 		return err
@@ -234,7 +239,7 @@ func (sysctlSet) Capture(_ context.Context, p probes.Params) (State, error) {
 }
 
 // sysctlFileOf devuelve el drop-in que se capturó en before (las instantáneas
-// antiguas no lo guardan: era 60-bastion.conf). Solo admite los dos de Bastion.
+// antiguas no lo guardan: era 60-bastion.conf). Solo admite esos dos.
 func sysctlFileOf(before State) (string, error) {
 	p, _ := before["path"].(string)
 	switch p {

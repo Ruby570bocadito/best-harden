@@ -22,7 +22,7 @@ check:
 remediation:
   summary: Bloquear la carga del módulo y descargarlo.
   commands: |
-    printf 'install cramfs /bin/false\nblacklist cramfs\n' > /etc/modprobe.d/bastion-cramfs.conf
+    printf 'install cramfs /bin/false\nblacklist cramfs\n' > /etc/modprobe.d/adarve-cramfs.conf
     modprobe -r cramfs 2>/dev/null || true
   breaking_risk: low
   actions:
@@ -50,7 +50,7 @@ check:
 remediation:
   summary: Bloquear la carga del módulo y descargarlo.
   commands: |
-    printf 'install freevxfs /bin/false\nblacklist freevxfs\n' > /etc/modprobe.d/bastion-freevxfs.conf
+    printf 'install freevxfs /bin/false\nblacklist freevxfs\n' > /etc/modprobe.d/adarve-freevxfs.conf
     modprobe -r freevxfs 2>/dev/null || true
   breaking_risk: low
   actions:
@@ -78,7 +78,7 @@ check:
 remediation:
   summary: Bloquear la carga del módulo y descargarlo.
   commands: |
-    printf 'install hfs /bin/false\nblacklist hfs\n' > /etc/modprobe.d/bastion-hfs.conf
+    printf 'install hfs /bin/false\nblacklist hfs\n' > /etc/modprobe.d/adarve-hfs.conf
     modprobe -r hfs 2>/dev/null || true
   breaking_risk: low
   actions:
@@ -106,7 +106,7 @@ check:
 remediation:
   summary: Bloquear la carga del módulo y descargarlo.
   commands: |
-    printf 'install hfsplus /bin/false\nblacklist hfsplus\n' > /etc/modprobe.d/bastion-hfsplus.conf
+    printf 'install hfsplus /bin/false\nblacklist hfsplus\n' > /etc/modprobe.d/adarve-hfsplus.conf
     modprobe -r hfsplus 2>/dev/null || true
   breaking_risk: low
   actions:
@@ -134,7 +134,7 @@ check:
 remediation:
   summary: Bloquear la carga del módulo y descargarlo.
   commands: |
-    printf 'install jffs2 /bin/false\nblacklist jffs2\n' > /etc/modprobe.d/bastion-jffs2.conf
+    printf 'install jffs2 /bin/false\nblacklist jffs2\n' > /etc/modprobe.d/adarve-jffs2.conf
     modprobe -r jffs2 2>/dev/null || true
   breaking_risk: low
   actions:
@@ -163,7 +163,7 @@ check:
 remediation:
   summary: Bloquear la carga del módulo y descargarlo.
   commands: |
-    printf 'install usb-storage /bin/false\nblacklist usb-storage\n' > /etc/modprobe.d/bastion-usb-storage.conf
+    printf 'install usb-storage /bin/false\nblacklist usb-storage\n' > /etc/modprobe.d/adarve-usb-storage.conf
     modprobe -r usb_storage 2>/dev/null || true
   breaking_risk: medium
   actions:
@@ -193,7 +193,7 @@ check:
 remediation:
   summary: Bloquear la carga del módulo y descargarlo.
   commands: |
-    printf 'install dccp /bin/false\nblacklist dccp\n' > /etc/modprobe.d/bastion-dccp.conf
+    printf 'install dccp /bin/false\nblacklist dccp\n' > /etc/modprobe.d/adarve-dccp.conf
     modprobe -r dccp 2>/dev/null || true
   breaking_risk: low
   actions:
@@ -222,7 +222,7 @@ check:
 remediation:
   summary: Bloquear la carga del módulo y descargarlo.
   commands: |
-    printf 'install sctp /bin/false\nblacklist sctp\n' > /etc/modprobe.d/bastion-sctp.conf
+    printf 'install sctp /bin/false\nblacklist sctp\n' > /etc/modprobe.d/adarve-sctp.conf
     modprobe -r sctp 2>/dev/null || true
   breaking_risk: low
   actions:
@@ -251,7 +251,7 @@ check:
 remediation:
   summary: Bloquear la carga del módulo y descargarlo.
   commands: |
-    printf 'install rds /bin/false\nblacklist rds\n' > /etc/modprobe.d/bastion-rds.conf
+    printf 'install rds /bin/false\nblacklist rds\n' > /etc/modprobe.d/adarve-rds.conf
     modprobe -r rds 2>/dev/null || true
   breaking_risk: low
   actions:
@@ -280,7 +280,7 @@ check:
 remediation:
   summary: Bloquear la carga del módulo y descargarlo.
   commands: |
-    printf 'install tipc /bin/false\nblacklist tipc\n' > /etc/modprobe.d/bastion-tipc.conf
+    printf 'install tipc /bin/false\nblacklist tipc\n' > /etc/modprobe.d/adarve-tipc.conf
     modprobe -r tipc 2>/dev/null || true
   breaking_risk: low
   actions:

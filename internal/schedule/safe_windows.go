@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/Ruby570bocadito/bastion/internal/config"
+	"github.com/Ruby570bocadito/adarve/internal/config"
 )
 
 // SafeExecutable comprueba que ningún usuario sin privilegios pueda

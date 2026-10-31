@@ -3,9 +3,9 @@
 Las reglas son **datos declarativos en YAML**: describen qué leer del sistema y qué valor se espera. No contienen código ejecutable, así que un paquete de reglas no puede ejecutar nada en el equipo ([ADR-0002](adr/0002-reglas-declarativas.md)).
 
 - Paquete oficial: `rules/linux/`, `rules/windows/`, `rules/profiles/`. Va incrustado en el binario.
-- Reglas propias: cualquier `*.yaml` en `rules.d` (`/etc/bastion/rules.d` o `%ProgramData%\Bastion\rules.d`) o en `--rules-dir`.
+- Reglas propias: cualquier `*.yaml` en `rules.d` (`/etc/adarve/rules.d` o `%ProgramData%\Adarve\rules.d`) o en `--rules-dir`.
 - Esquema para editores: [`rules/schema/rule.schema.json`](../rules/schema/rule.schema.json).
-- Validación: `bastion rules lint [directorio]` (también se ejecuta en CI y al arrancar cada comando).
+- Validación: `adarve rules lint [directorio]` (también se ejecuta en CI y al arrancar cada comando).
 
 ## Anatomía de una regla
 
@@ -133,7 +133,7 @@ Con `each`, la evidencia agrupa los valores repetidos y dice cuántos elementos 
 
 ### Falta de privilegios
 
-Un probe devuelve `PrivilegeError` cuando el dato solo se puede leer como administrador o root: `secedit`, `auditpol`, `Get-BitLockerVolume` o `Get-WindowsOptionalFeature` sin elevar, o un fichero como `/etc/shadow` sin root. Las consultas que Windows solo responde elevado ni siquiera se lanzan. El motor lo marca como `skipped` ("sin evaluar"): no es un fallo del control ni un error de Bastion. Con privilegios, un "permiso denegado" (SELinux, una ACL inusual) sí es un `error`.
+Un probe devuelve `PrivilegeError` cuando el dato solo se puede leer como administrador o root: `secedit`, `auditpol`, `Get-BitLockerVolume` o `Get-WindowsOptionalFeature` sin elevar, o un fichero como `/etc/shadow` sin root. Las consultas que Windows solo responde elevado ni siquiera se lanzan. El motor lo marca como `skipped` ("sin evaluar"): no es un fallo del control ni un error de Adarve. Con privilegios, un "permiso denegado" (SELinux, una ACL inusual) sí es un `error`.
 
 ### Patrón "la directiva prevalece sobre la configuración local"
 
@@ -209,10 +209,10 @@ Consultas PowerShell permitidas (`ps`). La regla elige el nombre; el código es 
 | `bitlocker_os` | `Get-BitLockerVolume` (unidad del sistema) | `ProtectionStatus`, `EncryptionMethod`, `KeyProtectors` |
 | `device_guard` | `Win32_DeviceGuard` | `SecurityServicesRunning` (1 Credential Guard, 2 HVCI) |
 | `optional_features` | `Get-WindowsOptionalFeature` | `SMB1Protocol`, `MicrosoftWindowsPowerShellV2Root` |
-| `smb_shares` | `Get-SmbShare` + `Get-SmbShareAccess` (sin los administrativos) | `shares[].Name`, `Path`, `Access[].SID`, `Right` (la usa `bastion surface`) |
-| `local_admins` | Miembros de S-1-5-32-544 (`Get-LocalGroupMember` o ADSI) | `members[].Name`, `Type`, `Source` (la usa `bastion surface`) |
-| `firewall_profiles` | `HNetCfg.FwPolicy2`: solo los perfiles (las reglas se leen del registro) | `profiles[].Enabled`, `BlockInbound`, `Active` (la usa `bastion surface`) |
-| `firewall_policy` | `HNetCfg.FwPolicy2`: perfiles y reglas de entrada habilitadas | Igual, más `rules[]` (la usa `bastion surface` si no puede leer el registro) |
+| `smb_shares` | `Get-SmbShare` + `Get-SmbShareAccess` (sin los administrativos) | `shares[].Name`, `Path`, `Access[].SID`, `Right` (la usa `adarve surface`) |
+| `local_admins` | Miembros de S-1-5-32-544 (`Get-LocalGroupMember` o ADSI) | `members[].Name`, `Type`, `Source` (la usa `adarve surface`) |
+| `firewall_profiles` | `HNetCfg.FwPolicy2`: solo los perfiles (las reglas se leen del registro) | `profiles[].Enabled`, `BlockInbound`, `Active` (la usa `adarve surface`) |
+| `firewall_policy` | `HNetCfg.FwPolicy2`: perfiles y reglas de entrada habilitadas | Igual, más `rules[]` (la usa `adarve surface` si no puede leer el registro) |
 
 Las consultas que Windows solo responde con un token elevado (`bitlocker_os`, `optional_features`, `smb_shares`) no se lanzan sin privilegios: el control queda **sin evaluar**.
 
@@ -227,4 +227,4 @@ Si Defender o BitLocker no están disponibles, la consulta devuelve `na` con el 
 5. **`breaking_risk` e `impact` honestos.** Son la base del planificador y de la confianza del usuario.
 6. **Remediación accionable**: ruta de GPO completa y comandos idempotentes. En Linux, con ficheros *drop-in*.
 7. **Referencias**: al menos NIST y, cuando aplique, técnicas y mitigaciones ATT&CK verificadas.
-8. Valida con `bastion rules lint` y regenera el catálogo con `bastion rules doc > docs/06-...`.
+8. Valida con `adarve rules lint` y regenera el catálogo con `adarve rules doc > docs/06-...`.

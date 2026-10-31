@@ -14,7 +14,7 @@ func init() {
 	// Los ficheros (auditpol /backup, secedit) usan la página ANSI.
 	decodeLegacy = func(b []byte) string { return decodeCodePage(windows.GetACP(), b) }
 	// La salida de las herramientas de consola usa la página de la consola:
-	// la heredada si Bastion tiene una o, si no (tarea programada), la OEM,
+	// la heredada si Adarve tiene una o, si no (tarea programada), la OEM,
 	// que es la que recibe la consola nueva del proceso hijo.
 	decodeOEM = func(b []byte) string { return decodeCodePage(consoleCP(), b) }
 }

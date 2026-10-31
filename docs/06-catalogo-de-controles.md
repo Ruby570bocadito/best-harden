@@ -2,20 +2,20 @@
 
 Esta página tiene dos partes:
 
-1. **Controles implementados**: se genera automáticamente desde las reglas con `bastion rules doc`. No la edites a mano.
+1. **Controles implementados**: se genera automáticamente desde las reglas con `adarve rules doc`. No la edites a mano.
 2. **Catálogo objetivo**: los controles previstos para alcanzar la cobertura completa (unos 350 en Windows y 300 en Linux).
 
 Para ver el detalle de un control (descripción, por qué importa, remediación, GPO, comandos, impacto y referencias):
 
 ```bash
-bastion rules show WIN-CRED-001
+adarve rules show WIN-CRED-001
 ```
 
 ## 1. Controles implementados
 
-<!-- Generado con "bastion rules doc". No editar a mano: edita las reglas en rules/. -->
+<!-- Generado con "adarve rules doc". No editar a mano: edita las reglas en rules/. -->
 
-**155 controles** en el paquete oficial, **121 con corrección automática** (`bastion harden`). ⚡ = afecta al acceso remoto (requiere `--include-remote`).
+**155 controles** en el paquete oficial, **121 con corrección automática** (`adarve harden`). ⚡ = afecta al acceso remoto (requiere `--include-remote`).
 
 ### Perfiles
 
