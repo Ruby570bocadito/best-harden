@@ -13,12 +13,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/platform"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // Schema es la versión del formato JSON del análisis.
-const Schema = "bastion.surface/v1"
+const Schema = "adarve.surface/v1"
+
+// LegacySchema es el mismo formato con el nombre anterior de Adarve
+// (Bastion): los análisis guardados antes del cambio siguen valiendo.
+const LegacySchema = "bastion.surface/v1"
 
 // Alcance de un servicio a la escucha.
 const (
@@ -133,12 +137,12 @@ type Finding struct {
 	Fix      string        `json:"fix"`
 	Subject  string        `json:"subject"` // 445/tcp, \\SHARE, /etc/exports…
 	// FirewallRules son los nombres internos de las reglas del Firewall de
-	// Windows que lo abren a cualquiera: "bastion surface fix" las limita a
+	// Windows que lo abren a cualquiera: "adarve surface fix" las limita a
 	// la red local.
 	FirewallRules []string `json:"firewall_rules,omitempty"`
 }
 
-// Report es el resultado completo de "bastion surface".
+// Report es el resultado completo de "adarve surface".
 type Report struct {
 	Schema     string        `json:"schema"`
 	Host       platform.Info `json:"host"`
@@ -178,7 +182,7 @@ type knownPort struct {
 var groups = map[string]knownPort{
 	"netbios": {service: "NetBIOS sobre TCP/IP", sev: rule.SevMedium,
 		why: "NetBIOS (137-139) permite enumerar el equipo, envenenar resoluciones de nombres y retransmitir autenticaciones.",
-		fix: "Deshabilita NetBIOS sobre TCP/IP en los adaptadores (control WIN-NET-007: bastion harden --wave 2)."},
+		fix: "Deshabilita NetBIOS sobre TCP/IP en los adaptadores (control WIN-NET-007: adarve harden --wave 2)."},
 	"sunshine": {service: "Sunshine/GameStream", sev: rule.SevMedium,
 		why: "Sunshine transmite el escritorio y recibe el teclado y el ratón de los clientes emparejados; su panel web (47990/tcp) gestiona el emparejamiento y la configuración. Una contraseña débil o un fallo dan el control del equipo.",
 		fix: "Si solo juegas en casa o a través de una VPN como Tailscale, limita sus reglas a la red local y no abras estos puertos en el router; protege el panel web con una contraseña robusta."},

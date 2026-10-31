@@ -41,7 +41,7 @@ func TestTrustProblems(t *testing.T) {
 		t.Skip("como root, la carpeta temporal ya es de root")
 	}
 	home := t.TempDir()
-	t.Setenv("BASTION_HOME", home)
+	t.Setenv("ADARVE_HOME", home)
 	if err := os.WriteFile(File(), []byte("profile: auto\n"), 0o666); err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestTrustProblems(t *testing.T) {
 		file = file || (p.Path == File() && !p.Dir)
 	}
 	if !dir || !file {
-		t.Errorf("un BASTION_HOME del usuario no es fiable: %v", probs)
+		t.Errorf("un ADARVE_HOME del usuario no es fiable: %v", probs)
 	}
 	dst, err := Quarantine(File())
 	if err != nil {

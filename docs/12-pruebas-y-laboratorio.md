@@ -13,10 +13,10 @@ Una herramienta de hardening solo es creíble si sus resultados son correctos. U
 | Hardening (motor) | Plan por olas, aplicación, fallo con reversión, cambio sin efecto con reversión, rollback desde disco, acceso remoto no confirmado, dead-man switch, GPO, validación de acciones (incluidos intentos de inyección) | `internal/remediate/plan_test.go` | ✅ |
 | Remediadores Linux | Ciclo capturar → aplicar → restaurar en un sistema de ficheros simulado (sysctl, login.defs, permisos, modprobe, sudoers con `visudo` real) | `internal/remediate/linux_test.go` | ✅ |
 | Ciclo real en CI | `harden --apply` en Ubuntu y Windows Server de GitHub: la postura debe subir y, tras `rollback`, volver exactamente al valor inicial | `.github/workflows/ci.yml` | ✅ |
-| Escaneo real en CI | `bastion scan` en Ubuntu y Windows Server de GitHub Actions; informes como artefacto | `.github/workflows/ci.yml` | ✅ |
+| Escaneo real en CI | `adarve scan` en Ubuntu y Windows Server de GitHub Actions; informes como artefacto | `.github/workflows/ci.yml` | ✅ |
 | Instaladores | ShellCheck, PSScriptAnalyzer | CI | ✅ |
 | Instaladores de punta a punta | Instalación limpia, reejecución, actualización, archivo manipulado, desinstalación contra un espejo local | Manual, ver abajo | ✅ manual · 🔜 CI |
-| Fixtures por regla | Cada regla con un caso que pasa y otro que falla sobre un sistema simulado | `bastion rules test` | 🔜 fase 2 |
+| Fixtures por regla | Cada regla con un caso que pasa y otro que falla sobre un sistema simulado | `adarve rules test` | 🔜 fase 2 |
 | Laboratorio de VMs | Ciclo `scan → harden → verify → rollback → verify` + idempotencia | Packer/Vagrant | 🔜 fase 2 |
 | Validación cruzada | Comparar resultados con CIS-CAT Lite, OpenSCAP y HardeningKitty | Laboratorio | 🔜 |
 
@@ -34,9 +34,9 @@ go test -race ./...            # detector de carreras (el motor es concurrente)
 # 1. Construir dos "releases"
 for v in 0.1.0 0.2.0; do
   mkdir -p /tmp/m/download/v$v /tmp/b$v
-  go build -ldflags "-X github.com/Ruby570bocadito/bastion/internal/version.Version=$v" -o /tmp/b$v/bastion ./cmd/bastion
-  tar -C /tmp/b$v -czf /tmp/m/download/v$v/bastion_linux_amd64.tar.gz bastion
-  (cd /tmp/m/download/v$v && sha256sum bastion_* > checksums.txt)
+  go build -ldflags "-X github.com/Ruby570bocadito/adarve/internal/version.Version=$v" -o /tmp/b$v/adarve ./cmd/adarve
+  tar -C /tmp/b$v -czf /tmp/m/download/v$v/adarve_linux_amd64.tar.gz adarve
+  (cd /tmp/m/download/v$v && sha256sum adarve_* > checksums.txt)
 done
 mkdir -p /tmp/m/latest/download && echo v0.1.0 > /tmp/m/latest/download/version.txt
 
@@ -44,17 +44,17 @@ mkdir -p /tmp/m/latest/download && echo v0.1.0 > /tmp/m/latest/download/version.
 (cd /tmp/m && python3 -m http.server 8765 &)
 
 # 3. Instalar como lo haría un usuario
-export BASTION_RELEASES_URL=http://127.0.0.1:8765 BASTION_HOME=/tmp/bh
+export ADARVE_RELEASES_URL=http://127.0.0.1:8765 ADARVE_HOME=/tmp/bh
 cat scripts/install.sh | sudo -E bash -s -- --prefix /tmp/bin
-# (bastion, ejecutado como root por el instalador, ignora BASTION_HOME sin
-#  --trust-env: el init y el primer escaneo usan /etc/bastion y /var/lib/bastion)
+# (adarve, ejecutado como root por el instalador, ignora ADARVE_HOME sin
+#  --trust-env: el init y el primer escaneo usan /etc/adarve y /var/lib/adarve)
 
-# 4. Publicar v0.2.0 y probar la actualización (one-liner y bastion update)
+# 4. Publicar v0.2.0 y probar la actualización (one-liner y adarve update)
 echo v0.2.0 > /tmp/m/latest/download/version.txt
-sudo -E /tmp/bin/bastion --trust-env update   # o: update --releases-url http://127.0.0.1:8765
+sudo -E /tmp/bin/adarve --trust-env update   # o: update --releases-url http://127.0.0.1:8765
 ```
 
-Escenarios verificados: instalación limpia con primer escaneo, reejecución sin cambios, actualización con el one-liner, auto-actualización con `bastion update`, **archivo manipulado rechazado** (en ambos caminos) y desinstalación.
+Escenarios verificados: instalación limpia con primer escaneo, reejecución sin cambios, actualización con el one-liner, auto-actualización con `adarve update`, **archivo manipulado rechazado** (en ambos caminos) y desinstalación.
 
 ## Laboratorio de máquinas virtuales (🔜 fase 2)
 

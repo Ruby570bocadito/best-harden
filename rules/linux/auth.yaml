@@ -147,7 +147,7 @@ check:
 remediation:
   summary: Añadir "Defaults use_pty" con visudo.
   commands: |
-    echo 'Defaults use_pty' > /etc/sudoers.d/00-bastion && chmod 440 /etc/sudoers.d/00-bastion && visudo -c
+    echo 'Defaults use_pty' > /etc/sudoers.d/00-adarve && chmod 440 /etc/sudoers.d/00-adarve && visudo -c
   breaking_risk: none
   actions:
     - type: sudoers.defaults

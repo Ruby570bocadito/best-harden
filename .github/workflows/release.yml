@@ -32,7 +32,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Procedencia SLSA de cada archivo publicado: prueba que lo construyó
       # este workflow a partir de esta etiqueta del repositorio. Se comprueba
-      # con «gh attestation verify <archivo> --repo Ruby570bocadito/bastion».
+      # con «gh attestation verify <archivo> --repo Ruby570bocadito/adarve».
       - name: Atestación de procedencia (SLSA)
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:

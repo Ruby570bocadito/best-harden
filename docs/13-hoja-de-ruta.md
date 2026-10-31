@@ -14,7 +14,7 @@
 Orden de trabajo concreto. Cada versión es publicable por sí sola y no
 empieza la siguiente hasta cumplir su criterio de salida.
 
-### v0.5 · Confianza (cadena de suministro y endurecimiento de Bastion)
+### v0.5 · Confianza (cadena de suministro y endurecimiento de Adarve)
 
 La revisión de octubre de 2026 cerró los fallos de concurrencia del
 dead-man switch, la validación de manifiestos, los permisos de la carpeta de
@@ -23,9 +23,9 @@ los falsos «filtrado» del firewall. Queda lo que da **autenticidad**, no solo
 integridad:
 
 - [ ] Firmar las releases (cosign keyless + atestación SLSA de GitHub) y
-      verificarlo en `bastion update`, `install.sh` e `install.ps1`; hoy el
+      verificarlo en `adarve update`, `install.sh` e `install.ps1`; hoy el
       SHA-256 viaja por el mismo canal que el binario.
-- [ ] Firma Authenticode de `bastion.exe` (SmartScreen y AppLocker).
+- [ ] Firma Authenticode de `adarve.exe` (SmartScreen y AppLocker).
 - [ ] Prueba de punta a punta de los instaladores en CI contra un espejo local
       (instalar, actualizar, `--local`, desinstalar).
 - [ ] CI: `govulncheck`, `staticcheck` y `gosec`; fuzzing (`go test -fuzz`) de
@@ -63,14 +63,14 @@ procedencia se verifican; CI falla ante una vulnerabilidad conocida.
       instantánea → verificación → rollback → dead-man.
 - [ ] *Health checks* personalizados tras aplicar (un puerto responde, un
       servicio sigue activo, un login SSH funciona).
-- [ ] `bastion rules new|test` con fixtures y un probe simulado, para escribir
+- [ ] `adarve rules new|test` con fixtures y un probe simulado, para escribir
       reglas sin una máquina real.
 - [ ] Ampliar el catálogo hacia el objetivo (≈350 Windows / 300 Linux),
       priorizando CIS L1 de Windows 11, Server 2022 y Ubuntu 24.04.
 
 ### v1.0 · Estable
 
-- [ ] Esquemas `bastion.report/v1`, `bastion.surface/v1` y formato de reglas
+- [ ] Esquemas `adarve.report/v1`, `adarve.surface/v1` y formato de reglas
       congelados, con política de compatibilidad.
 - [ ] Paquetes nativos: MSI firmado, `.deb` y `.rpm` con repositorio.
 - [ ] Documentación de operación: recuperación ante un rollback fallido,
@@ -80,7 +80,7 @@ procedencia se verifican; CI falla ante una vulnerabilidad conocida.
 ### Después de v1.0
 
 Fase 3 (agente y servidor de flota) en adelante, según la tabla de arriba.
-`bastion agent` reutiliza `schedule`, `notify` y los esquemas JSON ya
+`adarve agent` reutiliza `schedule`, `notify` y los esquemas JSON ya
 estables, así que la flota no empieza hasta que v1.0 esté publicada.
 
 ## Fase 0 · Fundaciones ✅
@@ -92,7 +92,7 @@ estables, así que la flota no empieza hasta que v1.0 esté publicada.
 - [x] Detección de plataforma y rol (estación, servidor miembro, DC, distro).
 - [x] 131 reglas reales (66 Linux, 65 Windows/Server/DC) y 7 perfiles.
 - [x] CLI: `scan`, `info`, `rules list|show|lint|doc`, `profiles`, `update`, `init`, `version`.
-- [x] Informes: consola, JSON `bastion.report/v1` y HTML autocontenido (claro/oscuro, ATT&CK, evidencias).
+- [x] Informes: consola, JSON `adarve.report/v1` y HTML autocontenido (claro/oscuro, ATT&CK, evidencias).
 - [x] Auto-actualización verificada (SHA-256) y espejos internos.
 - [x] Instaladores de una línea (bash y PowerShell): instalar, actualizar, preparar, escanear y desinstalar.
 - [x] CI (Linux + Windows, escaneo real), release con GoReleaser + SBOM.
@@ -104,15 +104,15 @@ estables, así que la flota no empieza hasta que v1.0 esté publicada.
 - [ ] Mapeo verificado a CIS, STIG y ENS por versión de benchmark ([14](14-marcos-y-licencias.md)).
 - [ ] Probes nuevos: `userrights` (SIDs legibles), `rsop`/`gpo` (quién gestiona cada valor), `listening` (puertos), `auditd_rules`, `pam`.
 - [x] Estado `skipped`: controles sin evaluar por falta de privilegios, fuera de la puntuación.
-- [x] Excepciones con motivo, responsable y caducidad (`bastion exceptions`, estado `exception`).
+- [x] Excepciones con motivo, responsable y caducidad (`adarve exceptions`, estado `exception`).
 - [ ] Estado `manual` (controles que requieren revisión humana).
-- [x] `bastion surface` v1: puertos con proceso, catálogo de servicios de riesgo, recursos compartidos, administradores y puntuación de exposición (también en `bastion ui`).
+- [x] `adarve surface` v1: puertos con proceso, catálogo de servicios de riesgo, recursos compartidos, administradores y puntuación de exposición (también en `adarve ui`).
 - [x] `surface`: evaluar el Firewall de Windows (perfiles, acción por defecto, reglas de permiso y bloqueo).
 - [x] `surface`: firewall de Linux (nftables e iptables, que cubren ufw, firewalld y Docker).
 - [x] `surface`: origen de los binarios que escuchan en la red (firma Authenticode en Windows, paquete en Linux).
 - [ ] Firma de releases (cosign) y Authenticode.
 - [ ] Prueba de los instaladores de punta a punta en CI (espejo local).
-- [x] UI local: `bastion ui` (127.0.0.1 con token): postura, tendencia, plan por olas, historial de escaneos y cambios, excepciones ([ADR-0008](adr/0008-consola-local.md)).
+- [x] UI local: `adarve ui` (127.0.0.1 con token): postura, tendencia, plan por olas, historial de escaneos y cambios, excepciones ([ADR-0008](adr/0008-consola-local.md)).
 
 **Terminado cuando:** un auditor puede llevar el binario en un USB, auditar Windows 11, Server 2022 (miembro y DC) y Ubuntu 24.04 y entregar un informe defendible sin falsos positivos conocidos.
 
@@ -127,12 +127,12 @@ estables, así que la flota no empieza hasta que v1.0 esté publicada.
 - [x] Ciclo real `harden → verificar → rollback` en CI sobre Ubuntu y Windows Server.
 - [ ] *Health checks* personalizados tras aplicar.
 - [ ] `studio` v1: perfiles propios y exportación a GPO, Ansible, DSC y scripts.
-- [ ] `bastion rules new|test` con fixtures; laboratorio de VMs en CI nocturna.
+- [ ] `adarve rules new|test` con fixtures; laboratorio de VMs en CI nocturna.
 
 ## Fase 3 · Flota 🔜
 
-- [ ] `bastion agent` (servicio de Windows / systemd), alta con token y mTLS.
-- [ ] `bastion-server` (Go + PostgreSQL), API REST y gRPC.
+- [ ] `adarve agent` (servicio de Windows / systemd), alta con token y mTLS.
+- [ ] `adarve-server` (Go + PostgreSQL), API REST y gRPC.
 - [ ] Consola web (React) con dashboard, activos, detalle, políticas, informes e historial.
 - [x] `schedule`: análisis diario programado (Programador de tareas, systemd o cron) con aviso de cambios en la exposición: Visor de eventos o syslog y webhook (ntfy, Slack, Discord, Teams, JSON).
 - [ ] `guard` (desviaciones en tiempo real) y `observe` (auditar antes de aplicar).

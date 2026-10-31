@@ -15,5 +15,5 @@ Go para el agente/CLI y para el servidor, sin CGO.
 
 ## Consecuencias
 - ✅ Un único binario de unos 4 MB por plataforma, sin dependencias.
-- ✅ Modelos compartidos (`pkg/rule`, `bastion.report/v1`).
+- ✅ Modelos compartidos (`pkg/rule`, `adarve.report/v1`).
 - ⚠️ Algunas consultas de Windows se hacen mediante PowerShell (lista blanca) en lugar de WMI nativo; se migrarán a llamadas nativas cuando compense.

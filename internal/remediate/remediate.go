@@ -5,7 +5,7 @@
 //   - Solo existen acciones TIPADAS (registry.set, sysctl.set...). No hay ni
 //     habrá un tipo "ejecutar comando".
 //   - Los parámetros se validan estrictamente (listas blancas y expresiones
-//     regulares) antes de usarse, también en "bastion rules lint".
+//     regulares) antes de usarse, también en "adarve rules lint".
 //   - Cada acción sabe capturar el estado previo y restaurarlo.
 package remediate
 
@@ -20,8 +20,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Ruby570bocadito/bastion/internal/probes"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // State es el estado previo de un elemento. Se guarda en el manifiesto del
@@ -61,7 +61,7 @@ func Get(t string) (Remediator, bool) {
 }
 
 func init() {
-	// "bastion rules lint" comprueba que cada acción existe en la plataforma
+	// "adarve rules lint" comprueba que cada acción existe en la plataforma
 	// de la regla (un registry.set en una regla de Linux nunca se aplicaría).
 	rule.ActionOS = func(t string) string { return Specs[t].OS }
 }
@@ -99,7 +99,7 @@ var (
 	reSafeText = regexp.MustCompile(`^[^\r\n\x00]*$`)
 )
 
-// SecpolKeys son las claves de [System Access] que Bastion puede modificar.
+// SecpolKeys son las claves de [System Access] que Adarve puede modificar.
 var SecpolKeys = map[string]bool{
 	"MinimumPasswordLength": true, "PasswordComplexity": true, "PasswordHistorySize": true,
 	"MaximumPasswordAge": true, "MinimumPasswordAge": true, "ClearTextPassword": true,
@@ -107,7 +107,7 @@ var SecpolKeys = map[string]bool{
 	"EnableGuestAccount": true, "LSAAnonymousNameLookup": true,
 }
 
-// DefenderPrefs son las preferencias de Defender que Bastion puede modificar.
+// DefenderPrefs son las preferencias de Defender que Adarve puede modificar.
 var DefenderPrefs = map[string]bool{
 	"PUAProtection": true, "MAPSReporting": true, "EnableNetworkProtection": true, "SubmitSamplesConsent": true,
 }
@@ -115,7 +115,7 @@ var DefenderPrefs = map[string]bool{
 // ASRModes traduce el modo de una regla ASR a su valor numérico.
 var ASRModes = map[string]int{"disabled": 0, "block": 1, "audit": 2, "warn": 6}
 
-// SudoersOptions son las opciones "Defaults" que Bastion puede añadir.
+// SudoersOptions son las opciones "Defaults" que Adarve puede añadir.
 var SudoersOptions = map[string]bool{
 	"use_pty": true, `logfile="/var/log/sudo.log"`: true,
 }
@@ -255,7 +255,7 @@ var Specs = map[string]Spec{
 		return safeText(p, "value", "separator")
 	}},
 	// Limita a la red local una regla del Firewall de Windows por su nombre
-	// interno (lo usa "bastion surface fix", no las reglas del catálogo).
+	// interno (lo usa "adarve surface fix", no las reglas del catálogo).
 	"firewall.remote_address": {OS: "windows", Required: []string{"rule", "remote"}, Validate: func(p probes.Params) error {
 		if p.String("remote") != "LocalSubnet" {
 			return fmt.Errorf("remote solo admite LocalSubnet")
@@ -429,7 +429,7 @@ func regSubMatches(actionPath, sub string) bool {
 
 // ValidateBefore comprueba que el estado previo de una entrada del manifiesto
 // solo puede restaurar lo que la propia acción toca. El manifiesto se lee de
-// disco: sin esto, un manifiesto manipulado convertiría "bastion rollback" en
+// disco: sin esto, un manifiesto manipulado convertiría "adarve rollback" en
 // una escritura arbitraria (cualquier clave HKLM, chmod de cualquier
 // fichero, líneas inyectadas en la plantilla de secedit...).
 func ValidateBefore(a rule.Action, before State) error {

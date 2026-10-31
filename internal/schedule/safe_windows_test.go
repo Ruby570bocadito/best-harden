@@ -13,7 +13,7 @@ func TestSafeExecutableWindows(t *testing.T) {
 	if err := SafeExecutable(sys); err != nil {
 		t.Errorf("%s solo lo modifican los administradores: %v", sys, err)
 	}
-	exe := filepath.Join(t.TempDir(), "bastion.exe") // carpeta del usuario
+	exe := filepath.Join(t.TempDir(), "adarve.exe") // carpeta del usuario
 	if err := os.WriteFile(exe, []byte("MZ"), 0o755); err != nil {
 		t.Fatal(err)
 	}

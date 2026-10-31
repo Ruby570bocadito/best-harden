@@ -37,7 +37,7 @@ const (
 
 var procShellExecuteExW = windows.NewLazySystemDLL("shell32.dll").NewProc("ShellExecuteExW")
 
-// relaunchElevated vuelve a lanzar Bastion con los argumentos dados en una
+// relaunchElevated vuelve a lanzar Adarve con los argumentos dados en una
 // ventana de administrador (aviso de UAC), espera a que termine y devuelve
 // su código de salida. El proceso elevado no hereda las variables de
 // entorno de esta consola: todo lo que necesite debe ir en args.

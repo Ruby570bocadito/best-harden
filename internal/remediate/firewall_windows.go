@@ -13,7 +13,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Ruby570bocadito/bastion/internal/probes"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
 )
 
 func init() { Register(firewallRemote{}) }
@@ -31,7 +31,7 @@ func (firewallRemote) Type() string { return "firewall.remote_address" }
 // fwRule localiza la regla exacta en el almacén local (los corchetes y
 // asteriscos del nombre no se toman como comodines).
 const fwRule = `[Console]::OutputEncoding=[Text.Encoding]::UTF8; ` +
-	`$r = @(Get-NetFirewallRule -PolicyStore PersistentStore -Name ([WildcardPattern]::Escape($env:BASTION_FW_RULE))); ` +
+	`$r = @(Get-NetFirewallRule -PolicyStore PersistentStore -Name ([WildcardPattern]::Escape($env:ADARVE_FW_RULE))); ` +
 	`if ($r.Count -ne 1) { throw "la regla no existe en el almacén local o no es única ($($r.Count))" }; `
 
 func runFwPS(ctx context.Context, script string, env ...string) (string, error) {
@@ -55,7 +55,7 @@ func (firewallRemote) Capture(ctx context.Context, p probes.Params) (State, erro
 	out, err := runFwPS(ctx, fwRule+`$a = $r[0] | Get-NetFirewallAddressFilter; $pf = $r[0] | Get-NetFirewallPortFilter; `+
 		`@{remote=[string]::Join(',', @($a.RemoteAddress)); display=[string]$r[0].DisplayName; `+
 		`proto=[string]$pf.Protocol; ports=[string]::Join(',', @($pf.LocalPort))} | ConvertTo-Json -Compress`,
-		"BASTION_FW_RULE="+p.String("rule"))
+		"ADARVE_FW_RULE="+p.String("rule"))
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (firewallRemote) Restore(ctx context.Context, p probes.Params, before State
 }
 
 func setFwRemote(ctx context.Context, rule, remote string) error {
-	_, err := runFwPS(ctx, fwRule+`$r[0] | Set-NetFirewallRule -RemoteAddress ($env:BASTION_FW_REMOTE -split ',')`,
-		"BASTION_FW_RULE="+rule, "BASTION_FW_REMOTE="+remote)
+	_, err := runFwPS(ctx, fwRule+`$r[0] | Set-NetFirewallRule -RemoteAddress ($env:ADARVE_FW_REMOTE -split ',')`,
+		"ADARVE_FW_RULE="+rule, "ADARVE_FW_REMOTE="+remote)
 	return err
 }

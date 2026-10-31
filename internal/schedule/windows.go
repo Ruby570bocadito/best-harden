@@ -13,7 +13,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Ruby570bocadito/bastion/internal/probes"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
 )
 
 // New devuelve el planificador del sistema.
@@ -25,11 +25,16 @@ func New() (Scheduler, error) { return taskScheduler{}, nil }
 type taskScheduler struct{}
 
 const (
-	taskPath = `\Bastion\`
+	taskPath = `\Adarve\`
 	taskName = "Escaneo diario"
 )
 
-const psTask = `[Console]::OutputEncoding=[Text.Encoding]::UTF8; $tp='\Bastion\'; $tn='Escaneo diario'; `
+const psTask = `[Console]::OutputEncoding=[Text.Encoding]::UTF8; $tp='\Adarve\'; $tn='Escaneo diario'; `
+
+// psLegacy retira la tarea de Bastion, el nombre anterior de Adarve, que
+// ejecutaría un binario antiguo (o ya desinstalado).
+const psLegacy = `$o = Get-ScheduledTask -TaskPath '\Bastion\' -TaskName $tn -ErrorAction SilentlyContinue; ` +
+	`if ($o) { Unregister-ScheduledTask -TaskPath '\Bastion\' -TaskName $tn -Confirm:$false }; `
 
 func runPS(ctx context.Context, script string, env ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
@@ -49,10 +54,10 @@ func runPS(ctx context.Context, script string, env ...string) (string, error) {
 }
 
 func (taskScheduler) Enable(ctx context.Context, exe, at string) (Status, error) {
-	_, err := runPS(ctx, `$a = New-ScheduledTaskAction -Execute $env:BASTION_EXE -Argument 'schedule run'; `+
+	_, err := runPS(ctx, psLegacy+`$a = New-ScheduledTaskAction -Execute $env:ADARVE_EXE -Argument 'schedule run'; `+
 		// Hora local sin desfase horario: con él, la tarea se desplaza una
 		// hora tras cada cambio de horario de verano.
-		`$t = New-ScheduledTaskTrigger -Daily -At $env:BASTION_AT; $t.StartBoundary = (Get-Date $env:BASTION_AT).ToString('s'); `+
+		`$t = New-ScheduledTaskTrigger -Daily -At $env:ADARVE_AT; $t.StartBoundary = (Get-Date $env:ADARVE_AT).ToString('s'); `+
 		// También con batería: los portátiles son los que más se mueven
 		// de red.
 		`$s = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 1); `+
@@ -60,9 +65,9 @@ func (taskScheduler) Enable(ctx context.Context, exe, at string) (Status, error)
 		// nombre (que no se traduce).
 		`$reg = { param($u) Register-ScheduledTask -TaskPath $tp -TaskName $tn -Action $a -Trigger $t -Settings $s `+
 		`-Principal (New-ScheduledTaskPrincipal -UserId $u -LogonType ServiceAccount -RunLevel Highest) `+
-		`-Description 'Bastion: escaneo y superficie de ataque diarios (bastion schedule).' -Force | Out-Null }; `+
+		`-Description 'Adarve: escaneo y superficie de ataque diarios (adarve schedule).' -Force | Out-Null }; `+
 		`try { & $reg 'S-1-5-18' } catch { & $reg 'SYSTEM' }`,
-		"BASTION_EXE="+exe, "BASTION_AT="+at)
+		"ADARVE_EXE="+exe, "ADARVE_AT="+at)
 	if err != nil {
 		return Status{}, err
 	}
@@ -70,7 +75,7 @@ func (taskScheduler) Enable(ctx context.Context, exe, at string) (Status, error)
 }
 
 func (taskScheduler) Disable(ctx context.Context) error {
-	_, err := runPS(ctx, `$t = Get-ScheduledTask -TaskPath $tp -TaskName $tn -ErrorAction SilentlyContinue; `+
+	_, err := runPS(ctx, psLegacy+`$t = Get-ScheduledTask -TaskPath $tp -TaskName $tn -ErrorAction SilentlyContinue; `+
 		`if ($t) { Unregister-ScheduledTask -TaskPath $tp -TaskName $tn -Confirm:$false }`)
 	return err
 }
@@ -101,7 +106,7 @@ func (taskScheduler) Get(ctx context.Context) (Status, error) {
 		At: v.At, Command: `"` + v.Exe + `" ` + v.Args, NextRun: v.Next}
 	if v.Last != "" {
 		// Los fallos de la tarea son HRESULT (0x80070002: no encuentra el
-		// ejecutable); los códigos de Bastion (0, 1, 3) se ven en decimal.
+		// ejecutable); los códigos de Adarve (0, 1, 3) se ven en decimal.
 		code := fmt.Sprintf("%d", v.Result)
 		if v.Result > 255 {
 			code = fmt.Sprintf("0x%08X", uint32(v.Result))

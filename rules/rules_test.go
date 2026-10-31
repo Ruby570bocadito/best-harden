@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Ruby570bocadito/bastion/internal/probes"
-	"github.com/Ruby570bocadito/bastion/internal/remediate"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
-	"github.com/Ruby570bocadito/bastion/rules"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
+	"github.com/Ruby570bocadito/adarve/internal/remediate"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/rules"
 )
 
 // TestOfficialPack valida todas las reglas y perfiles incrustados. Es la red

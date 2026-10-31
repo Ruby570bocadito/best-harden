@@ -15,12 +15,12 @@ El hardening de sistemas suele hacerse con scripts sueltos de PowerShell y Bash,
 
 ## La propuesta
 
-**Bastion** es una plataforma para **auditar, endurecer, vigilar y documentar** la configuración de seguridad de Windows 10/11, Windows Server 2016-2025 y Linux con:
+**Adarve** es una plataforma para **auditar, endurecer, vigilar y documentar** la configuración de seguridad de Windows 10/11, Windows Server 2016-2025 y Linux con:
 
 1. **Un solo motor y un solo formato de reglas** para todos los sistemas.
 2. **Evidencias reproducibles**: cada resultado dice qué se leyó, de dónde y qué se esperaba.
 3. **Seguridad en el cambio**: simulación, instantánea, verificación y rollback automático (fase 2).
-4. **Lenguaje de amenazas**: cada control se mapea a MITRE ATT&CK. Además de "cumplimos X", Bastion dice "estas técnicas siguen abiertas".
+4. **Lenguaje de amenazas**: cada control se mapea a MITRE ATT&CK. Además de "cumplimos X", Adarve dice "estas técnicas siguen abiertas".
 5. **Una interfaz cuidada**: informe HTML hoy, consola web de flota mañana.
 6. **Instalación y actualización en una línea**, con verificación criptográfica.
 
@@ -51,7 +51,7 @@ Herramientas de referencia estudiadas: Lynis, OpenSCAP, CIS-CAT, HardeningKitty,
 
 1. **No romper nada.** Todo cambio es simulable, reversible y verificado.
 2. **Evidencia o no ha pasado.** Cada resultado es reproducible y explicable.
-3. **Sin ejecución arbitraria.** Bastion no es, ni puede convertirse en, una herramienta de control remoto.
+3. **Sin ejecución arbitraria.** Adarve no es, ni puede convertirse en, una herramienta de control remoto.
 4. **Honestidad.** Si un dato no se puede leer, el resultado es "error" y nunca un "superado" inventado. Si un control no aplica, se dice.
 5. **Opinión con criterio.** Perfiles por defecto sensatos; todo es configurable.
-6. **Defensivo por diseño.** Bastion observa, evalúa y endurece. No incluye capacidades ofensivas.
+6. **Defensivo por diseño.** Adarve observa, evalúa y endurece. No incluye capacidades ofensivas.

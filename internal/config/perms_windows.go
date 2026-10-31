@@ -20,7 +20,7 @@ func icacls(args ...string) error {
 // Se usan SIDs para que funcione con Windows en cualquier idioma.
 //
 // Un usuario sin privilegios puede crear carpetas en %ProgramData%: si
-// creara C:\ProgramData\Bastion antes de la instalación, seguiría siendo
+// creara C:\ProgramData\Adarve antes de la instalación, seguiría siendo
 // su propietario (y el propietario siempre puede cambiar los permisos) y
 // podría dejar un config.yaml que apuntara las actualizaciones a un espejo
 // suyo. Por eso, además de fijar los permisos de la carpeta, se pasa la
@@ -41,7 +41,7 @@ func restrictPermissions(dir string) error {
 }
 
 // GrantUserRead da permiso de lectura sobre dir al usuario que ejecuta
-// Bastion. Con UAC, el navegador y el Explorador se ejecutan sin elevar y el
+// Adarve. Con UAC, el navegador y el Explorador se ejecutan sin elevar y el
 // grupo Administradores no les sirve: sin este permiso el usuario no podría
 // abrir sus propios informes.
 func GrantUserRead(dir string) error {
@@ -56,7 +56,7 @@ func GrantUserRead(dir string) error {
 	return icacls(dir, "/grant", "*"+sid+":(OI)(CI)RX", "/Q")
 }
 
-// trustedSIDs pueden modificar los ficheros de Bastion: SYSTEM,
+// trustedSIDs pueden modificar los ficheros de Adarve: SYSTEM,
 // Administradores, TrustedInstaller, CREADOR PROPIETARIO (solo se hereda) y
 // DERECHOS DE PROPIETARIO (el propietario ya se exige de confianza).
 var trustedSIDs = map[string]bool{

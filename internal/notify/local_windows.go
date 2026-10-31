@@ -9,7 +9,7 @@ import (
 )
 
 // source es el origen de los eventos en el registro Aplicación.
-const source = "Bastion"
+const source = "Adarve"
 
 // Identificadores de evento (EventCreate.exe, que da el texto de los
 // mensajes, admite del 1 al 1000).
@@ -20,9 +20,9 @@ const (
 )
 
 // LocalName describe dónde quedan los avisos en este sistema.
-const LocalName = "Visor de eventos (Registros de Windows › Aplicación, origen Bastion)"
+const LocalName = "Visor de eventos (Registros de Windows › Aplicación, origen Adarve)"
 
-// InstallLocal registra el origen Bastion en el registro Aplicación (requiere
+// InstallLocal registra el origen Adarve en el registro Aplicación (requiere
 // privilegios). Si ya existe, no hace nada.
 func InstallLocal() error {
 	err := eventlog.InstallAsEventCreate(source, eventlog.Error|eventlog.Warning|eventlog.Info)

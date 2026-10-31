@@ -1,5 +1,5 @@
-// Package rules contiene el paquete oficial de reglas y perfiles de Bastion.
-// Se incrusta en el binario: actualizar Bastion actualiza también las reglas.
+// Package rules contiene el paquete oficial de reglas y perfiles de Adarve.
+// Se incrusta en el binario: actualizar Adarve actualiza también las reglas.
 package rules
 
 import "embed"

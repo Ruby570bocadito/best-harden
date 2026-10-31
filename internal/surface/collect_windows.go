@@ -12,7 +12,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/Ruby570bocadito/bastion/internal/probes"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
 )
 
 // Collect recoge el inventario en Windows con comandos fijos del sistema
@@ -81,7 +81,7 @@ func Collect(ctx context.Context) (Inventory, error) {
 		}
 		for _, p := range fw.Active() {
 			if !p.Enabled {
-				inv.Notes = append(inv.Notes, "El Firewall de Windows está desactivado en el perfil "+p.Name+": si usas otro cortafuegos, Bastion no puede evaluarlo y considera abiertos todos los puertos.")
+				inv.Notes = append(inv.Notes, "El Firewall de Windows está desactivado en el perfil "+p.Name+": si usas otro cortafuegos, Adarve no puede evaluarlo y considera abiertos todos los puertos.")
 			}
 		}
 	}
@@ -140,7 +140,7 @@ func collectSignatures(ctx context.Context, inv *Inventory) {
 	if len(list) == 0 {
 		return
 	}
-	data, err := probes.QueryPSEnv(ctx, "file_signatures", "BASTION_PATHS="+strings.Join(list, "\n"))
+	data, err := probes.QueryPSEnv(ctx, "file_signatures", "ADARVE_PATHS="+strings.Join(list, "\n"))
 	if err != nil {
 		inv.Notes = append(inv.Notes, "No se pudo comprobar la firma de los programas que escuchan en la red: "+err.Error())
 		return

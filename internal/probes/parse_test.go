@@ -18,7 +18,7 @@ Match User backup
 	PermitRootLogin no
 	X11Forwarding yes
 `,
-		"/etc/ssh/sshd_config.d/00-bastion.conf": "PermitRootLogin no\nX11Forwarding no\n",
+		"/etc/ssh/sshd_config.d/00-adarve.conf": "PermitRootLogin no\nX11Forwarding no\n",
 	}
 	read := func(p string) (string, error) {
 		if s, ok := files[p]; ok {
@@ -28,7 +28,7 @@ Match User backup
 	}
 	glob := func(p string) ([]string, error) {
 		if p == "/etc/ssh/sshd_config.d/*.conf" {
-			return []string{"/etc/ssh/sshd_config.d/00-bastion.conf"}, nil
+			return []string{"/etc/ssh/sshd_config.d/00-adarve.conf"}, nil
 		}
 		return nil, nil
 	}
@@ -171,7 +171,7 @@ func TestSplitRegistryPath(t *testing.T) {
 		t.Errorf("%s %s %v", root, sub, err)
 	}
 	if _, _, err := splitRegistryPath(`HKCU\x`); err == nil {
-		t.Error("HKCU debería rechazarse (Bastion audita el equipo, no un usuario)")
+		t.Error("HKCU debería rechazarse (Adarve audita el equipo, no un usuario)")
 	}
 }
 

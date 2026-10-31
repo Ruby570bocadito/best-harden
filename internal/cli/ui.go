@@ -13,17 +13,17 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Ruby570bocadito/bastion/internal/config"
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/exceptions"
-	"github.com/Ruby570bocadito/bastion/internal/platform"
-	"github.com/Ruby570bocadito/bastion/internal/probes"
-	"github.com/Ruby570bocadito/bastion/internal/remediate"
-	"github.com/Ruby570bocadito/bastion/internal/report"
-	"github.com/Ruby570bocadito/bastion/internal/schedule"
-	"github.com/Ruby570bocadito/bastion/internal/surface"
-	"github.com/Ruby570bocadito/bastion/internal/ui"
-	"github.com/Ruby570bocadito/bastion/internal/version"
+	"github.com/Ruby570bocadito/adarve/internal/config"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/exceptions"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
+	"github.com/Ruby570bocadito/adarve/internal/remediate"
+	"github.com/Ruby570bocadito/adarve/internal/report"
+	"github.com/Ruby570bocadito/adarve/internal/schedule"
+	"github.com/Ruby570bocadito/adarve/internal/surface"
+	"github.com/Ruby570bocadito/adarve/internal/ui"
+	"github.com/Ruby570bocadito/adarve/internal/version"
 )
 
 func newUICmd() *cobra.Command {
@@ -40,13 +40,13 @@ cambios y las excepciones.
 La consola solo escucha en 127.0.0.1 y exige el token aleatorio que aparece
 en la dirección: nadie más (ni otra web ni otro usuario del equipo) puede
 usarla. Solo lee y escanea; los cambios se aplican desde la terminal con
-"bastion harden".
+"adarve harden".
 
 En un servidor sin escritorio, fija el puerto y usa un túnel SSH:
-  bastion ui --port 8790 --no-open
+  adarve ui --port 8790 --no-open
   ssh -L 8790:127.0.0.1:8790 usuario@servidor   # y abre la dirección en tu equipo`,
-		Example: `  bastion ui
-  bastion ui --port 8790 --no-open`,
+		Example: `  adarve ui
+  adarve ui --port 8790 --no-open`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return runUI(port, noOpen, profile) },
 	}
 	cmd.Flags().IntVar(&port, "port", 0, "puerto en 127.0.0.1 (por defecto, uno libre)")
@@ -81,7 +81,7 @@ func runUI(port int, noOpen bool, profile string) error {
 
 	s := stdoutStyle()
 	fmt.Println()
-	fmt.Printf("  %s  %s %s\n", s.Bold(s.Cyan(report.Sym("▲")+" BASTION")), s.Dim("·"), s.Dim("consola local  "+version.Version))
+	fmt.Printf("  %s  %s %s\n", s.Bold(s.Cyan(report.Sym("▲")+" ADARVE")), s.Dim("·"), s.Dim("consola local  "+version.Version))
 	fmt.Printf("\n  %s %s\n", s.Dim("Dirección:"), s.Bold(url))
 	fmt.Printf("  %s\n", s.Dim("Solo accesible desde este equipo y con el token de la dirección. Ctrl+C para cerrar."))
 	if !b.info.IsAdmin {
@@ -236,7 +236,7 @@ func (b *uiBackend) Surface(ctx context.Context) (*surface.Report, error) {
 
 func (b *uiBackend) Exceptions() ([]ui.Exception, error) {
 	if !configTrusted() {
-		return nil, fmt.Errorf("exceptions.yaml no es fiable: otro usuario podría haberlo modificado (bastion init restablece los permisos)")
+		return nil, fmt.Errorf("exceptions.yaml no es fiable: otro usuario podría haberlo modificado (adarve init restablece los permisos)")
 	}
 	f, err := exceptions.Load(exceptionsPath())
 	if err != nil && len(f.Exceptions) == 0 {

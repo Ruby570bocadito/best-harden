@@ -24,7 +24,7 @@ const (
 	KindAncestor
 )
 
-// Problem es una ruta de Bastion que un usuario sin privilegios podría
+// Problem es una ruta de Adarve que un usuario sin privilegios podría
 // modificar.
 type Problem struct {
 	Path string
@@ -34,7 +34,7 @@ type Problem struct {
 
 func (p Problem) Error() string { return p.Err.Error() }
 
-// TrustProblems comprueba que la configuración de Bastion solo la pueden
+// TrustProblems comprueba que la configuración de Adarve solo la pueden
 // modificar los administradores (o root): el directorio de configuración y
 // de datos, config.yaml, exceptions.yaml y rules.d. Las rutas que no existen
 // no cuentan.
@@ -63,7 +63,7 @@ func TrustProblems() []Problem {
 }
 
 // Quarantine aparta un fichero no fiable (lo renombra con el sufijo
-// .no-confiable-<fecha>) para que Bastion no lo vuelva a leer. Devuelve el
+// .no-confiable-<fecha>) para que Adarve no lo vuelva a leer. Devuelve el
 // nuevo nombre.
 func Quarantine(path string) (string, error) {
 	dst := path + ".no-confiable-" + time.Now().Format("20060102-150405")

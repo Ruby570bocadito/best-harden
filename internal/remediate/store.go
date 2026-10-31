@@ -14,11 +14,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // ManifestSchema es la versión del formato de manifiesto de cambios.
-const ManifestSchema = "bastion.change/v1"
+const ManifestSchema = "adarve.change/v1"
 
 // Estados de un cambio.
 const (

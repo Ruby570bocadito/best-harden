@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// SpawnDeadman lanza "bastion deadman <id>" como proceso independiente.
+// SpawnDeadman lanza "adarve deadman <id>" como proceso independiente.
 func SpawnDeadman(storeDir, id string, timeout time.Duration) error {
 	exe, err := os.Executable()
 	if err != nil {

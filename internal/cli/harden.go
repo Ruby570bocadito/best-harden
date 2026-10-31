@@ -14,13 +14,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Ruby570bocadito/bastion/internal/config"
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/platform"
-	"github.com/Ruby570bocadito/bastion/internal/remediate"
-	"github.com/Ruby570bocadito/bastion/internal/report"
-	"github.com/Ruby570bocadito/bastion/internal/version"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/config"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
+	"github.com/Ruby570bocadito/adarve/internal/remediate"
+	"github.com/Ruby570bocadito/adarve/internal/report"
+	"github.com/Ruby570bocadito/adarve/internal/version"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 type hardenFlags struct {
@@ -57,11 +57,11 @@ Olas por riesgo de rotura: 1 = ninguno/bajo (por defecto) · 2 = +medio · 3 = +
 Los cambios que pueden cortar el acceso remoto (SSH, RDP) solo se incluyen con
 --include-remote y se aplican con dead-man switch: si no confirmas que sigues
 pudiendo entrar, se revierten solos.`,
-		Example: `  bastion harden                      # simulación de la ola 1
-  bastion harden --apply              # aplicar la ola 1
-  bastion harden --wave 2 --apply     # incluir riesgo medio
-  bastion harden --rule WIN-NET-006 --apply
-  bastion rollback                    # deshacer el último cambio`,
+		Example: `  adarve harden                      # simulación de la ola 1
+  adarve harden --apply              # aplicar la ola 1
+  adarve harden --wave 2 --apply     # incluir riesgo medio
+  adarve harden --rule WIN-NET-006 --apply
+  adarve rollback                    # deshacer el último cambio`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return runHarden(f) },
 	}
 	fl := cmd.Flags()
@@ -190,7 +190,7 @@ func runHarden(f hardenFlags) error {
 }
 
 func hardenCmdLine(f hardenFlags, apply bool) string {
-	parts := []string{"bastion harden"}
+	parts := []string{"adarve harden"}
 	if f.wave != 1 {
 		parts = append(parts, fmt.Sprintf("--wave %d", f.wave))
 	}
@@ -225,14 +225,14 @@ var waveNames = map[int]string{1: "riesgo de rotura nulo o bajo", 2: "hasta ries
 func printPlan(s report.Style, info platform.Info, prof *rule.Profile, f hardenFlags, items []*remediate.Item, sc engine.Score) {
 	line := s.Dim(strings.Repeat("─", 72))
 	fmt.Println()
-	fmt.Printf("  %s  %s %s\n", s.Bold(s.Cyan(report.Sym("▲")+" BASTION")), s.Dim("·"), s.Dim("plan de hardening  "+version.Version))
+	fmt.Printf("  %s  %s %s\n", s.Bold(s.Cyan(report.Sym("▲")+" ADARVE")), s.Dim("·"), s.Dim("plan de hardening  "+version.Version))
 	fmt.Println("  " + line)
 	fmt.Printf("  %s %s %s\n", s.Dim(fmt.Sprintf("%-9s", "Equipo")), s.Bold(info.Hostname), s.Dim("· "+info.DisplayName()))
 	fmt.Printf("  %s %s %s\n", s.Dim(fmt.Sprintf("%-9s", "Perfil")), prof.Name, s.Dim("("+prof.ID+")"))
 	fmt.Printf("  %s %d · %s\n", s.Dim(fmt.Sprintf("%-9s", "Ola")), f.wave, waveNames[f.wave])
 	fmt.Printf("  %s %s · %d controles fallidos\n", s.Dim(fmt.Sprintf("%-9s", "Postura")), scoreLabel(sc), sc.Failed)
 	if sc.Exceptions > 0 {
-		fmt.Printf("  %s %s\n", s.Dim(fmt.Sprintf("%-9s", "")), s.Dim(fmt.Sprintf("%d con excepción vigente: no se modifican (bastion exceptions list)", sc.Exceptions)))
+		fmt.Printf("  %s %s\n", s.Dim(fmt.Sprintf("%-9s", "")), s.Dim(fmt.Sprintf("%d con excepción vigente: no se modifican (adarve exceptions list)", sc.Exceptions)))
 	}
 
 	groups := []struct {
@@ -241,10 +241,10 @@ func printPlan(s report.Style, info platform.Info, prof *rule.Profile, f hardenF
 		hint   string
 	}{
 		{remediate.ItemPlanned, "CAMBIOS QUE SE APLICARÁN", ""},
-		{remediate.ItemWave, "REQUIEREN UNA OLA SUPERIOR", "bastion harden --wave 2 | 3"},
-		{remediate.ItemRemote, "AFECTAN AL ACCESO REMOTO", "bastion harden --include-remote"},
+		{remediate.ItemWave, "REQUIEREN UNA OLA SUPERIOR", "adarve harden --wave 2 | 3"},
+		{remediate.ItemRemote, "AFECTAN AL ACCESO REMOTO", "adarve harden --include-remote"},
 		{remediate.ItemGPO, "GESTIONADOS POR GPO DE DOMINIO", "corrígelos en la GPO o usa --force-local"},
-		{remediate.ItemManual, "REMEDIACIÓN MANUAL", "bastion rules show <ID>"},
+		{remediate.ItemManual, "REMEDIACIÓN MANUAL", "adarve rules show <ID>"},
 		{remediate.ItemCaptureError, "NO SE PUDO LEER EL ESTADO", ""},
 		{remediate.ItemUnsupported, "NO DISPONIBLES EN ESTA PLATAFORMA", ""},
 		{remediate.ItemNothing, "SIN NADA QUE CAMBIAR", ""},
@@ -406,7 +406,7 @@ func printHardenSummary(s report.Style, m *remediate.Manifest, items []*remediat
 		fmt.Printf("  %s No se ha cambiado nada: no hay nada que deshacer.\n", s.Dim("·"))
 	}
 	if m.Status != remediate.StatusFailed && m.Status != remediate.StatusNothing {
-		fmt.Printf("  %s Instantánea %s · para deshacer: %s\n", s.Cyan(report.Sym("→")), s.Bold(m.ID), s.Bold("bastion rollback "+m.ID))
+		fmt.Printf("  %s Instantánea %s · para deshacer: %s\n", s.Cyan(report.Sym("→")), s.Bold(m.ID), s.Bold("adarve rollback "+m.ID))
 	}
 	if m.RebootRequired {
 		fmt.Printf("  %s Reinicia el equipo para completar algunos cambios.\n", s.Yellow(report.Sym("⚠")))
@@ -504,7 +504,7 @@ func newHistoryCmd() *cobra.Command {
 				}
 				wave := strconv.Itoa(m.Wave)
 				if m.Wave == 0 {
-					wave = "—" // bastion surface fix no va por olas
+					wave = "—" // adarve surface fix no va por olas
 				}
 				tb.Row(m.ID, m.CreatedAt.Local().Format("2006-01-02 15:04"), m.Profile, wave, names[m.Status], fmt.Sprintf("%d de %d", ok, len(m.Rules)))
 			}

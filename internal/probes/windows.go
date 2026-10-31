@@ -44,9 +44,9 @@ func privateTempDir() (string, error) {
 	if st, err := os.Stat(base); err != nil || !st.IsDir() {
 		base = os.TempDir()
 	}
-	dir, err := os.MkdirTemp(base, "bastion-")
+	dir, err := os.MkdirTemp(base, "adarve-")
 	if err != nil {
-		dir, err = os.MkdirTemp("", "bastion-")
+		dir, err = os.MkdirTemp("", "adarve-")
 	}
 	return dir, err
 }
@@ -391,7 +391,7 @@ var psQueries = map[string]struct{ desc, script string }{
 		`try { $v=Get-BitLockerVolume -MountPoint $env:SystemDrive; @{ProtectionStatus=[string]$v.ProtectionStatus;VolumeStatus=[string]$v.VolumeStatus;EncryptionMethod=[string]$v.EncryptionMethod;KeyProtectors=@($v.KeyProtector | ForEach-Object {[string]$_.KeyProtectorType})} | ConvertTo-Json -Compress } catch { @{__na='bitlocker'} | ConvertTo-Json -Compress }`},
 	"device_guard": {"Win32_DeviceGuard",
 		`try { $d=Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root/Microsoft/Windows/DeviceGuard; @{VirtualizationBasedSecurityStatus=[int]$d.VirtualizationBasedSecurityStatus;SecurityServicesConfigured=@($d.SecurityServicesConfigured | ForEach-Object {[int]$_});SecurityServicesRunning=@($d.SecurityServicesRunning | ForEach-Object {[int]$_})} | ConvertTo-Json -Compress } catch { @{__na='deviceguard'} | ConvertTo-Json -Compress }`},
-	// Para "bastion surface": recursos compartidos (sin los administrativos)
+	// Para "adarve surface": recursos compartidos (sin los administrativos)
 	// con el SID de cada cuenta, para no depender del idioma de los nombres.
 	"smb_shares": {"Get-SmbShare / Get-SmbShareAccess",
 		`try { $o=@(); Get-SmbShare | Where-Object { -not $_.Special } | ForEach-Object { $n=[string]$_.Name; $acc=@(Get-SmbShareAccess -Name $n -ErrorAction SilentlyContinue | ForEach-Object { $sid=''; try { $sid=(New-Object System.Security.Principal.NTAccount($_.AccountName)).Translate([System.Security.Principal.SecurityIdentifier]).Value } catch {}; @{Account=[string]$_.AccountName;SID=$sid;Right=[string]$_.AccessRight;Type=[string]$_.AccessControlType} }); $o+=@{Name=$n;Path=[string]$_.Path;Access=$acc} }; @{shares=$o} | ConvertTo-Json -Compress -Depth 5 } catch { @{__err=$_.Exception.Message} | ConvertTo-Json -Compress }`},
@@ -400,18 +400,18 @@ var psQueries = map[string]struct{ desc, script string }{
 	// y acción de entrada por defecto, y reglas de entrada habilitadas.
 	"firewall_policy": {"HNetCfg.FwPolicy2 (Firewall de Windows)",
 		`try { $p=New-Object -ComObject HNetCfg.FwPolicy2; $cur=[int]$p.CurrentProfileTypes; $prof=@(); foreach($b in 1,2,4){ $prof+=@{Bit=$b;Enabled=[bool]$p.FirewallEnabled($b);BlockInbound=([int]$p.DefaultInboundAction($b) -eq 0);Active=(($cur -band $b) -ne 0)} }; $rules=New-Object System.Collections.ArrayList; foreach($r in $p.Rules){ if($r.Enabled -and $r.Direction -eq 1){ $ifs=''; try { if($r.Interfaces){ $ifs=[string]::Join(',', @($r.Interfaces)) } } catch {}; $pk=''; $uo=''; try { $pk=[string]$r.LocalAppPackageId; $uo=[string]$r.LocalUserOwner } catch {}; [void]$rules.Add(@{N=[string]$r.Name;A=[int]$r.Action;P=[int]$r.Protocol;L=[string]$r.LocalPorts;RP=[string]$r.RemotePorts;App=[string]$r.ApplicationName;S=[string]$r.ServiceName;Pr=[int]$r.Profiles;LA=[string]$r.LocalAddresses;R=[string]$r.RemoteAddresses;I=$ifs;IT=[string]$r.InterfaceTypes;Pk=$pk;U=$uo}) } }; @{profiles=$prof;rules=$rules} | ConvertTo-Json -Compress -Depth 4 } catch { @{__err=$_.Exception.Message} | ConvertTo-Json -Compress }`},
-	// Solo los perfiles: las reglas se leen del registro (bastion surface).
+	// Solo los perfiles: las reglas se leen del registro (adarve surface).
 	"firewall_profiles": {"HNetCfg.FwPolicy2 (perfiles del Firewall de Windows)",
 		`try { $p=New-Object -ComObject HNetCfg.FwPolicy2; $cur=[int]$p.CurrentProfileTypes; $prof=@(); foreach($b in 1,2,4){ $prof+=@{Bit=$b;Enabled=[bool]$p.FirewallEnabled($b);BlockInbound=([int]$p.DefaultInboundAction($b) -eq 0);Active=(($cur -band $b) -ne 0)} }; @{profiles=$prof} | ConvertTo-Json -Compress -Depth 4 } catch { @{__err=$_.Exception.Message} | ConvertTo-Json -Compress }`},
 	// Miembros del grupo Administradores por SID (S-1-5-32-544). Si
 	// Get-LocalGroupMember falla (SIDs huérfanos), se usa ADSI.
 	"local_admins": {"miembros de Administradores (S-1-5-32-544)",
 		`$m=@(); try { Get-LocalGroupMember -SID S-1-5-32-544 -ErrorAction Stop | ForEach-Object { $m+=@{Name=[string]$_.Name;Type=[string]$_.ObjectClass;Source=[string]$_.PrincipalSource} } } catch { try { $g=(New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')).Translate([System.Security.Principal.NTAccount]).Value.Split('\')[-1]; ([ADSI]"WinNT://$env:COMPUTERNAME/$g,group").psbase.Invoke('Members') | ForEach-Object { $m+=[string]$_.GetType().InvokeMember('Name','GetProperty',$null,$_,$null) } } catch { $m=@{__err=$_.Exception.Message} } }; if ($m -is [hashtable]) { $m | ConvertTo-Json -Compress } else { @{members=$m} | ConvertTo-Json -Compress -Depth 4 }`},
-	// Firma Authenticode de los ficheros de BASTION_PATHS (una ruta por
+	// Firma Authenticode de los ficheros de ADARVE_PATHS (una ruta por
 	// línea): la incrustada o la de un catálogo, como la de casi todo
 	// Windows.
 	"file_signatures": {"Get-AuthenticodeSignature",
-		`$o=@{}; foreach ($p in ($env:BASTION_PATHS -split [char]10)) { if (-not $p) { continue }; try { $s=Get-AuthenticodeSignature -LiteralPath $p; $o[$p]=@{status=[string]$s.Status; signer=[string]$s.SignerCertificate.Subject} } catch { $o[$p]=@{status='Error'; signer=''} } }; @{files=$o} | ConvertTo-Json -Compress -Depth 4`},
+		`$o=@{}; foreach ($p in ($env:ADARVE_PATHS -split [char]10)) { if (-not $p) { continue }; try { $s=Get-AuthenticodeSignature -LiteralPath $p; $o[$p]=@{status=[string]$s.Status; signer=[string]$s.SignerCertificate.Subject} } catch { $o[$p]=@{status='Error'; signer=''} } }; @{files=$o} | ConvertTo-Json -Compress -Depth 4`},
 	"optional_features": {"Get-WindowsOptionalFeature",
 		`$want=@('SMB1Protocol','MicrosoftWindowsPowerShellV2Root','MicrosoftWindowsPowerShellV2','TelnetClient','TFTP'); $o=@{}; try { Get-WindowsOptionalFeature -Online | Where-Object { $want -contains $_.FeatureName } | ForEach-Object { $o[[string]$_.FeatureName]=[string]$_.State } } catch { $o=@{__err=$_.Exception.Message} }; $o | ConvertTo-Json -Compress`},
 }

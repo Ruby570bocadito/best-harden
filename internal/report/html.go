@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/surface"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/surface"
 )
 
 //go:embed assets/report.html
@@ -35,7 +35,7 @@ func HTML(w io.Writer, rep *engine.Report) error {
 		return err
 	}
 	out := bytes.ReplaceAll(htmlTemplate, []byte("__NONCE__"), []byte(base64.RawURLEncoding.EncodeToString(nonce)))
-	out = bytes.Replace(out, []byte("__BASTION_DATA__"), data, 1)
+	out = bytes.Replace(out, []byte("__ADARVE_DATA__"), data, 1)
 	_, err = w.Write(out)
 	return err
 }
@@ -43,7 +43,7 @@ func HTML(w io.Writer, rep *engine.Report) error {
 //go:embed assets/surface.html
 var surfaceTemplate []byte
 
-// SurfaceHTML genera el informe autocontenido de "bastion surface", con las
+// SurfaceHTML genera el informe autocontenido de "adarve surface", con las
 // mismas garantías que HTML: datos como JSON escapado, insertados con
 // textContent y una CSP con nonce. Comparte los estilos del informe de
 // escaneo (se toman de su plantilla), así que los dos se ven igual.
@@ -58,7 +58,7 @@ func SurfaceHTML(w io.Writer, rep *surface.Report) error {
 	}
 	out := bytes.Replace(surfaceTemplate, []byte("__STYLE__"), sharedStyle(), 1)
 	out = bytes.ReplaceAll(out, []byte("__NONCE__"), []byte(base64.RawURLEncoding.EncodeToString(nonce)))
-	out = bytes.Replace(out, []byte("__BASTION_DATA__"), data, 1)
+	out = bytes.Replace(out, []byte("__ADARVE_DATA__"), data, 1)
 	_, err = w.Write(out)
 	return err
 }

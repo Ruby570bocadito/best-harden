@@ -34,7 +34,7 @@ func detect(info *Info) {
 	}
 }
 
-// InContainer detecta si Bastion se ejecuta dentro de un contenedor (los
+// InContainer detecta si Adarve se ejecuta dentro de un contenedor (los
 // controles del kernel pertenecen entonces al host). Lo usan también los
 // probes.
 func InContainer() bool {

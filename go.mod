@@ -1,4 +1,4 @@
-module github.com/Ruby570bocadito/bastion
+module github.com/Ruby570bocadito/adarve
 
 go 1.26.0
 

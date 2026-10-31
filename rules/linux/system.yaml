@@ -22,7 +22,7 @@ remediation:
     # Ubuntu: systemctl enable --now apparmor
   breaking_risk: medium
   reboot_required: true
-impact: Revisa las denegaciones en modo permisivo antes de aplicar (Bastion observe en la fase 3).
+impact: Revisa las denegaciones en modo permisivo antes de aplicar (Adarve observe en la fase 3).
 ---
 id: LNX-FW-001
 title: Firewall de host activo
@@ -105,7 +105,7 @@ remediation:
   summary: Fijar Storage=persistent en un drop-in de journald.
   commands: |
     mkdir -p /etc/systemd/journald.conf.d
-    printf '[Journal]\nStorage=persistent\n' > /etc/systemd/journald.conf.d/bastion.conf
+    printf '[Journal]\nStorage=persistent\n' > /etc/systemd/journald.conf.d/adarve.conf
     systemctl restart systemd-journald
   breaking_risk: none
 ---

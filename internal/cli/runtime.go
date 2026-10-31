@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/remediate"
+	"github.com/Ruby570bocadito/adarve/internal/remediate"
 )
 
 func runtimeGOOS() string   { return runtime.GOOS }

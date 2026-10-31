@@ -13,14 +13,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/platform"
-	"github.com/Ruby570bocadito/bastion/internal/probes"
-	"github.com/Ruby570bocadito/bastion/internal/remediate"
-	"github.com/Ruby570bocadito/bastion/internal/report"
-	"github.com/Ruby570bocadito/bastion/internal/surface"
-	"github.com/Ruby570bocadito/bastion/internal/version"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
+	"github.com/Ruby570bocadito/adarve/internal/remediate"
+	"github.com/Ruby570bocadito/adarve/internal/report"
+	"github.com/Ruby570bocadito/adarve/internal/surface"
+	"github.com/Ruby570bocadito/adarve/internal/version"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 type surfaceFixFlags struct {
@@ -33,24 +33,24 @@ func newSurfaceFixCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "fix [ID...]",
 		Short: "Limitar a la red local las reglas del firewall que abren puertos a cualquiera",
-		Long: `Corrige los hallazgos de "bastion surface" que abren puertos a cualquier
+		Long: `Corrige los hallazgos de "adarve surface" que abren puertos a cualquier
 dirección: limita a la red local (LocalSubnet) las reglas del Firewall de
 Windows que los abren. Sin --apply es una SIMULACIÓN: muestra el plan.
 
 Con --apply se hace como en "harden": instantánea del estado previo, cambio,
-verificación y, si algo falla, vuelta atrás; el cambio queda en "bastion
-history" y se deshace con "bastion rollback". RDP, SSH, WinRM, VNC y
+verificación y, si algo falla, vuelta atrás; el cambio queda en "adarve
+history" y se deshace con "adarve rollback". RDP, SSH, WinRM, VNC y
 Sunshine solo se incluyen con --include-remote y con dead-man switch: si no
 confirmas que sigues pudiendo entrar, se revierte solo.
 
 Por ahora, solo en Windows y para las reglas del almacén local. Lo que llega
 por otras reglas ya limitadas (una VPN como Tailscale, por ejemplo) sigue
 llegando.`,
-		Example: `  bastion surface fix                             # ver el plan (no cambia nada)
-  bastion surface fix --apply                     # aplicarlo, con confirmación
-  bastion surface fix SURF-APPS-OPEN --apply      # solo los programas
-  bastion surface fix SURF-PORT-3389 --apply --include-remote   # RDP
-  bastion rollback                                # deshacerlo`,
+		Example: `  adarve surface fix                             # ver el plan (no cambia nada)
+  adarve surface fix --apply                     # aplicarlo, con confirmación
+  adarve surface fix SURF-APPS-OPEN --apply      # solo los programas
+  adarve surface fix SURF-PORT-3389 --apply --include-remote   # RDP
+  adarve rollback                                # deshacerlo`,
 		RunE: func(cmd *cobra.Command, args []string) error { return runSurfaceFix(f, args) },
 	}
 	fl := cmd.Flags()
@@ -122,7 +122,7 @@ func surfaceFixRules(rep *surface.Report, ids []string) (rules []*rule.Rule, unk
 
 func runSurfaceFix(f surfaceFixFlags, ids []string) error {
 	if runtime.GOOS != "windows" {
-		return fmt.Errorf("bastion surface fix solo está disponible en Windows por ahora; en Linux, cada hallazgo de bastion surface explica cómo limitar el puerto (ufw, firewalld)")
+		return fmt.Errorf("adarve surface fix solo está disponible en Windows por ahora; en Linux, cada hallazgo de adarve surface explica cómo limitar el puerto (ufw, firewalld)")
 	}
 	if !f.noDeadman {
 		if err := checkConfirmTimeout(f.confirmTimeout); err != nil {
@@ -131,7 +131,7 @@ func runSurfaceFix(f surfaceFixFlags, ids []string) error {
 	}
 	info := platform.Detect()
 	if !probes.Privileged() {
-		return fmt.Errorf("bastion surface fix lee las reglas del registro y las modifica: %s", report.AdminHint(info.Family))
+		return fmt.Errorf("adarve surface fix lee las reglas del registro y las modifica: %s", report.AdminHint(info.Family))
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -141,13 +141,13 @@ func runSurfaceFix(f surfaceFixFlags, ids []string) error {
 	}
 	rules, unknown := surfaceFixRules(rep, ids)
 	if len(unknown) > 0 {
-		return fmt.Errorf("no hay ningún hallazgo %s (los IDs están en bastion surface)", strings.Join(unknown, ", "))
+		return fmt.Errorf("no hay ningún hallazgo %s (los IDs están en adarve surface)", strings.Join(unknown, ", "))
 	}
 	s := stdoutStyle()
 	if len(rules) == 0 {
 		fmt.Printf("\n  %s Ningún hallazgo tiene reglas del firewall que limitar", s.Green(report.Sym("✓")))
 		if len(rep.Findings) > 0 {
-			fmt.Print(": el resto se corrige con «bastion harden» o a mano, como indica cada hallazgo")
+			fmt.Print(": el resto se corrige con «adarve harden» o a mano, como indica cada hallazgo")
 		}
 		fmt.Print(".\n\n")
 		return nil
@@ -171,7 +171,7 @@ func runSurfaceFix(f surfaceFixFlags, ids []string) error {
 	if !f.apply {
 		fmt.Printf("\n  %s %s\n", s.Yellow(report.Sym("⚠")), s.Bold("Simulación: no se ha cambiado nada."))
 		if planned > 0 {
-			cmd := "bastion surface fix"
+			cmd := "adarve surface fix"
 			if len(ids) > 0 {
 				cmd += " " + strings.ToUpper(strings.Join(ids, " "))
 			}
@@ -225,7 +225,7 @@ func runSurfaceFix(f surfaceFixFlags, ids []string) error {
 	after, err := analyzeSurface(ctx)
 	printSurfaceFixSummary(s, m, items, rep, after)
 	if err != nil {
-		fmt.Printf("  %s %s\n\n", s.Yellow("!"), s.Yellow("No se pudo repetir el análisis para mostrar la exposición final ("+err.Error()+"): compruébalo con bastion surface."))
+		fmt.Printf("  %s %s\n\n", s.Yellow("!"), s.Yellow("No se pudo repetir el análisis para mostrar la exposición final ("+err.Error()+"): compruébalo con adarve surface."))
 	}
 	if m.Status == remediate.StatusFailed {
 		return &ExitError{Code: 1}
@@ -304,7 +304,7 @@ func printSurfaceFixSummary(s report.Style, m *remediate.Manifest, items []*reme
 		fmt.Printf("  %s %d hallazgos limitados a la red local\n", s.Green(report.Sym("✓")), verified)
 	}
 	if m.Status != remediate.StatusFailed && m.Status != remediate.StatusNothing {
-		fmt.Printf("  %s Instantánea %s · para deshacer: %s\n", s.Cyan(report.Sym("→")), s.Bold(m.ID), s.Bold("bastion rollback "+m.ID))
+		fmt.Printf("  %s Instantánea %s · para deshacer: %s\n", s.Cyan(report.Sym("→")), s.Bold(m.ID), s.Bold("adarve rollback "+m.ID))
 	}
 	fmt.Println()
 }

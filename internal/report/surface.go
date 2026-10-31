@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Ruby570bocadito/bastion/internal/surface"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/surface"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // SurfaceConsole escribe el análisis de superficie de ataque para humanos.
@@ -17,7 +17,7 @@ func SurfaceConsole(w io.Writer, rep *surface.Report, all bool, s Style) {
 	line := s.Dim(strings.Repeat("─", 72))
 	host := rep.Host
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, "  %s  %s %s\n", s.Bold(s.Cyan(Sym("▲")+" BASTION")), s.Dim("·"), s.Dim("superficie de ataque  "+rep.Version))
+	fmt.Fprintf(w, "  %s  %s %s\n", s.Bold(s.Cyan(Sym("▲")+" ADARVE")), s.Dim("·"), s.Dim("superficie de ataque  "+rep.Version))
 	fmt.Fprintln(w, "  "+line)
 	fmt.Fprintf(w, "  %s %s %s\n", s.Dim(pad("Equipo", 9)), s.Bold(host.Hostname), s.Dim("· "+host.DisplayName()))
 	local, ephemeral := 0, 0
@@ -160,7 +160,7 @@ func SurfaceConsole(w io.Writer, rep *surface.Report, all bool, s Style) {
 		tb.Write(w)
 	}
 	if !all && local+ephemeral > 0 {
-		fmt.Fprintf(w, "  %s\n", s.Dim(fmt.Sprintf("+ %d solo locales y %d sockets de cliente (bastion surface --all)", local, ephemeral)))
+		fmt.Fprintf(w, "  %s\n", s.Dim(fmt.Sprintf("+ %d solo locales y %d sockets de cliente (adarve surface --all)", local, ephemeral)))
 	}
 
 	if len(rep.Shares) > 0 {

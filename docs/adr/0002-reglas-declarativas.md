@@ -11,5 +11,5 @@ Las reglas son **datos** en YAML: `check` describe qué leer (probe + parámetro
 ## Consecuencias
 - ✅ Auditables, versionables y validables (`rules lint`, JSON Schema, test en CI).
 - ✅ Un paquete de reglas no puede ejecutar código.
-- ✅ Las reglas se incrustan en el binario: actualizar Bastion actualiza las reglas.
+- ✅ Las reglas se incrustan en el binario: actualizar Adarve actualiza las reglas.
 - ⚠️ Un control que necesite un dato nuevo requiere un probe nuevo (cambio en Go con revisión). Es intencionado.

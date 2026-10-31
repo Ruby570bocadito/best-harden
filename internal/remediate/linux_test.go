@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Ruby570bocadito/bastion/internal/probes"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
 )
 
 // sandbox redirige las rutas de los remediadores a un directorio temporal.

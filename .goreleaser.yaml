@@ -1,7 +1,7 @@
 # GoReleaser v2 · https://goreleaser.com
 # Se ejecuta desde .github/workflows/release.yml al publicar una etiqueta vX.Y.Z.
 version: 2
-project_name: bastion
+project_name: adarve
 
 before:
   hooks:
@@ -11,25 +11,25 @@ before:
     - go test ./...
 
 builds:
-  - id: bastion
-    main: ./cmd/bastion
-    binary: bastion
+  - id: adarve
+    main: ./cmd/adarve
+    binary: adarve
     env: [CGO_ENABLED=0]
     goos: [linux, windows]
     goarch: [amd64, arm64]
     flags: [-trimpath]
     ldflags:
       - -s -w
-      - -X github.com/Ruby570bocadito/bastion/internal/version.Version={{ .Version }}
-      - -X github.com/Ruby570bocadito/bastion/internal/version.Commit={{ .ShortCommit }}
-      - -X github.com/Ruby570bocadito/bastion/internal/version.Date={{ .Date }}
-      - -X github.com/Ruby570bocadito/bastion/internal/version.Repo={{ envOrDefault "GITHUB_REPOSITORY" "Ruby570bocadito/bastion" }}
+      - -X github.com/Ruby570bocadito/adarve/internal/version.Version={{ .Version }}
+      - -X github.com/Ruby570bocadito/adarve/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/Ruby570bocadito/adarve/internal/version.Date={{ .Date }}
+      - -X github.com/Ruby570bocadito/adarve/internal/version.Repo={{ envOrDefault "GITHUB_REPOSITORY" "Ruby570bocadito/adarve" }}
 
 archives:
   - id: default
-    # Nombre SIN versión: los instaladores y "bastion update" lo construyen
+    # Nombre SIN versión: los instaladores y "adarve update" lo construyen
     # a partir del sistema y la arquitectura.
-    name_template: "bastion_{{ .Os }}_{{ .Arch }}"
+    name_template: "adarve_{{ .Os }}_{{ .Arch }}"
     formats: [tar.gz]
     format_overrides:
       - goos: windows
@@ -47,7 +47,7 @@ sboms:
 
 release:
   # vX.Y.Z-rc.1 y similares se publican como pre-release: no pasan a ser
-  # «latest» (lo que instalan el instalador y bastion update).
+  # «latest» (lo que instalan el instalador y adarve update).
   prerelease: auto
   extra_files:
     # version.txt lo genera el workflow: es lo que consultan los instaladores

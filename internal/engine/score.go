@@ -4,8 +4,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/platform"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // Counts agrupa resultados por estado.
@@ -153,7 +153,7 @@ type Report struct {
 	Changes *Changes `json:"changes,omitempty"`
 }
 
-// ToolInfo identifica la versión de Bastion que generó el informe.
+// ToolInfo identifica la versión de Adarve que generó el informe.
 type ToolInfo struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
@@ -161,4 +161,4 @@ type ToolInfo struct {
 }
 
 // SchemaVersion del formato de informe.
-const SchemaVersion = "bastion.report/v1"
+const SchemaVersion = "adarve.report/v1"

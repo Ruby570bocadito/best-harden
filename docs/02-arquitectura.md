@@ -2,12 +2,12 @@
 
 ## Visión general
 
-Bastion tiene dos modos de uso que comparten el **mismo motor**:
+Adarve tiene dos modos de uso que comparten el **mismo motor**:
 
 ```
  MODO STANDALONE (✅ hoy)                     MODO FLOTA (🔜 fase 3)
  ─────────────────────────                    ──────────────────────
- bastion scan / rules / update                Agentes en cada equipo
+ adarve scan / rules / update                Agentes en cada equipo
  informe HTML/JSON local                      ──► Servidor central
  binario único, sin dependencias              ──► Consola web
  Para: administradores, consultores,          Para: SOC, sistemas, MSSP
@@ -23,7 +23,7 @@ Bastion tiene dos modos de uso que comparten el **mismo motor**:
                                         │ HTTPS · REST + WebSocket
                                         │ OIDC/SSO + MFA + RBAC
                 ┌───────────────────────▼───────────────────────┐
-                │              Bastion Server (Go)               │
+                │              Adarve Server (Go)               │
                 │  API · Fleet · Compliance · Jobs/Approvals ·   │
                 │  Rule Pack Registry · Reports · Audit Log      │
                 └───────┬──────────────────────────┬────────────┘
@@ -34,15 +34,15 @@ Bastion tiene dos modos de uso que comparten el **mismo motor**:
               └──────────────────┘      ┌──────────┼──────────┐
                                         ▼          ▼          ▼
                                     Win 10/11   WinSrv/DC    Linux
-                                    (agente = el mismo binario bastion)
+                                    (agente = el mismo binario adarve)
 ```
 
-## El binario `bastion` (✅)
+## El binario `adarve` (✅)
 
 Un único ejecutable estático (Go, `CGO_ENABLED=0`) para Linux y Windows en amd64/arm64. Contiene la CLI, el motor y el **paquete oficial de reglas incrustado** (`go:embed`). Al actualizar el binario se actualizan las reglas.
 
 ```
-bastion
+adarve
 ├── CLI (cobra) ─────────── scan · info · rules · profiles · update · init · version
 ├── platform ────────────── detecta SO, rol (estación/servidor/DC), dominio, etiquetas
 ├── rule (pkg/rule) ─────── formato de reglas y perfiles, carga, validación, selección
@@ -51,7 +51,7 @@ bastion
 │   ├── comunes:  file_content · file_regex · file_kv
 │   ├── linux:    sysctl · file · sshd · kmod · systemd · mount · package
 │   └── windows:  registry · secpol · auditpol · service · ps (consultas fijas)
-├── report ──────────────── consola · JSON (bastion.report/v1) · HTML autocontenido
+├── report ──────────────── consola · JSON (adarve.report/v1) · HTML autocontenido
 ├── selfupdate ──────────── releases verificadas con SHA-256, reemplazo atómico
 └── config ──────────────── rutas, config.yaml, permisos de los directorios
 ```
@@ -95,8 +95,8 @@ Los `error`, `skipped`, `exception` y `na` no cuentan. Si hay errores o controle
 ## Estructura del repositorio
 
 ```
-bastion/
-├── cmd/bastion/            punto de entrada
+adarve/
+├── cmd/adarve/            punto de entrada
 ├── internal/
 │   ├── cli/                comandos
 │   ├── config/             rutas y config.yaml (+ permisos por SO)
@@ -107,7 +107,7 @@ bastion/
 │   ├── remediate/          harden: acciones tipadas, plan, instantáneas, rollback
 │   ├── report/             consola, JSON, HTML (assets/report.html), historial
 │   ├── selfupdate/         actualización verificada
-│   ├── ui/                 consola local "bastion ui" (assets/ui.html)
+│   ├── ui/                 consola local "adarve ui" (assets/ui.html)
 │   └── version/            versión inyectada con -ldflags
 ├── pkg/rule/               formato público de reglas y perfiles
 ├── rules/                  paquete oficial (incrustado en el binario)
@@ -119,13 +119,13 @@ bastion/
 └── Makefile
 ```
 
-Cuando llegue el modo flota se añadirán `cmd/bastion-server/`, `internal/server/...`, `proto/` (contratos gRPC) y `web/` (consola de flota en React).
+Cuando llegue el modo flota se añadirán `cmd/adarve-server/`, `internal/server/...`, `proto/` (contratos gRPC) y `web/` (consola de flota en React).
 
 ## Modo flota (🔜 fase 3)
 
 | Componente | Tecnología | Notas |
 |---|---|---|
-| Agente | El mismo binario `bastion agent` | Servicio de Windows / unidad systemd; conexión saliente |
+| Agente | El mismo binario `adarve agent` | Servicio de Windows / unidad systemd; conexión saliente |
 | Transporte | gRPC (Connect) + mTLS | Alta con token de un solo uso, rotación de certificados |
 | Servidor | Go + PostgreSQL | API REST (OpenAPI) para la UI, gRPC para los agentes |
 | Evidencias | Almacén de objetos (S3 compatible / disco) | Informes JSON, paquetes de evidencias firmados |
@@ -150,7 +150,7 @@ Organization ─┬─ Asset (host) ── Agent (cert, versión, último contac
 
 - `Enroll(token, csr) → cert`
 - `Heartbeat(inventory) → pending_jobs[]`
-- `SubmitScan(report bastion.report/v1)`
+- `SubmitScan(report adarve.report/v1)`
 - `GetRulePack(version) → paquete firmado`
 - `ReportJob(job_id, status, evidence)`
 

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/Ruby570bocadito/bastion/internal/platform"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
 )
 
 func init() {
@@ -27,7 +27,7 @@ func init() {
 	Register(packageProbe{})
 }
 
-// inContainer detecta si Bastion se ejecuta dentro de un contenedor. En ese
+// inContainer detecta si Adarve se ejecuta dentro de un contenedor. En ese
 // caso los controles del kernel pertenecen al host y no aplican.
 var inContainer = platform.InContainer
 

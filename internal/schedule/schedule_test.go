@@ -35,19 +35,19 @@ func fakeUnix(t *testing.T, systemd bool) (*unixScheduler, *[]string) {
 func TestSystemdTimer(t *testing.T) {
 	u, calls := fakeUnix(t, true)
 	ctx := context.Background()
-	st, err := u.Enable(ctx, "/opt/mis herramientas/bastion", "09:30")
+	st, err := u.Enable(ctx, "/opt/mis herramientas/adarve", "09:30")
 	if err != nil {
 		t.Fatal(err)
 	}
 	svc, _ := os.ReadFile(u.path(servicePath))
 	timer, _ := os.ReadFile(u.path(timerPath))
-	if !strings.Contains(string(svc), `ExecStart="/opt/mis herramientas/bastion" schedule run`) || !strings.Contains(string(svc), "SuccessExitStatus=3") {
+	if !strings.Contains(string(svc), `ExecStart="/opt/mis herramientas/adarve" schedule run`) || !strings.Contains(string(svc), "SuccessExitStatus=3") {
 		t.Errorf("servicio:\n%s", svc)
 	}
 	if !strings.Contains(string(timer), "OnCalendar=*-*-* 09:30:00") || !strings.Contains(string(timer), "Persistent=true") {
 		t.Errorf("temporizador:\n%s", timer)
 	}
-	if got := strings.Join(*calls, "\n"); !strings.Contains(got, "systemctl daemon-reload\nsystemctl enable --now bastion-scan.timer") {
+	if got := strings.Join(*calls, "\n"); !strings.Contains(got, "systemctl daemon-reload\nsystemctl enable --now adarve-scan.timer") {
 		t.Errorf("órdenes:\n%s", got)
 	}
 	if !st.Enabled || st.At != "09:30" || !strings.HasPrefix(st.Mechanism, "systemd") || st.NextRun == "" || !strings.Contains(st.Command, "schedule run") {
@@ -62,7 +62,7 @@ func TestSystemdTimer(t *testing.T) {
 			t.Errorf("%s debería haberse borrado", p)
 		}
 	}
-	if got := strings.Join(*calls, "\n"); !strings.Contains(got, "systemctl disable --now bastion-scan.timer") {
+	if got := strings.Join(*calls, "\n"); !strings.Contains(got, "systemctl disable --now adarve-scan.timer") {
 		t.Errorf("órdenes al desactivar:\n%s", got)
 	}
 	if st, _ := u.Get(ctx); st.Enabled {
@@ -73,12 +73,12 @@ func TestSystemdTimer(t *testing.T) {
 func TestCronFallback(t *testing.T) {
 	u, calls := fakeUnix(t, false)
 	ctx := context.Background()
-	st, err := u.Enable(ctx, "/usr/local/bin/bastion", "07:05")
+	st, err := u.Enable(ctx, "/usr/local/bin/adarve", "07:05")
 	if err != nil {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(u.path(cronPath))
-	if !strings.Contains(string(b), "5 7 * * * root /usr/local/bin/bastion schedule run") {
+	if !strings.Contains(string(b), "5 7 * * * root /usr/local/bin/adarve schedule run") {
 		t.Errorf("cron:\n%s", b)
 	}
 	if len(*calls) != 0 {
@@ -93,27 +93,27 @@ func TestCronFallback(t *testing.T) {
 	if st, _ := u.Get(ctx); st.Enabled {
 		t.Errorf("tras desactivar: %+v", st)
 	}
-	if got := cronEntry("/opt/a b/bastion", "00:00"); !strings.Contains(got, "0 0 * * * root '/opt/a b/bastion' schedule run") {
+	if got := cronEntry("/opt/a b/adarve", "00:00"); !strings.Contains(got, "0 0 * * * root '/opt/a b/adarve' schedule run") {
 		t.Errorf("ruta con espacios: %s", got)
 	}
-	if got := cronEntry("/opt/100%/bastion", "00:00"); !strings.Contains(got, `root /opt/100\%/bastion schedule run`) {
+	if got := cronEntry("/opt/100%/adarve", "00:00"); !strings.Contains(got, `root /opt/100\%/adarve schedule run`) {
 		t.Errorf("%% en la ruta: %s", got)
 	}
 }
 
 func TestSystemdEscapes(t *testing.T) {
 	for in, want := range map[string]string{
-		"/usr/local/bin/bastion": "/usr/local/bin/bastion",
-		"/opt/100%/bastion":      "/opt/100%%/bastion",
-		"/opt/$HOME/bastion":     "/opt/$$HOME/bastion",
-		"/opt/a b/bastion":       `"/opt/a b/bastion"`,
-		`/opt/a "b"/c%d/bastion`: `"/opt/a \"b\"/c%%d/bastion"`,
+		"/usr/local/bin/adarve": "/usr/local/bin/adarve",
+		"/opt/100%/adarve":      "/opt/100%%/adarve",
+		"/opt/$HOME/adarve":     "/opt/$$HOME/adarve",
+		"/opt/a b/adarve":       `"/opt/a b/adarve"`,
+		`/opt/a "b"/c%d/adarve`: `"/opt/a \"b\"/c%%d/adarve"`,
 	} {
 		if got := systemdQuote(in); got != want {
 			t.Errorf("systemdQuote(%q) = %q, quiero %q", in, got, want)
 		}
 	}
-	if svc := serviceUnit("/usr/local/bin/bastion"); !strings.Contains(svc, "TimeoutStartSec=") {
+	if svc := serviceUnit("/usr/local/bin/adarve"); !strings.Contains(svc, "TimeoutStartSec=") {
 		t.Errorf("el servicio necesita un plazo:\n%s", svc)
 	}
 }
@@ -156,7 +156,7 @@ func TestSafeExecutable(t *testing.T) {
 		t.Errorf("/bin/sh es de root y no se puede modificar: %v", err)
 	}
 	dir := t.TempDir() // bajo /tmp, con escritura para todos
-	exe := filepath.Join(dir, "bastion")
+	exe := filepath.Join(dir, "adarve")
 	if err := os.WriteFile(exe, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}

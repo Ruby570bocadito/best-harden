@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/platform"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
 )
 
 // Las reglas anti escaneo (flags TCP) solo afectan a paquetes anómalos: no

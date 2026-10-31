@@ -14,13 +14,13 @@ import (
 
 func sample() Event {
 	return Event{Host: "Rby", Time: time.Date(2026, 10, 17, 7, 0, 0, 0, time.UTC), Level: LevelWarning,
-		Title:     "Bastion · Rby: la postura o la exposición han empeorado",
+		Title:     "Adarve · Rby: la postura o la exposición han empeorado",
 		Lines:     []string{"Postura 78/100 · exposición 53/100", "Cambios que aumentan la exposición (1):", "· 8766/tcp (AutoClaw.exe) escucha en la red: abierto a cualquiera"},
 		ScanScore: 78, SurfaceScore: 53, NewExposure: []string{"8766/tcp (AutoClaw.exe) escucha en la red: abierto a cualquiera"}}
 }
 
 func TestValidateURL(t *testing.T) {
-	for _, ok := range []string{"https://ntfy.sh/bastion-rby-1234", "https://hooks.slack.com/services/T/B/X", "http://127.0.0.1:8080/x",
+	for _, ok := range []string{"https://ntfy.sh/adarve-rby-1234", "https://hooks.slack.com/services/T/B/X", "http://127.0.0.1:8080/x",
 		"http://192.168.1.10/ntfy/topic", "http://localhost/hook"} {
 		if _, err := ValidateURL(ok); err != nil {
 			t.Errorf("%s: %v", ok, err)
@@ -45,9 +45,9 @@ func TestRedactAndFormat(t *testing.T) {
 		"https://discord.com/channels/1":                                 FormatJSON,
 		"https://contoso.webhook.office.com/webhookb2/x":                 FormatTeams,
 		"https://prod-12.westeurope.logic.azure.com:443/workflows/x":     FormatTeams,
-		"https://ntfy.sh/bastion-rby":                                    FormatNtfy,
+		"https://ntfy.sh/adarve-rby":                                     FormatNtfy,
 		"https://ntfy.example.org/alerts":                                FormatNtfy,
-		"https://example.org/hooks/bastion":                              FormatJSON,
+		"https://example.org/hooks/adarve":                               FormatJSON,
 		"https://default123.environment.api.powerplatform.com/workflows": FormatTeams,
 	}
 	for raw, want := range cases {
@@ -78,7 +78,7 @@ func TestWebhookFormats(t *testing.T) {
 	srv, last, body := capture(t, http.StatusOK)
 
 	// ntfy: publicación JSON al servidor raíz con el tema en el cuerpo.
-	if err := Webhook(context.Background(), srv.URL+"/ntfy/bastion-rby", FormatNtfy, "bastion/test", ev); err != nil {
+	if err := Webhook(context.Background(), srv.URL+"/ntfy/adarve-rby", FormatNtfy, "adarve/test", ev); err != nil {
 		t.Fatal(err)
 	}
 	var n struct {
@@ -86,11 +86,11 @@ func TestWebhookFormats(t *testing.T) {
 		Priority              int
 		Tags                  []string
 	}
-	if err := json.Unmarshal(*body, &n); err != nil || last.URL.Path != "/ntfy/" || n.Topic != "bastion-rby" || n.Title != ev.Title ||
+	if err := json.Unmarshal(*body, &n); err != nil || last.URL.Path != "/ntfy/" || n.Topic != "adarve-rby" || n.Title != ev.Title ||
 		n.Priority != 4 || n.Tags[0] != "warning" || !strings.Contains(n.Message, "AutoClaw") {
 		t.Errorf("ntfy: %s %s %+v", last.URL.Path, *body, n)
 	}
-	if last.Header.Get("User-Agent") != "bastion/test" || last.Method != http.MethodPost {
+	if last.Header.Get("User-Agent") != "adarve/test" || last.Method != http.MethodPost {
 		t.Errorf("cabeceras: %s %v", last.Method, last.Header)
 	}
 	if err := Webhook(context.Background(), srv.URL+"/", FormatNtfy, "ua", ev); err == nil {
@@ -102,7 +102,7 @@ func TestWebhookFormats(t *testing.T) {
 		t.Fatal(err)
 	}
 	var s struct{ Text string }
-	if json.Unmarshal(*body, &s); !strings.HasPrefix(s.Text, "*Bastion · Rby") {
+	if json.Unmarshal(*body, &s); !strings.HasPrefix(s.Text, "*Adarve · Rby") {
 		t.Errorf("slack: %s", *body)
 	}
 	long := ev

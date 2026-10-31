@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/platform"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // Los ficheros de testdata son salida real de nft 1.0.9 e iptables-nft
@@ -59,7 +59,7 @@ func TestNftablesConf(t *testing.T) {
 		{"WireGuard", Port{Proto: "udp", Port: 51820, Addresses: anyAddr4and6}, FirewallOpen, "", ""},
 		{"rango desde la LAN", Port{Proto: "tcp", Port: 8005, Addresses: []string{"0.0.0.0"}}, FirewallLimited, "192.168.1.0/24", ""},
 		{"SMTP bloqueado", Port{Proto: "tcp", Port: 25, Addresses: anyAddr4and6}, FirewallFiltered, "", "lo bloquea la regla «input #12»"},
-		{"marca: no se evalúa", Port{Proto: "tcp", Port: 6379, Addresses: []string{"0.0.0.0"}}, FirewallLimited, "con condiciones que Bastion no evalúa", ""},
+		{"marca: no se evalúa", Port{Proto: "tcp", Port: 6379, Addresses: []string{"0.0.0.0"}}, FirewallLimited, "con condiciones que Adarve no evalúa", ""},
 		{"subcadena solo IPv6", Port{Proto: "tcp", Port: 3000, Addresses: anyAddr4and6}, FirewallLimited, "fd00::/8", "«services #1»"},
 		{"subcadena", Port{Proto: "udp", Port: 53, Addresses: anyAddr4and6}, FirewallOpen, "", "«services #2»"},
 		{"sin regla", Port{Proto: "tcp", Port: 3306, Addresses: anyAddr4and6}, FirewallFiltered, "", "«input #15»"},
@@ -138,7 +138,7 @@ func TestUfwOnlyNftJSON(t *testing.T) {
 	v4 := []string{"0.0.0.0"}
 	checkCases(t, fw, []fwCase{
 		{"SSH", Port{Proto: "tcp", Port: 22, Addresses: v4}, FirewallOpen, "", ""},
-		{"multiport sin detalle", Port{Proto: "tcp", Port: 8005, Addresses: v4}, FirewallLimited, "Tailscale y con condiciones que Bastion no evalúa", ""},
+		{"multiport sin detalle", Port{Proto: "tcp", Port: 8005, Addresses: v4}, FirewallLimited, "Tailscale y con condiciones que Adarve no evalúa", ""},
 	})
 }
 

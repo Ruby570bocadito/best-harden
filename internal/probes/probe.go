@@ -56,7 +56,7 @@ func AsNotApplicable(err error) (string, bool) {
 
 // PrivilegeError indica que el dato solo se puede leer con privilegios de
 // administrador (Windows) o root (Linux). El motor lo muestra como "sin
-// evaluar" en lugar de como error: no es un fallo del control ni de Bastion.
+// evaluar" en lugar de como error: no es un fallo del control ni de Adarve.
 type PrivilegeError struct{ Reason string }
 
 func (e *PrivilegeError) Error() string { return e.Reason }

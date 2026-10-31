@@ -16,13 +16,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Ruby570bocadito/bastion/internal/config"
-	"github.com/Ruby570bocadito/bastion/internal/platform"
-	"github.com/Ruby570bocadito/bastion/internal/probes"
-	"github.com/Ruby570bocadito/bastion/internal/report"
-	"github.com/Ruby570bocadito/bastion/internal/selfupdate"
-	"github.com/Ruby570bocadito/bastion/internal/version"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/config"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
+	"github.com/Ruby570bocadito/adarve/internal/probes"
+	"github.com/Ruby570bocadito/adarve/internal/report"
+	"github.com/Ruby570bocadito/adarve/internal/selfupdate"
+	"github.com/Ruby570bocadito/adarve/internal/version"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // ---- info ------------------------------------------------------------------
@@ -209,14 +209,14 @@ func writeCatalogMarkdown(w io.Writer, cat *rule.Catalog) {
 	}
 	sort.Slice(profiles, func(i, j int) bool { return profiles[i].ID < profiles[j].ID })
 
-	fmt.Fprintln(w, "<!-- Generado con \"bastion rules doc\". No editar a mano: edita las reglas en rules/. -->")
+	fmt.Fprintln(w, "<!-- Generado con \"adarve rules doc\". No editar a mano: edita las reglas en rules/. -->")
 	auto := 0
 	for _, r := range cat.Rules {
 		if len(r.Remediation.Actions) > 0 {
 			auto++
 		}
 	}
-	fmt.Fprintf(w, "\n**%d controles** en el paquete oficial, **%d con corrección automática** (`bastion harden`). ⚡ = afecta al acceso remoto (requiere `--include-remote`).\n\n", len(cat.Rules), auto)
+	fmt.Fprintf(w, "\n**%d controles** en el paquete oficial, **%d con corrección automática** (`adarve harden`). ⚡ = afecta al acceso remoto (requiere `--include-remote`).\n\n", len(cat.Rules), auto)
 	fmt.Fprintln(w, "### Perfiles")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "| Perfil | Nombre | Hereda de | Por defecto en |")
@@ -288,7 +288,7 @@ func printRule(r *rule.Rule) {
 		}
 	}
 	if n := len(r.Remediation.Actions); n > 0 {
-		cmdline := "bastion harden --rule " + r.ID + " --apply"
+		cmdline := "adarve harden --rule " + r.ID + " --apply"
 		if w := rule.RiskWave(r.Remediation.BreakingRisk); w > 1 {
 			cmdline += fmt.Sprintf(" --wave %d", w)
 		}
@@ -379,7 +379,7 @@ func planUpdate(current, target string, explicit, force bool) (install bool, msg
 		if force {
 			return true, fmt.Sprintf("Compilación de desarrollo (%s): se instala %s.", current, target)
 		}
-		return false, fmt.Sprintf("Esta es una compilación de desarrollo (%s): no se compara con las versiones publicadas (%s). Para sustituirla: bastion update --force", current, target)
+		return false, fmt.Sprintf("Esta es una compilación de desarrollo (%s): no se compara con las versiones publicadas (%s). Para sustituirla: adarve update --force", current, target)
 	}
 	cmp, _ := selfupdate.Compare(target, current)
 	switch {
@@ -390,13 +390,13 @@ func planUpdate(current, target string, explicit, force bool) (install bool, msg
 	case cmp == 0 && explicit:
 		return false, "Ya tienes esa versión."
 	case cmp == 0:
-		return false, "Bastion está actualizado."
+		return false, "Adarve está actualizado."
 	case explicit:
 		return true, fmt.Sprintf("%s es anterior a la instalada: se vuelve atrás.", target)
 	case force:
 		return true, fmt.Sprintf("Se instala %s, anterior a la instalada.", target)
 	}
-	return false, fmt.Sprintf("Bastion está actualizado (la versión instalada es posterior a la última publicada, %s).", target)
+	return false, fmt.Sprintf("Adarve está actualizado (la versión instalada es posterior a la última publicada, %s).", target)
 }
 
 func newUpdateCmd() *cobra.Command {
@@ -404,19 +404,19 @@ func newUpdateCmd() *cobra.Command {
 	var wanted, repo, releasesURL string
 	cmd := &cobra.Command{
 		Use:   "update",
-		Short: "Actualizar Bastion (y su paquete de reglas) a la última versión",
+		Short: "Actualizar Adarve (y su paquete de reglas) a la última versión",
 		Long: `Descarga la última release, verifica su suma SHA-256 y sustituye el binario.
 Las reglas oficiales van incrustadas en el binario, así que también se actualizan.
 
 Origen: https://github.com/<repo>/releases, o un espejo interno (siempre
 HTTPS) con --releases-url, update.releases_url en config.yaml o la variable
-BASTION_RELEASES_URL. Con privilegios, las variables BASTION_RELEASES_URL y
-BASTION_REPO se ignoran salvo con --trust-env: cualquier programa del
+ADARVE_RELEASES_URL. Con privilegios, las variables ADARVE_RELEASES_URL y
+ADARVE_REPO se ignoran salvo con --trust-env: cualquier programa del
 usuario podría fijarlas para que el administrador instale su binario.`,
-		Example: `  bastion update
-  bastion update --check
-  bastion update --version v0.3.2          # una versión concreta, también anterior
-  bastion update --releases-url https://mirror.interno/bastion/releases`,
+		Example: `  adarve update
+  adarve update --check
+  adarve update --version v0.3.2          # una versión concreta, también anterior
+  adarve update --releases-url https://mirror.interno/adarve/releases`,
 		RunE: func(cmd *cobra.Command, _ []string) (err error) {
 			if pause {
 				// Ventana de administrador abierta por la elevación: que no
@@ -437,8 +437,8 @@ usuario podría fijarlas para que el administrador instale su binario.`,
 			}
 			cfg := loadConfig()
 			src := selfupdate.Source{
-				Repo:    firstNonEmpty(repo, os.Getenv("BASTION_REPO"), cfg.Update.Repo, version.Repo),
-				BaseURL: firstNonEmpty(releasesURL, os.Getenv("BASTION_RELEASES_URL"), cfg.Update.ReleasesURL),
+				Repo:    firstNonEmpty(repo, config.Env("REPO"), cfg.Update.Repo, version.Repo),
+				BaseURL: firstNonEmpty(releasesURL, config.Env("RELEASES_URL"), cfg.Update.ReleasesURL),
 			}
 			if err := src.Validate(); err != nil {
 				return err
@@ -479,7 +479,7 @@ usuario podría fijarlas para que el administrador instale su binario.`,
 				}
 			}
 			if check {
-				line := "bastion update"
+				line := "adarve update"
 				if wanted != "" {
 					line += " --version " + target
 				}
@@ -490,14 +490,14 @@ usuario podría fijarlas para que el administrador instale su binario.`,
 				return nil
 			}
 			fmt.Printf("  %s\n", msg)
-			// En Windows, Bastion vive en Program Files: sin elevar no se puede
+			// En Windows, Adarve vive en Program Files: sin elevar no se puede
 			// sustituir. En vez de fallar al final, se repite la actualización
 			// en una ventana de administrador (como hace el instalador) y se
 			// espera a que termine. El proceso elevado no hereda las variables
 			// de esta consola: el origen se le pasa explícitamente.
 			if dir, werr := selfupdate.InstallDirWritable(); werr != nil && !probes.Privileged() {
 				if !canElevate() {
-					return fmt.Errorf("no se puede escribir en %s: repite con sudo (sudo bastion update)", dir)
+					return fmt.Errorf("no se puede escribir en %s: repite con sudo (sudo adarve update)", dir)
 				}
 				args := []string{"update", "--pause", "--version", target, "--repo", src.Repo}
 				if src.BaseURL != "" {
@@ -570,7 +570,7 @@ func newInitCmd() *cobra.Command {
 			for _, c := range res.Created {
 				fmt.Printf("  %s creado %s\n", s.Green("+"), c)
 			}
-			fmt.Printf("  %s Bastion preparado · configuración: %s\n", s.Green(report.Sym("✓")), res.Config)
+			fmt.Printf("  %s Adarve preparado · configuración: %s\n", s.Green(report.Sym("✓")), res.Config)
 			return nil
 		},
 	}

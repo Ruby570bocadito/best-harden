@@ -4,7 +4,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // RuleChange es un control que ha cambiado de estado desde el escaneo

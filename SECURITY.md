@@ -2,13 +2,13 @@
 
 ## Versiones con soporte
 
-Solo la última versión publicada recibe correcciones de seguridad. Actualiza con `bastion update` o volviendo a ejecutar el instalador.
+Solo la última versión publicada recibe correcciones de seguridad. Actualiza con `adarve update` o volviendo a ejecutar el instalador.
 
 ## Reportar una vulnerabilidad
 
-**No abras un issue público.** Usa el [aviso privado de seguridad de GitHub](https://github.com/Ruby570bocadito/bastion/security/advisories/new) e incluye:
+**No abras un issue público.** Usa el [aviso privado de seguridad de GitHub](https://github.com/Ruby570bocadito/adarve/security/advisories/new) e incluye:
 
-- versión de Bastion (`bastion version`) y sistema operativo;
+- versión de Adarve (`adarve version`) y sistema operativo;
 - descripción, impacto y pasos para reproducirlo;
 - si aplica, una prueba de concepto mínima.
 
@@ -21,7 +21,7 @@ Especialmente relevante:
 - ejecución de código a través de reglas, configuración o informes;
 - elusión de la verificación de actualizaciones;
 - XSS u otras inyecciones en el informe HTML a partir de datos del sistema auditado;
-- escalada de privilegios mediante los ficheros o directorios de Bastion;
+- escalada de privilegios mediante los ficheros o directorios de Adarve;
 - resultados falsos "superado" que oculten una configuración insegura.
 
 Modelo de amenazas y controles: [docs/08-seguridad-de-la-plataforma.md](docs/08-seguridad-de-la-plataforma.md).

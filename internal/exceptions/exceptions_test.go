@@ -129,6 +129,13 @@ func TestSaveLoad(t *testing.T) {
 	if err == nil || len(g.Exceptions) != 1 {
 		t.Errorf("la inválida debe ignorarse con aviso: %v %+v", err, g.Exceptions)
 	}
+
+	// Un fichero guardado por Bastion (el nombre anterior) sigue valiendo.
+	b, _ = os.ReadFile(path)
+	os.WriteFile(path, []byte(strings.Replace(string(b), Schema, legacySchema, 1)), 0o640)
+	if g, err = Load(path); g.Schema != Schema || len(g.Exceptions) != 1 {
+		t.Errorf("formato de Bastion: %v %+v", err, g)
+	}
 }
 
 func TestParseExpiry(t *testing.T) {

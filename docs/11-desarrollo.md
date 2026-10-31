@@ -4,30 +4,30 @@
 
 - **Go** (la versión de `go.mod`; con `GOTOOLCHAIN=auto`, Go descarga la versión correcta).
 - `make`, `git`. Opcional: ShellCheck, PowerShell 7 con PSScriptAnalyzer y GoReleaser.
-- Para probar en Windows desde Linux: `GOOS=windows go build ./cmd/bastion` y copiar el `.exe` a una VM.
+- Para probar en Windows desde Linux: `GOOS=windows go build ./cmd/adarve` y copiar el `.exe` a una VM.
 
 ```bash
-git clone https://github.com/Ruby570bocadito/bastion && cd bastion
+git clone https://github.com/Ruby570bocadito/adarve && cd adarve
 make help
-make build && sudo ./bin/bastion scan
+make build && sudo ./bin/adarve scan
 ```
 
 | Objetivo | Acción |
 |---|---|
-| `make build` | Compila `bin/bastion` con versión y commit |
+| `make build` | Compila `bin/adarve` con versión y commit |
 | `make test` | Tests |
 | `make lint` | gofmt + `go vet` para Linux **y** Windows |
 | `make rules-lint` | Valida el paquete de reglas |
 | `make cross` | Compila linux/windows × amd64/arm64 en `dist/` |
 | `make report` | Escanea y abre el informe |
-| `make set-repo REPO=usuario/bastion` | Cambia el repositorio de ejemplo en todo el proyecto |
+| `make set-repo REPO=usuario/adarve` | Cambia el repositorio de ejemplo en todo el proyecto |
 
 Desarrollar sin tocar `/etc` ni `/var/lib`:
 
 ```bash
-export BASTION_HOME=$PWD/.dev
-go run ./cmd/bastion init && sudo -E go run ./cmd/bastion --trust-env scan --save
-# Con privilegios, BASTION_HOME (y BASTION_RELEASES_URL, BASTION_REPO) solo se
+export ADARVE_HOME=$PWD/.dev
+go run ./cmd/adarve init && sudo -E go run ./cmd/adarve --trust-env scan --save
+# Con privilegios, ADARVE_HOME (y ADARVE_RELEASES_URL, ADARVE_REPO) solo se
 # usan con --trust-env: cualquier programa del usuario podría fijarlas.
 ```
 
@@ -47,8 +47,8 @@ Ver [02-arquitectura.md](02-arquitectura.md#estructura-del-repositorio). Reglas 
 2. Escribe la regla siguiendo la [guía de estilo](04-motor-de-reglas.md#guía-de-estilo-para-escribir-reglas). Para validación en el editor, añade arriba:
    `# yaml-language-server: $schema=../schema/rule.schema.json`
 3. `make rules-lint test`.
-4. Pruébala en un equipo real: `sudo ./bin/bastion scan --rule TU-ID -a`.
-5. Regenera el catálogo: `./bin/bastion rules doc > /tmp/c.md` y actualiza la sección 1 de `docs/06-catalogo-de-controles.md`.
+4. Pruébala en un equipo real: `sudo ./bin/adarve scan --rule TU-ID -a`.
+5. Regenera el catálogo: `./bin/adarve rules doc > /tmp/c.md` y actualiza la sección 1 de `docs/06-catalogo-de-controles.md`.
 
 ## Añadir un probe
 
@@ -82,7 +82,7 @@ Ver [02-arquitectura.md](02-arquitectura.md#estructura-del-repositorio). Reglas 
 1. Actualiza el changelog si procede y crea la etiqueta: `git tag v0.2.0 && git push origin v0.2.0`.
 2. El workflow `release.yml`:
    - genera `.release/version.txt` con la etiqueta (lo usan los instaladores);
-   - ejecuta GoReleaser: tests, binarios para 4 plataformas, `bastion_<os>_<arch>.tar.gz|zip`, `checksums.txt`, SBOM, y adjunta `install.sh` e `install.ps1`.
+   - ejecuta GoReleaser: tests, binarios para 4 plataformas, `adarve_<os>_<arch>.tar.gz|zip`, `checksums.txt`, SBOM, y adjunta `install.sh` e `install.ps1`.
 3. Comprueba la instalación con el one-liner en una VM limpia de cada plataforma.
 
-> El nombre de los archivos **no lleva versión** (`bastion_linux_amd64.tar.gz`): los instaladores y `bastion update` lo construyen a partir del sistema y la arquitectura.
+> El nombre de los archivos **no lleva versión** (`adarve_linux_amd64.tar.gz`): los instaladores y `adarve update` lo construyen a partir del sistema y la arquitectura.

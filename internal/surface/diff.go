@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // Tipos de cambio entre dos análisis.

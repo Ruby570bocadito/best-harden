@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ruby570bocadito/bastion/internal/engine"
-	"github.com/Ruby570bocadito/bastion/internal/platform"
-	"github.com/Ruby570bocadito/bastion/internal/surface"
-	"github.com/Ruby570bocadito/bastion/pkg/rule"
+	"github.com/Ruby570bocadito/adarve/internal/engine"
+	"github.com/Ruby570bocadito/adarve/internal/platform"
+	"github.com/Ruby570bocadito/adarve/internal/surface"
+	"github.com/Ruby570bocadito/adarve/pkg/rule"
 )
 
 // Un valor leído del sistema auditado (p. ej. una línea de sudoers) no debe
@@ -33,7 +33,7 @@ func TestHTMLNeutralizesHostileData(t *testing.T) {
 	if strings.Contains(out, "<script>alert") || strings.Contains(out, "<img src=x") {
 		t.Fatal("el informe contiene HTML sin escapar procedente de los datos")
 	}
-	if strings.Contains(out, "__BASTION_DATA__") || strings.Contains(out, "__NONCE__") {
+	if strings.Contains(out, "__ADARVE_DATA__") || strings.Contains(out, "__NONCE__") {
 		t.Fatal("quedan marcadores sin sustituir")
 	}
 	m := regexp.MustCompile(`script-src 'nonce-([A-Za-z0-9_-]{16,})'`).FindStringSubmatch(out)
@@ -82,7 +82,7 @@ func TestSavedReports(t *testing.T) {
 	if err != nil || rep.Score.Value != 88 {
 		t.Errorf("LoadSaved: %v %+v", err, rep)
 	}
-	for _, bad := range []string{"../etc/passwd", "bastion-x-20261015-100000/../../a", "x.json", ""} {
+	for _, bad := range []string{"../etc/passwd", "adarve-x-20261015-100000/../../a", "x.json", ""} {
 		if _, err := LoadSaved(dir, bad); err == nil {
 			t.Errorf("%q debería rechazarse", bad)
 		}
@@ -122,7 +122,7 @@ func TestSurfaceHTMLNeutralizesHostileData(t *testing.T) {
 	if strings.Contains(out, "<script>alert") || strings.Contains(out, "<img src=x") {
 		t.Fatal("el informe contiene HTML sin escapar procedente de los datos")
 	}
-	for _, mark := range []string{"__BASTION_DATA__", "__NONCE__", "__STYLE__"} {
+	for _, mark := range []string{"__ADARVE_DATA__", "__NONCE__", "__STYLE__"} {
 		if strings.Contains(out, mark) {
 			t.Fatalf("queda el marcador %s", mark)
 		}

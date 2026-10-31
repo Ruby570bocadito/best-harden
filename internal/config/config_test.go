@@ -2,18 +2,19 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func TestSetNotify(t *testing.T) {
-	t.Setenv("BASTION_HOME", t.TempDir())
+	t.Setenv("ADARVE_HOME", t.TempDir())
 	// Sin config.yaml: se crea el de por defecto con la sección.
-	if err := SetNotify(Notify{Webhook: "https://ntfy.sh/bastion-rby", When: "always"}); err != nil {
+	if err := SetNotify(Notify{Webhook: "https://ntfy.sh/adarve-rby", When: "always"}); err != nil {
 		t.Fatal(err)
 	}
 	c, err := Load()
-	if err != nil || c.Notify.Webhook != "https://ntfy.sh/bastion-rby" || c.Notify.When != "always" || c.Notify.Format != "" || c.Reports.Keep != 30 {
+	if err != nil || c.Notify.Webhook != "https://ntfy.sh/adarve-rby" || c.Notify.When != "always" || c.Notify.Format != "" || c.Reports.Keep != 30 {
 		t.Fatalf("tras crear: %+v %v", c, err)
 	}
 	b, _ := os.ReadFile(File())
@@ -49,5 +50,55 @@ func TestSetNotify(t *testing.T) {
 	}
 	if err := SetNotify(Notify{Webhook: "https://ntfy.sh/x"}); err == nil {
 		t.Error("con un config.yaml roto debería fallar")
+	}
+}
+
+func TestMigrated(t *testing.T) {
+	base := t.TempDir()
+	dir, legacy := filepath.Join(base, "Adarve"), filepath.Join(base, "Bastion")
+
+	// Sin ninguna de las dos: la nueva.
+	if got := migrated(dir, legacy); got != dir {
+		t.Fatalf("sin carpetas: %s", got)
+	}
+
+	// Solo la de Bastion: se traslada con su contenido.
+	if err := os.MkdirAll(filepath.Join(legacy, "reports"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(legacy, "exceptions.yaml"), []byte("x"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if got := migrated(dir, legacy); got != dir {
+		t.Fatalf("tras migrar: %s", got)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "exceptions.yaml")); err != nil {
+		t.Errorf("el contenido no se trasladó: %v", err)
+	}
+	if _, err := os.Stat(legacy); !os.IsNotExist(err) {
+		t.Errorf("la carpeta de Bastion sigue ahí: %v", err)
+	}
+
+	// Las dos: manda la nueva y la antigua no se toca.
+	if err := os.Mkdir(legacy, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if got := migrated(dir, legacy); got != dir {
+		t.Errorf("con las dos: %s", got)
+	}
+	if _, err := os.Stat(legacy); err != nil {
+		t.Errorf("con las dos, la de Bastion no debe tocarse: %v", err)
+	}
+}
+
+func TestEnv(t *testing.T) {
+	t.Setenv("ADARVE_REPO", "")
+	t.Setenv("BASTION_REPO", "viejo/bastion")
+	if got := Env("REPO"); got != "viejo/bastion" {
+		t.Errorf("con la variable antigua: %q", got)
+	}
+	t.Setenv("ADARVE_REPO", "nuevo/adarve")
+	if got := Env("REPO"); got != "nuevo/adarve" {
+		t.Errorf("la nueva manda: %q", got)
 	}
 }

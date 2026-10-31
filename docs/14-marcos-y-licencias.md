@@ -19,7 +19,7 @@ Los números de recomendación de CIS cambian entre versiones del benchmark (por
 
 1. Cada mapeo se añadirá **indicando la versión del benchmark** (p. ej. `cis: ["win11-v4.0.0:18.6.4.4"]`).
 2. Se verificará contra el documento oficial y se probará en el laboratorio.
-3. Los títulos y la intención de las reglas ya se alinean con CIS L1/L2, y las diferencias se documentan en `rationale`/`impact`. Por ejemplo, Bastion incluye auditd en L1 por su valor defensivo, aunque CIS lo sitúa en L2.
+3. Los títulos y la intención de las reglas ya se alinean con CIS L1/L2, y las diferencias se documentan en `rationale`/`impact`. Por ejemplo, Adarve incluye auditd en L1 por su valor defensivo, aunque CIS lo sitúa en L2.
 
 ## Licencias de las fuentes
 
@@ -32,13 +32,13 @@ Los números de recomendación de CIS cambian entre versiones del benchmark (por
 | **MITRE ATT&CK** | Licencia de uso de MITRE (gratuita, requiere atribución) | Referenciar IDs y enlazar; incluir el aviso de atribución en informes |
 | **ENS / CCN-STIC** | Publicaciones del CCN, de acceso público | Referenciar y alinear; consultar al CCN antes de redistribuir guías |
 
-> **Decisión pendiente:** si Bastion será un producto comercial, conviene valorar la membresía de CIS SecureSuite (permite declarar "CIS Benchmark™ Certified" y usar los Build Kits) o limitar la referencia CIS a los IDs.
+> **Decisión pendiente:** si Adarve será un producto comercial, conviene valorar la membresía de CIS SecureSuite (permite declarar "CIS Benchmark™ Certified" y usar los Build Kits) o limitar la referencia CIS a los IDs.
 
 Aviso de atribución recomendado en los informes:
 
 > *MITRE ATT&CK® es una marca registrada de The MITRE Corporation. CIS Benchmarks™ es una marca registrada del Center for Internet Security, Inc.*
 
-## Licencia de Bastion
+## Licencia de Adarve
 
 🔜 **Pendiente de decidir** antes de publicar el repositorio. Opciones habituales:
 
@@ -46,5 +46,5 @@ Aviso de atribución recomendado en los informes:
 |---|---|---|
 | Open source permisivo | Apache-2.0 | Quieres adopción máxima y contribuciones de empresas |
 | Open core | Apache-2.0 (agente y motor) + comercial (servidor y UI de flota) | Quieres comunidad y un producto de pago |
-| Copyleft de red | AGPL-3.0 | Quieres impedir que terceros ofrezcan Bastion como servicio cerrado |
+| Copyleft de red | AGPL-3.0 | Quieres impedir que terceros ofrezcan Adarve como servicio cerrado |
 | Propietario | Comercial | Producto cerrado |

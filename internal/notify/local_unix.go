@@ -8,7 +8,7 @@ import (
 )
 
 // LocalName describe dónde quedan los avisos en este sistema.
-const LocalName = "syslog (journalctl -t bastion)"
+const LocalName = "syslog (journalctl -t adarve)"
 
 // InstallLocal no necesita nada en Unix.
 func InstallLocal() error { return nil }
@@ -22,7 +22,7 @@ func Local(ev Event) error {
 	case LevelWarning:
 		prio = syslog.LOG_WARNING
 	}
-	w, err := syslog.New(prio|syslog.LOG_DAEMON, "bastion")
+	w, err := syslog.New(prio|syslog.LOG_DAEMON, "adarve")
 	if err != nil {
 		return fmt.Errorf("no hay servicio de syslog en este equipo (%v)", err)
 	}

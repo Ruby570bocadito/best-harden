@@ -308,7 +308,7 @@ remediation:
     sc.exe config mrxsmb10 start= disabled
   breaking_risk: medium
   reboot_required: true
-impact: Sin quitar mrxsmb10 de las dependencias, el servicio Estación de trabajo no arranca. Por eso Bastion no lo cambia solo; desinstalar la característica (WIN-NET-002) lo resuelve del todo.
+impact: Sin quitar mrxsmb10 de las dependencias, el servicio Estación de trabajo no arranca. Por eso Adarve no lo cambia solo; desinstalar la característica (WIN-NET-002) lo resuelve del todo.
 ---
 id: WIN-NET-013
 title: No aceptar redirecciones ICMP
