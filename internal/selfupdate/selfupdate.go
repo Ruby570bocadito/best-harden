@@ -1,10 +1,12 @@
 // Package selfupdate actualiza el binario de Adarve desde las releases de
-// GitHub (o un espejo interno) verificando la suma SHA-256 publicada.
+// GitHub (o un espejo interno) verificando la firma de checksums.txt y la
+// suma SHA-256 del archivo.
 //
 // Contrato de releases (lo cumple GitHub y cualquier espejo estático):
 //
 //	<base>/latest/download/version.txt         → etiqueta de la última versión
 //	<base>/download/<tag>/checksums.txt        → sumas SHA-256
+//	<base>/download/<tag>/checksums.txt.sig    → su firma (ver signature.go)
 //	<base>/download/<tag>/adarve_<os>_<arch>.tar.gz | .zip
 package selfupdate
 
@@ -12,6 +14,7 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
@@ -39,6 +42,9 @@ const maxDownload = 200 << 20 // 200 MiB
 type Source struct {
 	Repo    string // owner/nombre en GitHub
 	BaseURL string // espejo opcional; por defecto https://github.com/<repo>/releases
+	// Unsigned acepta una release sin checksums.txt.sig (las anteriores a
+	// la firma). Una firma presente e inválida se rechaza siempre.
+	Unsigned bool
 }
 
 // Validate comprueba el origen antes de descargar nada: el repositorio
@@ -170,15 +176,16 @@ func AssetName(goos, goarch string) string {
 }
 
 // Download descarga y verifica la release tag y devuelve la ruta del binario
-// extraído en un directorio temporal (que el llamador debe borrar).
-func (s Source) Download(ctx context.Context, tag string) (binPath, tmpDir string, err error) {
+// extraído en un directorio temporal (que el llamador debe borrar). signed
+// indica si checksums.txt venía firmado (solo puede ser false con Unsigned).
+func (s Source) Download(ctx context.Context, tag string) (binPath, tmpDir string, signed bool, err error) {
 	if !ValidTag(tag) {
-		return "", "", fmt.Errorf("versión %q no válida", tag)
+		return "", "", false, fmt.Errorf("versión %q no válida", tag)
 	}
 	asset := AssetName(runtime.GOOS, runtime.GOARCH)
 	tmpDir, err = os.MkdirTemp("", "adarve-update-")
 	if err != nil {
-		return "", "", err
+		return "", "", false, err
 	}
 	defer func() {
 		if err != nil {
@@ -187,28 +194,41 @@ func (s Source) Download(ctx context.Context, tag string) (binPath, tmpDir strin
 		}
 	}()
 
-	var sums strings.Builder
+	var sums, sig bytes.Buffer
 	if err = get(ctx, fmt.Sprintf("%s/download/%s/checksums.txt", s.Base(), tag), &sums, 1<<20); err != nil {
-		return "", "", err
+		return "", "", false, err
+	}
+	// La firma se comprueba antes de creer ninguna suma.
+	switch serr := get(ctx, fmt.Sprintf("%s/download/%s/checksums.txt.sig", s.Base(), tag), &sig, 1<<10); {
+	case IsNotFound(serr) && s.Unsigned:
+	case IsNotFound(serr):
+		return "", "", false, fmt.Errorf("%w: para instalar igualmente una versión sin firma, usa --insecure", ErrUnsigned)
+	case serr != nil:
+		return "", "", false, serr
+	default:
+		if err = VerifyChecksums(sums.Bytes(), sig.Bytes()); err != nil {
+			return "", "", false, err
+		}
+		signed = true
 	}
 	want, ok := ParseChecksums(sums.String())[asset]
 	if !ok {
-		return "", "", fmt.Errorf("checksums.txt no contiene %s", asset)
+		return "", "", false, fmt.Errorf("checksums.txt no contiene %s", asset)
 	}
 
 	archive := filepath.Join(tmpDir, asset)
 	f, err := os.Create(archive)
 	if err != nil {
-		return "", "", err
+		return "", "", false, err
 	}
 	h := sha256.New()
 	err = get(ctx, fmt.Sprintf("%s/download/%s/%s", s.Base(), tag, asset), io.MultiWriter(f, h), maxDownload)
 	f.Close()
 	if err != nil {
-		return "", "", err
+		return "", "", false, err
 	}
 	if got := hex.EncodeToString(h.Sum(nil)); !strings.EqualFold(got, want) {
-		return "", "", fmt.Errorf("la suma SHA-256 no coincide (esperada %s, obtenida %s): descarga abortada", want, got)
+		return "", "", false, fmt.Errorf("la suma SHA-256 no coincide (esperada %s, obtenida %s): descarga abortada", want, got)
 	}
 
 	exe := "adarve"
@@ -221,7 +241,7 @@ func (s Source) Download(ctx context.Context, tag string) (binPath, tmpDir strin
 	} else {
 		err = extractTarGz(archive, exe, binPath)
 	}
-	return binPath, tmpDir, err
+	return binPath, tmpDir, signed, err
 }
 
 // ParseChecksums interpreta un checksums.txt ("<sha256>  <fichero>").

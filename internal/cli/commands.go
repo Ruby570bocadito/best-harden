@@ -400,12 +400,13 @@ func planUpdate(current, target string, explicit, force bool) (install bool, msg
 }
 
 func newUpdateCmd() *cobra.Command {
-	var check, force, pause bool
+	var check, force, pause, insecure bool
 	var wanted, repo, releasesURL string
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "Actualizar Adarve (y su paquete de reglas) a la última versión",
-		Long: `Descarga la última release, verifica su suma SHA-256 y sustituye el binario.
+		Long: `Descarga la última release, verifica la firma de sus sumas y la suma SHA-256
+del archivo, y sustituye el binario.
 Las reglas oficiales van incrustadas en el binario, así que también se actualizan.
 
 Origen: https://github.com/<repo>/releases, o un espejo interno (siempre
@@ -437,8 +438,9 @@ usuario podría fijarlas para que el administrador instale su binario.`,
 			}
 			cfg := loadConfig()
 			src := selfupdate.Source{
-				Repo:    firstNonEmpty(repo, config.Env("REPO"), cfg.Update.Repo, version.Repo),
-				BaseURL: firstNonEmpty(releasesURL, config.Env("RELEASES_URL"), cfg.Update.ReleasesURL),
+				Repo:     firstNonEmpty(repo, config.Env("REPO"), cfg.Update.Repo, version.Repo),
+				BaseURL:  firstNonEmpty(releasesURL, config.Env("RELEASES_URL"), cfg.Update.ReleasesURL),
+				Unsigned: insecure,
 			}
 			if err := src.Validate(); err != nil {
 				return err
@@ -506,6 +508,9 @@ usuario podría fijarlas para que el administrador instale su binario.`,
 				if force || !selfupdate.IsRelease(current) {
 					args = append(args, "--force")
 				}
+				if insecure {
+					args = append(args, "--insecure")
+				}
 				if gf.noColor {
 					args = append(args, "--no-color")
 				}
@@ -522,12 +527,16 @@ usuario podría fijarlas para que el administrador instale su binario.`,
 				return nil
 			}
 			fmt.Printf("  Descargando %s …\n", selfupdate.AssetName(runtimeGOOS(), runtimeGOARCH()))
-			bin, tmp, err := src.Download(ctx, target)
+			bin, tmp, signed, err := src.Download(ctx, target)
 			if err != nil {
 				return err
 			}
 			defer os.RemoveAll(tmp)
-			fmt.Printf("  %s Suma SHA-256 verificada\n", s.Green(report.Sym("✓")))
+			if signed {
+				fmt.Printf("  %s Firma de la release y suma SHA-256 verificadas\n", s.Green(report.Sym("✓")))
+			} else {
+				fmt.Printf("  %s Release sin firma (--insecure): solo se ha verificado la suma SHA-256\n", s.Yellow("!"))
+			}
 			if err := selfupdate.Apply(bin); err != nil {
 				return err
 			}
@@ -540,6 +549,7 @@ usuario podría fijarlas para que el administrador instale su binario.`,
 	cmd.Flags().StringVar(&wanted, "version", "", "instalar una versión concreta (p. ej. v0.3.2), también anterior")
 	cmd.Flags().StringVar(&repo, "repo", "", "repositorio de GitHub (owner/nombre)")
 	cmd.Flags().StringVar(&releasesURL, "releases-url", "", "espejo interno de releases (https://…)")
+	cmd.Flags().BoolVar(&insecure, "insecure", false, "aceptar una release sin firma (las anteriores a la v0.5); una firma inválida se rechaza siempre")
 	cmd.Flags().BoolVar(&pause, "pause", false, "esperar a Intro al terminar (ventana abierta por la elevación)")
 	_ = cmd.Flags().MarkHidden("pause")
 	return cmd

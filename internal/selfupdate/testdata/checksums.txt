@@ -1,0 +1,2 @@
+abc123  adarve_windows_amd64.zip
+def456  adarve_linux_amd64.tar.gz

@@ -9,7 +9,7 @@ Adarve se ejecuta como **SYSTEM/root** en equipos críticos. Para un atacante es
 | Adarve como herramienta de ejecución remota (C2) | Servidor comprometido que envía comandos | **No existe** la capacidad de ejecutar comandos arbitrarios ([ADR-0004](adr/0004-sin-ejecucion-arbitraria.md)) |
 | Paquete de reglas malicioso | Regla que intenta ejecutar código | Reglas declarativas; los probes usan comandos fijos; `ps` solo admite una lista blanca |
 | Secuestro de binarios | `PATH` manipulado para suplantar `secedit` o `powershell` | Rutas absolutas `%SystemRoot%\System32\...` en Windows |
-| Actualización manipulada | Mirror comprometido o MITM | HTTPS obligatorio (también en las redirecciones; `http://` solo hacia el propio equipo) + verificación SHA-256; con privilegios se ignoran `ADARVE_RELEASES_URL`/`ADARVE_REPO`/`ADARVE_HOME` salvo con `--trust-env`; atestación de procedencia SLSA verificable con `gh attestation verify` (🔜 verificación en el propio `update`) |
+| Actualización manipulada | Mirror comprometido o MITM | Firma de `checksums.txt` con la clave de las releases, comprobada antes de creer ninguna suma ([ADR-0009](adr/0009-releases-firmadas.md)) + SHA-256 del archivo + HTTPS obligatorio (también en las redirecciones; `http://` solo hacia el propio equipo); con privilegios se ignoran `ADARVE_RELEASES_URL`/`ADARVE_REPO`/`ADARVE_HOME` salvo con `--trust-env`; atestación de procedencia SLSA verificable con `gh attestation verify` |
 | XSS en el informe | Valor hostil leído del sistema (p. ej. una línea de `sudoers`) | JSON escapado, `textContent`, CSP con nonce |
 | Lectura de datos sensibles | Informes y configuración legibles por cualquiera | Directorios con permisos restringidos a root / Administradores+SYSTEM |
 | Configuración plantada | Otro usuario crea `%ProgramData%Adarve` o `config.yaml` antes que el administrador | Con privilegios se comprueban propietario y DACL (o modo) de la carpeta, `config.yaml`, `exceptions.yaml` y `rules.d`; si no son solo de administradores se ignoran, y los comandos que escriben los apartan (`*.no-confiable-<fecha>`) y restablecen los permisos |
@@ -35,7 +35,9 @@ Adarve se ejecuta como **SYSTEM/root** en equipos críticos. Para un atacante es
 - `adarve scan` no modifica el sistema. Los únicos ficheros que escribe son los informes que se piden y ficheros temporales privados (`secpol.inf`, `audit.csv`), que se borran al terminar.
 
 ### Actualizaciones verificadas
-- El instalador y `adarve update` descargan `checksums.txt` y verifican el SHA-256 del archivo **antes** de extraerlo. Si no coincide, abortan sin tocar la instalación existente.
+- El instalador y `adarve update` descargan `checksums.txt` y su firma `checksums.txt.sig`, comprueban la firma con la clave pública que llevan dentro y solo entonces verifican el SHA-256 del archivo, **antes** de extraerlo. Si algo no cuadra, abortan sin tocar la instalación existente.
+- Una release sin firma (las anteriores a la v0.5) solo se instala con `--insecure` / `-Insecure`; una firma inválida se rechaza siempre.
+- La clave privada solo existe en el secreto `ADARVE_SIGNING_KEY` de GitHub y en la copia de seguridad del mantenedor. El workflow comprueba que corresponde a la clave pública del repositorio antes de firmar.
 - Reemplazo atómico en Linux (`rename`) y renombrado seguro en Windows (`.old`).
 - Límites de tamaño en descargas y extracción.
 
@@ -74,7 +76,6 @@ Adarve se ejecuta como **SYSTEM/root** en equipos críticos. Para un atacante es
 
 | Fase | Control |
 |---|---|
-| 1 | Verificar la atestación de procedencia en el instalador y en `update` (hoy se verifica a mano con `gh attestation verify`) |
 | 1 | Authenticode para `adarve.exe` (evita SmartScreen y mejora la confianza del EDR) |
 | 2 | Paquetes de reglas firmados; lista de claves de confianza para reglas propias |
 | 2 | Instantáneas con hash y ACL; log local de cambios encadenado por hash |

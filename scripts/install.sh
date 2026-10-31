@@ -18,7 +18,9 @@
 #    --force                reinstalar aunque ya esté en la última versión
 #    --local <archivo>      instalar desde un .tar.gz local (sin conexión; necesita
 #                           checksums.txt en la misma carpeta)
-#    --insecure             con --local, instalar aunque no haya checksums.txt
+#    --insecure             instalar aunque la release no esté firmada (las
+#                           anteriores a la v0.5) o, con --local, aunque no haya
+#                           checksums.txt; una firma inválida se rechaza siempre
 #    --repo <owner/nombre>  repositorio de GitHub
 #    --releases-url <url>   espejo interno de releases (https://…)
 #    --prefix <dir>         directorio del binario (por defecto /usr/local/bin)
@@ -27,8 +29,9 @@
 #  Variables equivalentes: ADARVE_VERSION, ADARVE_NO_SCAN=1, ADARVE_REPO,
 #  ADARVE_RELEASES_URL, ADARVE_PREFIX.
 #
-#  Seguridad: el archivo descargado se verifica contra checksums.txt
-#  (SHA-256) antes de instalarse. Si prefieres revisar el script antes de
+#  Seguridad: antes de instalar se comprueba la firma de checksums.txt
+#  (checksums.txt.sig, con la clave pública de abajo) y la suma SHA-256 del
+#  archivo descargado. Si prefieres revisar el script antes de
 #  ejecutarlo: descárgalo, léelo y ejecútalo con "sudo bash install.sh".
 # =============================================================================
 
@@ -203,6 +206,35 @@ sha256() {
   fi
 }
 
+# release_key es la clave pública que firma checksums.txt en cada release
+# (la misma que internal/selfupdate/release-signing.pub; un test lo comprueba).
+release_key() {
+  cat <<'KEY'
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAENavP7OxSrWmDs7jZimtPx56gl24S
+mPwVLAnoo+XKfzll9cxpWQ4/KsNPNw6gorkKz5WHpQBKX/qc4A5tWedLTA==
+-----END PUBLIC KEY-----
+KEY
+}
+
+# check_signature <checksums.txt> <checksums.txt.sig o vacío si no hay firma>
+check_signature() {
+  if [ -z "$2" ]; then
+    [ "$INSECURE" -eq 1 ] || die "la release no está firmada (falta checksums.txt.sig). Para instalar igualmente una versión sin firma, usa --insecure"
+    warn "release sin firma: solo se verifica la suma SHA-256 (--insecure)"
+    return 0
+  fi
+  if ! command -v openssl >/dev/null 2>&1; then
+    [ "$INSECURE" -eq 1 ] || die "se necesita openssl para verificar la firma de la release (instálalo o usa --insecure)"
+    warn "sin openssl no se puede verificar la firma: solo se verifica la suma SHA-256 (--insecure)"
+    return 0
+  fi
+  release_key > "$TMP/release.pub"
+  openssl dgst -sha256 -verify "$TMP/release.pub" -signature "$2" "$1" >/dev/null 2>&1 \
+    || die "la firma de checksums.txt no es válida: la release no la publicó Adarve o se ha manipulado. Instalación abortada."
+  ok "Firma de la release verificada"
+}
+
 check_sum() { # check_sum <archivo> <checksums.txt>
   local want got
   want="$(awk -v f="$ASSET" '$2 == f || $2 == "*"f {print $1}' "$2")"
@@ -213,8 +245,10 @@ check_sum() { # check_sum <archivo> <checksums.txt>
 }
 
 download_and_verify() {
-  local base="${RELEASES_URL}/download/${VERSION}"
+  local base="${RELEASES_URL}/download/${VERSION}" sig="$TMP/checksums.txt.sig"
   fetch_text "${base}/checksums.txt" > "$TMP/checksums.txt" || die "no se pudo descargar checksums.txt de ${base}"
+  fetch_text "${base}/checksums.txt.sig" > "$sig" 2>/dev/null || sig=""
+  check_signature "$TMP/checksums.txt" "$sig"
   fetch_file "${base}/${ASSET}" "$TMP/$ASSET" || die "no se pudo descargar ${ASSET}"
   check_sum "$TMP/$ASSET" "$TMP/checksums.txt"
 }
@@ -223,6 +257,11 @@ verify_local() {
   local sums
   sums="$(dirname "$1")/checksums.txt"
   if [ -f "$sums" ]; then
+    if [ -f "${sums}.sig" ]; then
+      check_signature "$sums" "${sums}.sig"
+    else
+      check_signature "$sums" ""
+    fi
     check_sum "$TMP/$ASSET" "$sums"
   elif [ "$INSECURE" -eq 1 ]; then
     warn "no hay checksums.txt junto a $1: se instala SIN verificar la integridad (--insecure)"

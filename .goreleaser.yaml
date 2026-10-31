@@ -42,6 +42,16 @@ checksum:
   name_template: checksums.txt
   algorithm: sha256
 
+signs:
+  # checksums.txt.sig: firma ECDSA P-256 de checksums.txt con la clave de las
+  # releases (secreto ADARVE_SIGNING_KEY). La comprueban adarve update y los
+  # instaladores con la clave pública de internal/selfupdate/release-signing.pub.
+  - id: checksums
+    artifacts: checksum
+    cmd: openssl
+    args: ["dgst", "-sha256", "-sign", "{{ .Env.ADARVE_SIGNING_KEY_FILE }}", "-out", "${signature}", "${artifact}"]
+    signature: "${artifact}.sig"
+
 sboms:
   - artifacts: archive
 
