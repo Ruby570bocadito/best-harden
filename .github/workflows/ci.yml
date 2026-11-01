@@ -203,12 +203,16 @@ jobs:
           # en el runner, el rollback de sus preferencias no puede hacerse.
           function Defender([string]$fase) { $s = Get-Service WinDefend -ErrorAction SilentlyContinue; "Defender ($fase): servicio $($s.Status), inicio $($s.StartType)" }
           Defender 'antes'
-          $before = (& $b scan --format json | ConvertFrom-Json).score.value
           & $b harden --wave 1 --no-color
-          & $b harden --wave 1 --apply --yes --no-color
+          # La postura de partida es la que ve harden al aplicar: entre dos
+          # escaneos, el runner puede cambiar algún ajuste por su cuenta (un
+          # escaneo previo dio 54 y harden, poco después, 50).
+          $out = & $b harden --wave 1 --apply --yes --no-color | Out-String
+          Write-Host $out
           if ($LASTEXITCODE -ne 0) { throw 'harden falló' }
+          if ($out -notmatch 'POSTURA\s+(\d+)/100\D+(\d+)/100') { throw 'harden no mostró la postura de antes y de después' }
+          $before, $after = [int]$Matches[1], [int]$Matches[2]
           Defender 'tras aplicar'
-          $after = (& $b scan --format json | ConvertFrom-Json).score.value
           & $b history --no-color
           Defender 'antes del rollback'
           & $b rollback --yes --no-color
