@@ -484,12 +484,32 @@ func startService(name string) error {
 
 // ---- Defender ------------------------------------------------------------------------
 
+// defenderUnavailable es el HRESULT de Defender cuando su servicio no
+// responde (RPC_S_SERVER_UNAVAILABLE): parado, arrancando o actualizándose.
+const defenderUnavailable = "0x800106ba"
+
+// defenderRetries son las esperas antes de cada reintento si Defender no
+// responde (una actualización de la plataforma lo reinicia unos segundos).
+var defenderRetries = []time.Duration{2 * time.Second, 5 * time.Second, 10 * time.Second}
+
 // runPSSet ejecuta un cmdlet de Defender. Los argumentos ya están validados
 // (GUID, enteros y nombres de una lista blanca) y no llevan comillas.
 func runPSSet(ctx context.Context, script string) error {
-	_, err := run(ctx, probes.System32(`WindowsPowerShell\v1.0\powershell.exe`),
-		"-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "$ErrorActionPreference='Stop'; "+script)
-	return err
+	exe := probes.System32(`WindowsPowerShell\v1.0\powershell.exe`)
+	for i := 0; ; i++ {
+		out, err := run(ctx, exe, "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "$ErrorActionPreference='Stop'; "+script)
+		if err == nil || !strings.Contains(strings.ToLower(out), defenderUnavailable) {
+			return err
+		}
+		if i == len(defenderRetries) {
+			return fmt.Errorf("el servicio de Microsoft Defender no responde (parado o reiniciándose, %s): vuelve a intentarlo cuando esté en marcha", defenderUnavailable)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(defenderRetries[i]):
+		}
+	}
 }
 
 type defenderASR struct{}
