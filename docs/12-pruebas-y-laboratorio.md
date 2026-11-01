@@ -18,7 +18,7 @@ Una herramienta de hardening solo es creíble si sus resultados son correctos. U
 | Fuzzing | 14 parsers de la salida del sistema auditado: ninguna entrada debe hacer caer a Adarve | `internal/surface/fuzz_test.go`, `internal/probes/fuzz_test.go`; cada noche en `.github/workflows/fuzz.yml` | ✅ |
 | Análisis estático | `govulncheck`, `staticcheck` y `gosec` (Linux y Windows) | CI, job «Análisis de seguridad» | ✅ |
 | Permisos como root | La carpeta de datos se restringe sin seguir enlaces simbólicos | `internal/config/perms_unix_test.go` con `sudo` en CI | ✅ |
-| Instaladores de punta a punta | Instalación limpia, reejecución, actualización, archivo manipulado, desinstalación contra un espejo local | Manual, ver abajo | ✅ manual · 🔜 CI |
+| Instaladores de punta a punta | Migración desde Bastion (datos, configuración, binario, PATH y ronda diaria a la misma hora), reinstalación, `update`, releases manipuladas y sin firma (también con `--insecure`), `--local` con y sin firma, desinstalación con y sin `--purge`, en Ubuntu y Windows reales contra un espejo firmado con una clave de prueba | `scripts/e2e/`, job «Instaladores de punta a punta» | ✅ CI |
 | Fixtures por regla | Cada regla con un caso que pasa y otro que falla sobre un sistema simulado | `adarve rules test` | 🔜 fase 2 |
 | Laboratorio de VMs | Ciclo `scan → harden → verify → rollback → verify` + idempotencia | Packer/Vagrant | 🔜 fase 2 |
 | Validación cruzada | Comparar resultados con CIS-CAT Lite, OpenSCAP y HardeningKitty | Laboratorio | 🔜 |

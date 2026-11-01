@@ -318,7 +318,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - run: shellcheck scripts/install.sh
+      - run: shellcheck scripts/install.sh scripts/e2e/install-linux.sh
 
   cross:
     name: Compilación cruzada
@@ -369,3 +369,29 @@ jobs:
           EXCLUDE=G104,G204,G304,G103,G301,G302,G306
           GOOS=linux gosec -quiet -exclude=$EXCLUDE ./...
           GOOS=windows gosec -quiet -exclude=$EXCLUDE ./...
+
+  # Instalar, migrar desde Bastion, reinstalar, actualizar, rechazar releases
+  # manipuladas o sin firma, --local y desinstalar, en máquinas reales y
+  # contra un espejo local firmado con una clave de prueba (mkmirror).
+  instaladores-e2e:
+    name: Instaladores de punta a punta (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - name: Espejo de releases firmado con una clave de prueba
+        shell: bash
+        run: go run ./scripts/e2e/mkmirror -out "$RUNNER_TEMP/e2e"
+      - name: install.sh (Linux, como root)
+        if: runner.os == 'Linux'
+        run: sudo CI=true bash scripts/e2e/install-linux.sh "$RUNNER_TEMP/e2e"
+      - name: install.ps1 (Windows PowerShell 5.1, como administrador)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: .\scripts\e2e\install-windows.ps1 -Dir "$env:RUNNER_TEMP\e2e"
