@@ -9,19 +9,20 @@
 <style>
 /* Identidad de Adarve: piedra (la muralla) y luna (enlaces y acción). El
    informe se comparte e imprime, así que parte del tema de día; el de noche
-   sigue al sistema o al botón Tema. Los estilos los usa también el informe
-   de superficie. */
+   sigue al sistema o al botón de luna y sol, y es el de la consola: tarjetas
+   más oscuras que el fondo, sin borde. Los estilos los usa también el
+   informe de superficie. */
 :root {
   color-scheme: light;
-  --page: #f2eee5;
-  --surface: #fbf9f4;
-  --surface-2: #ebe5d8;
+  --page: #f0efec;
+  --surface: #fbfbfa;
+  --surface-2: #e9e7e2;
   --ink: #1a1d23;
   --ink-2: #3d4250;
   --muted: #5d6270;
-  --hair: #ddd5c4;
-  --axis: #c4b9a3;
-  --ring: #ddd5c4;
+  --hair: #dedbd4;
+  --axis: #c4beb2;
+  --ring: #dedbd4;
   --accent: #2f5fa8;
   --accent-soft: #dbe5f5;
   --stone: #c9b48a;
@@ -30,11 +31,13 @@
   --good: #2e9a5a;
   --good-text: #1f7a43;
   --warning: #c79a00;
+  --warning-text: #8a6a00;
   --serious: #c2621f;
+  --serious-text: #a14e15;
   --critical: #b3261e;
   --info: #6e7381;
-  --track: #e3dccd;
-  --code-bg: #ebe5d8;
+  --track: #e3e0d9;
+  --code-bg: #e9e7e2;
   --shadow: none;
   --display: Bahnschrift, "DIN Alternate", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
 }
@@ -42,14 +45,14 @@
   :root:not([data-theme="light"]) {
     color-scheme: dark;
     --page: #0e1218;
-    --surface: #151a22;
-    --surface-2: #1c2330;
-    --ink: #ece6da;
+    --surface: #090c10;
+    --surface-2: #19202b;
+    --ink: #e7e6e3;
     --ink-2: #c9cdd4;
     --muted: #a7adb8;
-    --hair: #252c37;
+    --hair: #1d242e;
     --axis: #353e4b;
-    --ring: #252c37;
+    --ring: #090c10;
     --accent: #9cc2ff;
     --accent-soft: #1f2a3b;
     --stone: #cdbb95;
@@ -57,24 +60,26 @@
     --good: #6fd99a;
     --good-text: #6fd99a;
     --warning: #f2c94c;
+    --warning-text: #f2c94c;
     --serious: #ffa463;
+    --serious-text: #ffa463;
     --critical: #ff8a7d;
     --info: #b9bfca;
-    --track: #252c37;
-    --code-bg: #0b0f14;
+    --track: #1d242e;
+    --code-bg: #05070a;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
   --page: #0e1218;
-  --surface: #151a22;
-  --surface-2: #1c2330;
-  --ink: #ece6da;
+  --surface: #090c10;
+  --surface-2: #19202b;
+  --ink: #e7e6e3;
   --ink-2: #c9cdd4;
   --muted: #a7adb8;
-  --hair: #252c37;
+  --hair: #1d242e;
   --axis: #353e4b;
-  --ring: #252c37;
+  --ring: #090c10;
   --accent: #9cc2ff;
   --accent-soft: #1f2a3b;
   --stone: #cdbb95;
@@ -82,22 +87,24 @@
   --good: #6fd99a;
   --good-text: #6fd99a;
   --warning: #f2c94c;
+  --warning-text: #f2c94c;
   --serious: #ffa463;
+  --serious-text: #ffa463;
   --critical: #ff8a7d;
   --info: #b9bfca;
-  --track: #252c37;
-  --code-bg: #0b0f14;
+  --track: #1d242e;
+  --code-bg: #05070a;
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--page); color: var(--ink);
   font: 15px/1.5 "Segoe UI Variable Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 .stone {
   background-color: var(--stone);
-  background-image: linear-gradient(var(--mortar) 1px, transparent 1px), linear-gradient(90deg, var(--mortar) 1px, transparent 1px);
-  background-size: 100% 14px, 26px 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='24'%3E%3Cpath d='M0 .5h36M0 12.5h36M.5 0v12M18.5 12v12' stroke='%23a4916b' fill='none'/%3E%3C/svg%3E");
 }
 
 /* La muralla: un tramo por categoría */
@@ -136,11 +143,22 @@ code, pre, .mono { font-family: ui-monospace, "Cascadia Code", "SF Mono", Consol
   display: inline-flex; align-items: center; gap: 6px;
 }
 .btn:hover { background: var(--surface-2); color: var(--ink); }
+.top .btn { height: 34px; }
+.btn.icon { width: 36px; padding: 0; justify-content: center; }
+.icon { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+/* El icono dice el tema que se ve: la luna de noche, el sol de día. */
+.i-moon { display: none; }
+:root[data-theme="dark"] .i-moon { display: block; }
+:root[data-theme="dark"] .i-sun { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .i-moon { display: block; }
+  :root:not([data-theme="light"]) .i-sun { display: none; }
+}
 .btn:focus-visible, .chip:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Equipo */
 .host { padding: 28px 0 8px; }
-.host h1 { margin: 0 0 4px; font-family: var(--display); font-stretch: condensed; font-size: 34px; font-weight: 700; overflow-wrap: anywhere; }
+.host h1 { margin: 0 0 4px; font-family: var(--display); font-stretch: condensed; font-size: 30px; font-weight: 700; overflow-wrap: anywhere; }
 .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--ink-2); font-size: 14px; }
 .meta span { display: inline-flex; gap: 6px; }
 .meta b { color: var(--muted); font-weight: 500; }
@@ -148,39 +166,42 @@ code, pre, .mono { font-family: ui-monospace, "Cascadia Code", "SF Mono", Consol
   margin-top: 14px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--hair);
   background: var(--surface); display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--ink-2);
 }
-.warn-banner .ico { color: var(--warning); flex: none; }
+.warn-banner .ico { color: var(--warning-text); flex: none; }
 
 /* Tarjetas */
 .grid { display: grid; gap: 16px; }
 .card {
-  background: var(--surface); border: 1px solid var(--ring); border-radius: 18px;
+  background: var(--surface); border: 1px solid var(--ring); border-radius: 8px;
   box-shadow: var(--shadow); padding: 20px;
 }
-.card h2 { margin: 0 0 14px; font-size: 12.5px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 600; }
+.card h2 { margin: 0 0 14px; font-size: 15px; color: var(--ink); font-weight: 600; }
 section { margin-top: 16px; }
 
-/* Héroe + KPIs */
-.hero-row { display: grid; grid-template-columns: minmax(280px, 1.1fr) 2fr; gap: 16px; margin-top: 18px; }
-.hero { display: flex; flex-direction: column; justify-content: space-between; }
-.hero-figure { display: flex; align-items: baseline; gap: 10px; }
-.hero-figure .num { font-family: var(--display); font-stretch: condensed; font-size: 84px; line-height: .9; font-weight: 700; }
-.hero-figure .of { font-family: var(--display); font-stretch: condensed; color: var(--muted); font-size: 30px; }
+/* Héroe: la cifra a la izquierda y el recuento a la derecha, en una sola tarjeta */
+.hero { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(250px, 1fr); gap: 20px 32px; margin-top: 18px; }
+.hero-figure { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 10px; }
+.hero-figure .num { font-family: var(--display); font-stretch: condensed; font-size: 44px; line-height: 1.05; font-weight: 700; }
+.hero-figure .of { font-family: var(--display); font-stretch: condensed; color: var(--muted); font-size: 24px; }
 .grade {
-  margin-left: auto; align-self: center; min-width: 52px; height: 52px; border-radius: 12px;
-  display: grid; place-items: center; font-family: var(--display); font-stretch: condensed; font-size: 28px; font-weight: 700; border: 2px solid currentColor;
+  align-self: center; margin-left: 4px; display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 99px;
+  font-size: 13px; font-weight: 600; white-space: nowrap; color: var(--ink);
+  background: var(--surface-2); background: color-mix(in srgb, var(--tone, var(--muted)) 24%, transparent);
 }
 .hero p { margin: 10px 0 0; color: var(--ink-2); font-size: 14px; }
-.meter { height: 10px; border-radius: 99px; background: var(--track); overflow: hidden; margin-top: 16px; }
+.meter { height: 8px; border-radius: 99px; background: var(--track); overflow: hidden; margin-top: 14px; }
 .meter > i { display: block; height: 100%; border-radius: 99px; }
-.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.kpi { padding: 18px; }
-.kpi .label { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 14px; }
-.kpi .value { font-family: var(--display); font-stretch: condensed; font-size: 40px; font-weight: 700; margin-top: 4px; line-height: 1.1; }
-.kpi .sub { color: var(--muted); font-size: 13px; }
+.tally { border-left: 1px solid var(--hair); padding-left: 32px; }
+.tally .row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 16px; padding: 12px 0; border-top: 1px solid var(--hair); }
+.tally .row:first-child { border-top: 0; padding-top: 2px; }
+.tally .label { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.tally .sub { grid-column: 1; color: var(--muted); font-size: 13px; }
+.tally .value { grid-column: 2; grid-row: 1 / span 2; font-family: var(--display); font-stretch: condensed; font-size: 32px; font-weight: 700; line-height: 1; }
 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
 
-/* Dos columnas */
-.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+/* Dos columnas; y filas que apilan tarjetas en la derecha para que las alturas casen */
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.rows { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.stack { display: grid; gap: 16px; align-content: start; }
 
 /* Severidad */
 .sev-row { display: grid; grid-template-columns: 110px 1fr 70px; align-items: center; gap: 12px; padding: 7px 0; }
@@ -253,7 +274,7 @@ details.res[open] > summary { background: var(--surface-2); }
 .chev { color: var(--muted); transition: transform .15s; }
 details[open] .chev { transform: rotate(90deg); }
 .body { padding: 4px 6px 20px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
-.body h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
+.body h3 { font-size: 13.5px; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
 .body h3:first-child { margin-top: 6px; }
 .body p { margin: 0 0 8px; color: var(--ink-2); }
 .ev { list-style: none; margin: 0; padding: 0; }
@@ -274,16 +295,20 @@ a.ref:hover { color: var(--accent); text-decoration: none; }
 footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
 
 @media (max-width: 920px) {
-  .hero-row, .two, .body { grid-template-columns: 1fr; }
-  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .hero, .two, .rows, .body { grid-template-columns: 1fr; }
+  .tally { border-left: 0; padding: 14px 0 0; border-top: 1px solid var(--hair); display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; }
+  .tally .row:nth-child(2) { border-top: 0; padding-top: 2px; }
   details.res > summary { grid-template-columns: 96px 1fr 20px; }
   details.res > summary .rsev, details.res > summary .rid { display: none; }
 }
 @media (max-width: 520px) {
   .brand small { display: none; }
+  .host h1 { font-size: 24px; }
   #print .long { display: none; }
-  .hero-figure .num { font-size: 52px; }
-  .kpi .value { font-size: 28px; }
+  .hero-figure .num { font-size: 40px; }
+  .tally { grid-template-columns: 1fr; }
+  .tally .row:nth-child(2) { border-top: 1px solid var(--hair); padding-top: 12px; }
+  .tally .value { font-size: 28px; }
   .cat-row { grid-template-columns: 1fr 44px; }
   .cat-row .meter { grid-column: 1 / -1; grid-row: 2; }
 }
@@ -306,7 +331,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
     </div>
     <div class="spacer"></div>
     <button class="btn" id="print" type="button" title="Imprimir o guardar como PDF">Imprimir<span class="long"> / PDF</span></button>
-    <button class="btn" id="theme" type="button" title="Cambiar tema">Tema</button>
+    <button class="btn icon" id="theme" type="button" aria-label="Cambiar entre noche y día" title="Noche o día"><svg class="icon i-moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M15.6 12.9A6.6 6.6 0 0 1 7.1 4.4a6.6 6.6 0 1 0 8.5 8.5z"/></svg><svg class="icon i-sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.4"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M4.3 15.7l1.4-1.4M14.3 5.7l1.4-1.4"/></svg></button>
   </div>
 </header>
 
@@ -329,13 +354,13 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
     info: { label: "Info", color: "var(--info)", rank: 4 }
   };
   var STATUS = {
-    fail: { label: "Fallido", icon: "✕", color: "var(--critical)" },
-    error: { label: "Error", icon: "!", color: "var(--warning)" },
-    skipped: { label: "Sin evaluar", icon: "⊘", color: "var(--muted)" },
-    exception: { label: "Excepción", icon: "◇", color: "var(--info)" },
-    manual: { label: "Revisión manual", icon: "?", color: "var(--accent)" },
-    pass: { label: "Superado", icon: "✓", color: "var(--good)" },
-    na: { label: "No aplica", icon: "–", color: "var(--info)" }
+    fail: { label: "Fallido", color: "var(--critical)" },
+    error: { label: "Error", color: "var(--warning)" },
+    skipped: { label: "Sin evaluar", color: "var(--muted)" },
+    exception: { label: "Excepción", color: "var(--info)" },
+    manual: { label: "Revisión manual", color: "var(--accent)" },
+    pass: { label: "Superado", color: "var(--good)" },
+    na: { label: "No aplica", color: "var(--info)" }
   };
   var ROLE = { workstation: "Estación de trabajo", server: "Servidor", dc: "Controlador de dominio" };
   var RISK = { none: "Ninguno", low: "Bajo", medium: "Medio", high: "Alto" };
@@ -369,7 +394,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
     return el("span", { class: "badge" }, [icon ? el("span", { text: icon, style: "color:" + color + ";font-weight:700" }) : dot(color), text]);
   }
   function sevBadge(s) { var x = SEV[s] || SEV.info; return badge(x.color, x.label); }
-  function statusBadge(s) { var x = STATUS[s] || STATUS.na; return badge(x.color, x.label, x.icon); }
+  function statusBadge(s) { var x = STATUS[s] || STATUS.na; return badge(x.color, x.label); }
   function fmtDate(iso) {
     try { return new Date(iso).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" }); } catch (e) { return iso; }
   }
@@ -415,7 +440,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
   var hostSec = el("section", { class: "host" }, [el("h1", { text: h.hostname || "Equipo" }), meta]);
   if (sc.skipped) {
     hostSec.appendChild(el("div", { class: "warn-banner", role: "note" }, [
-      el("span", { class: "ico", text: "⚠" }),
+      el("span", { class: "ico", text: "!" }),
       el("span", { text: "El escaneo se ejecutó sin privilegios: " + sc.skipped + (sc.skipped === 1 ? " control no se pudo evaluar" : " controles no se pudieron evaluar") +
         " y no cuentan en la puntuación. Repite el escaneo como " + (h.family === "windows" ? "administrador." : "root (sudo).") })
     ]));
@@ -423,7 +448,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
   var expiredEx = results.filter(function (r) { return r.exception && r.exception.expired; });
   if (expiredEx.length) {
     hostSec.appendChild(el("div", { class: "warn-banner", role: "note" }, [
-      el("span", { class: "ico", text: "⚠" }),
+      el("span", { class: "ico", text: "!" }),
       el("span", { text: (expiredEx.length === 1 ? "1 excepción ha caducado" : expiredEx.length + " excepciones han caducado") + " y el control vuelve a contar como fallido: " +
         expiredEx.map(function (r) { return r.rule.id; }).join(", ") + ". Corrígelo o renueva la excepción (adarve exceptions add)." })
     ]));
@@ -443,45 +468,42 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
       (failed.length - auto === 1 ? "1 necesita" : (failed.length - auto) + " necesitan") + " una decisión." : "ninguna se repara sola: todas necesitan una decisión.");
   // Lo que solo puede juzgar una persona (op: manual): no es una brecha ni cuenta.
   if (sc.manual) voice += " Y " + (sc.manual === 1 ? "1 control lo tienes" : sc.manual + " controles los tienes") + " que revisar tú.";
-  var hero = el("div", { class: "card hero" }, [
-    el("h2", { text: "Estado de la muralla" }),
-    unscored ? el("div", null, [
-      el("div", { class: "hero-figure" }, [el("span", { class: "num", text: "—" }), el("span", { class: "of", text: "sin evaluar" })]),
-      el("p", { text: "Ningún control se ha podido evaluar (sin privilegios, con error o no aplicables): no hay puntuación." })
-    ]) : el("div", null, [
-      el("div", { class: "hero-figure" }, [
-        el("span", { class: "num", text: String(sc.value) }),
-        el("span", { class: "of", text: "/ 100" }),
-        el("span", { class: "grade", text: sc.grade, style: "color:" + color, title: "Calificación " + sc.grade })
-      ]),
-      el("div", { class: "meter", role: "img", "aria-label": "Puntuación " + sc.value + " de 100" }, [el("i", { style: "width:" + sc.value + "%;background:" + color })]),
-      el("p", { class: "voice", text: voice }),
-      el("p", { text: "Postura " + scoreWord(sc.value).toLowerCase() + " según el perfil " + (data.profile ? data.profile.id : "") +
-        ". Puntuación ponderada por severidad (crítico 10, alto 5, medio 3, bajo 1)." + (sc.partial ? " Es parcial: hay controles " + (sc.skipped ? "sin evaluar." : "con error.") : "") +
-        (sc.exceptions ? " " + (sc.exceptions === 1 ? "1 control fallido está aceptado" : sc.exceptions + " controles fallidos están aceptados") + " por excepción y no cuenta" + (sc.exceptions === 1 ? "." : "n.") : "") +
-        (sc.manual ? " " + (sc.manual === 1 ? "1 control necesita" : sc.manual + " controles necesitan") + " una revisión manual y no cuenta" + (sc.manual === 1 ? "." : "n.") : "") })
-    ])
-  ]);
-  var kpis = el("div", { class: "kpis" });
+  var main = el("div", null, [el("h2", { text: "Estado de la muralla" })].concat(unscored ? [
+    el("div", { class: "hero-figure" }, [el("span", { class: "num", text: "—" }), el("span", { class: "of", text: "sin evaluar" })]),
+    el("p", { text: "Ningún control se ha podido evaluar (sin privilegios, con error o no aplicables): no hay puntuación." })
+  ] : [
+    el("div", { class: "hero-figure" }, [
+      el("span", { class: "num", text: String(sc.value) }),
+      el("span", { class: "of", text: "/ 100" }),
+      el("span", { class: "grade", text: sc.grade + " · " + scoreWord(sc.value), style: "--tone:" + color, title: "Calificación " + sc.grade })
+    ]),
+    el("div", { class: "meter", role: "img", "aria-label": "Puntuación " + sc.value + " de 100" }, [el("i", { style: "width:" + sc.value + "%;background:" + color })]),
+    el("p", { class: "voice", text: voice }),
+    el("p", { text: "Perfil " + (data.profile ? data.profile.id : "") + ". Puntuación ponderada por severidad (crítico 10, alto 5, medio 3, bajo 1)." +
+      (sc.partial ? " Es parcial: hay controles " + (sc.skipped ? "sin evaluar." : "con error.") : "") +
+      (sc.exceptions ? " " + (sc.exceptions === 1 ? "1 control fallido está aceptado" : sc.exceptions + " controles fallidos están aceptados") + " por excepción y no cuenta" + (sc.exceptions === 1 ? "." : "n.") : "") +
+      (sc.manual ? " " + (sc.manual === 1 ? "1 control necesita" : sc.manual + " controles necesitan") + " una revisión manual y no cuenta" + (sc.manual === 1 ? "." : "n.") : "") })
+  ]));
   var unk = (sc.errors || 0) + (sc.skipped || 0);
   var unkSub = sc.skipped && sc.errors ? sc.skipped + " sin privilegios · " + sc.errors + " con error" :
     sc.skipped ? "requieren privilegios" : "no se pudieron leer";
-  // Tercera tarjeta: lo que no se pudo evaluar o, si todo se evaluó, las excepciones.
+  // Tercera fila: lo que no se pudo evaluar o, si todo se evaluó, las excepciones.
   var third = !unk && sc.exceptions ? ["exception", sc.exceptions, "Excepciones", "riesgo aceptado con caducidad"] :
     [sc.skipped ? "skipped" : "error", unk, "Sin evaluar", unkSub];
   // Cuarta: lo que debe revisar una persona o, si no hay nada, lo que no aplica.
   var fourth = sc.manual ? ["manual", sc.manual, "Revisión manual", "Adarve reúne la evidencia, decides tú"] :
     ["na", sc.na, "No aplican", "fuera del alcance de este equipo"];
+  var tally = el("div", { class: "tally", role: "group", "aria-label": "Recuento de controles" });
   [["fail", sc.failed, "Fallidos", "requieren acción"], ["pass", sc.passed, "Superados", "conformes"], third, fourth]
     .forEach(function (k) {
       var st = STATUS[k[0]];
-      kpis.appendChild(el("div", { class: "card kpi" }, [
-        el("div", { class: "label" }, [el("span", { text: st.icon, style: "color:" + st.color + ";font-weight:700" }), k[2]]),
-        el("div", { class: "value", text: String(k[1]) }),
-        el("div", { class: "sub", text: k[3] })
+      tally.appendChild(el("div", { class: "row" }, [
+        el("div", { class: "label" }, [dot(st.color), k[2]]),
+        el("div", { class: "sub", text: k[3] }),
+        el("div", { class: "value", text: String(k[1]) })
       ]));
     });
-  app.appendChild(el("div", { class: "hero-row" }, [hero, kpis]));
+  app.appendChild(el("section", { class: "card hero" }, [main, tally]));
 
   // ---- Cambios desde el último escaneo guardado del mismo perfil ----
   var ch = data.changes;
@@ -525,16 +547,15 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
     var evaluated = (c.passed || 0) + (c.failed || 0);
     var bar = el("div", { class: "sev-bar" });
     if (c.failed > 0) bar.appendChild(el("i", { style: "width:" + Math.max(4, (c.failed / maxFail) * 100) + "%;background:" + SEV[s].color, title: c.failed + " fallidos de " + evaluated }));
-    else bar.appendChild(el("span", { class: "ok-mark" }, [el("span", { text: "✓" }), "Todos conformes"]));
+    else bar.appendChild(el("span", { class: "ok-mark", text: "Todos conformes" }));
     sevCard.appendChild(el("div", { class: "sev-row" }, [sevBadge(s), bar, el("span", { class: "count", text: c.failed + " / " + evaluated })]));
   });
-  app.appendChild(el("section", { class: "two" }, [prioCard, sevCard]));
 
   // ---- Categorías + ATT&CK ----
   var cats = (sc.by_category || []).filter(function (c) { return c.passed + c.failed > 0; });
   var catCard = el("div", { class: "card" }, [el("h2", { text: "La muralla por tramos · puntuación por categoría" })]);
   if (cats.length) {
-    var cols = "grid-template-columns:repeat(" + cats.length + ",minmax(76px,1fr));min-width:" + cats.length * 86 + "px";
+    var cols = "grid-template-columns:repeat(" + cats.length + ",minmax(62px,1fr));min-width:" + cats.length * 70 + "px";
     var towers = el("div", { class: "wall-row towers", style: cols });
     var labels = el("div", { class: "wall-row labels", style: cols });
     cats.forEach(function (c) {
@@ -547,7 +568,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
       towers.appendChild(el("div", { class: "tramo", role: "img", "aria-label": c.name + ": " + c.value + " de 100, " + c.failed + " fallidos de " + (c.passed + c.failed) }, [
         el("span", { class: "merlons", "aria-hidden": "true" }, [el("span", { class: "stone" }), el("span", { class: "stone" }), el("span", { class: "stone" })]), tower]));
       labels.appendChild(el("div", null, [el("span", { class: "n", text: syllables(c.name) }), el("span", { class: "v", text: c.value + " / 100" }),
-        el("span", { class: "c", text: c.failed ? (c.failed === 1 ? "1 brecha" : c.failed + " brechas") : "intacto", style: "color:" + (c.failed ? "var(--serious)" : "var(--good-text)") })]));
+        el("span", { class: "c", text: c.failed ? (c.failed === 1 ? "1 brecha" : c.failed + " brechas") : "intacto", style: "color:" + (c.failed ? "var(--serious-text)" : "var(--good-text)") })]));
     });
     catCard.appendChild(el("div", { class: "wall" }, [towers, labels]));
     catCard.appendChild(el("p", { style: "color:var(--muted);font-size:13px;margin:12px 0 0", text: "Cada tramo es una categoría: su altura es la puntuación y cada grieta, un control fallido. De la más dañada a la más firme." }));
@@ -576,8 +597,8 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
   var attCard = el("div", { class: "card" }, [el("h2", { text: "Técnicas MITRE ATT&CK expuestas" }),
     techList.length ? techWrap : el("p", { class: "empty", text: "Ningún control fallido está asociado a técnicas ATT&CK." })]);
   if (techList.length > 24) attCard.appendChild(el("p", { class: "sub", style: "color:var(--muted);font-size:13px;margin:10px 0 0", text: "y " + (techList.length - 24) + " técnicas más en el detalle de los controles." }));
+  app.appendChild(el("section", { class: "rows" }, [prioCard, el("div", { class: "stack" }, [sevCard, attCard])]));
   app.appendChild(el("section", null, [catCard]));
-  app.appendChild(el("section", null, [attCard]));
 
   // ---- Controles ----
   var counts = { all: results.length, fail: 0, error: 0, manual: 0, skipped: 0, exception: 0, pass: 0, na: 0 };
