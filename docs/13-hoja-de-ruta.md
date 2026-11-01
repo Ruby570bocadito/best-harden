@@ -13,7 +13,7 @@ enterprise), y no cuenta para decir que el proyecto está completo.
 
 ## Lo que ya está hecho
 
-- **Motor y reglas:** 155 controles reales para Windows 10/11, Windows Server 2016-2025 (miembro y DC) y Linux, perfiles por rol con niveles L1/L2, 19 operadores y reglas declarativas sin ejecución arbitraria.
+- **Motor y reglas:** 157 controles reales para Windows 10/11, Windows Server 2016-2025 (miembro y DC) y Linux, perfiles por rol con niveles L1/L2, 19 operadores y reglas declarativas sin ejecución arbitraria.
 - **La ronda (`scan`):** solo lectura, puntuación ponderada, evidencias, excepciones con caducidad, MITRE ATT&CK, informe HTML autocontenido y JSON estable.
 - **Reparar (`harden`):** 100 controles automáticos con simulación, instantánea, verificación, rollback automático, olas por riesgo de rotura y dead-man switch para SSH/RDP.
 - **Las puertas (`surface`):** puertos con proceso y origen del binario, firewall de Windows y de Linux (nftables e iptables), servicios de riesgo, recursos compartidos, administradores, cambios entre análisis y `surface fix` en Windows.
@@ -28,8 +28,8 @@ Doce tareas en cuatro bloques. Cuando estén todas marcadas, se publica la v1.0.
 ### Identidad
 
 - [x] Consola con la identidad de Adarve: muralla, puertas y voz.
-- [ ] Renombrado de Bastion a Adarve con migración de las instalaciones existentes (rama `feat/rename-adarve`) y repositorio renombrado en GitHub.
-- [ ] Informes HTML con la misma identidad (rama `feat/informe-adarve`).
+- [ ] Renombrado de Bastion a Adarve con migración de las instalaciones existentes (hecho en el código) y repositorio renombrado en GitHub (pendiente).
+- [x] Informes HTML con la misma identidad.
 - [ ] README con capturas nuevas y un GIF de 30 segundos: ronda → simular ola 1 → reparar → muralla más alta.
 
 ### Confianza
@@ -42,7 +42,7 @@ Doce tareas en cuatro bloques. Cuando estén todas marcadas, se publica la v1.0.
 
 - [ ] Laboratorio en CI con Windows 11, Windows Server 2022 y Ubuntu 24.04: cada informe se compara con un resultado esperado (*golden files*) y no queda ningún falso positivo conocido.
 - [ ] Estado `manual` para los controles que necesitan revisión humana, fuera de la puntuación.
-- [ ] sudo-rs (Ubuntu 26.04 en adelante): LNX-AUTH-007 (`Defaults logfile`) no aplica allí; detectar la implementación y adaptar las reglas de sudo.
+- [x] sudo-rs (Ubuntu 25.10 en adelante): se detecta la implementación (ruta y `sudo --version`); LNX-AUTH-007 (`logfile`) y LNX-AUTH-006 (`use_pty` explícito) solo aplican al sudo clásico y LNX-AUTH-009 vigila que nadie desactive `use_pty` en sudo-rs; la remediación no escribe en sudoers opciones que sudo-rs no admite. El CI prueba en Ubuntu 24.04 y 26.04.
 
 ### Estabilidad
 

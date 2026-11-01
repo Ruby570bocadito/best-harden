@@ -105,13 +105,27 @@ func graphicalTarget(readlink func(string) (string, error)) bool {
 	return false
 }
 
-// linuxTags calcula las etiquetas a partir de ID e ID_LIKE de os-release.
-// sudoClassic indica si el binario de sudo (ruta ya resuelta) es el sudo
-// clásico y no sudo-rs, que Ubuntu instala por defecto desde 25.10 en
-// /usr/lib/cargo/bin y que no admite opciones como "Defaults logfile".
-func sudoClassic(resolved string) bool {
-	return !strings.Contains(resolved, "/cargo/") && !strings.Contains(path.Base(resolved), "sudo-rs")
+// Etiquetas de la implementación de sudo (campo requires de las reglas).
+const (
+	TagSudoClassic = "sudo-classic"
+	TagSudoRS      = "sudo-rs"
+)
+
+// sudoImpl clasifica el binario de sudo: TagSudoRS o TagSudoClassic.
+// resolved es su ruta ya resuelta y version, la primera línea de
+// "sudo --version" (vacía si no se ha podido ejecutar). En Ubuntu (25.10 en
+// adelante) basta la ruta: sudo-rs vive en /usr/lib/cargo/bin y se elige con
+// update-alternatives. La versión cubre las distribuciones que instalan
+// sudo-rs directamente como /usr/bin/sudo.
+func sudoImpl(resolved, version string) string {
+	if strings.Contains(resolved, "/cargo/") || strings.Contains(path.Base(resolved), "sudo-rs") ||
+		strings.Contains(strings.ToLower(version), "sudo-rs") {
+		return TagSudoRS
+	}
+	return TagSudoClassic
 }
+
+// linuxTags calcula las etiquetas a partir de ID e ID_LIKE de os-release.
 
 func linuxTags(id, idLike string) []string {
 	var tags []string

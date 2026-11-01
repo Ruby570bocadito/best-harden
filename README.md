@@ -32,7 +32,7 @@ calcula una puntuación de postura, la mapea a MITRE ATT&CK y te dice qué corre
 
 | | |
 |---|---|
-| 🔍 **Auditoría de solo lectura** | 155 controles reales para Windows 10/11, Windows Server 2016-2025 (miembro y DC) y Linux (Ubuntu, Debian, RHEL y derivados). `scan` nunca modifica el sistema. |
+| 🔍 **Auditoría de solo lectura** | 157 controles reales para Windows 10/11, Windows Server 2016-2025 (miembro y DC) y Linux (Ubuntu, Debian, RHEL y derivados). `scan` nunca modifica el sistema. |
 | 🛡️ **Hardening seguro** | `adarve harden` corrige 100 controles con simulación, instantánea previa, verificación y **rollback automático**; olas por riesgo de rotura y dead-man switch para SSH/RDP. |
 | 🎯 **Perfiles por rol** | Estación de trabajo, servidor miembro, controlador de dominio y servidor Linux, con niveles L1/L2. Adarve detecta el rol y elige el perfil. |
 | 📊 **Puntuación de postura** | Puntuación ponderada por severidad (0-100, A-F), por categoría y por severidad. |
@@ -111,7 +111,7 @@ adarve update                      # actualizar Adarve y sus reglas
 |---|---|
 | Identidad | Renombrado a Adarve, informes con la nueva identidad, capturas y GIF |
 | Confianza | Releases firmadas, análisis de seguridad y *fuzzing* en CI, instaladores probados de punta a punta |
-| Precisión | Laboratorio con *golden files* en 3 sistemas, estado `manual`, sudo-rs |
+| Precisión | Laboratorio con *golden files* en 3 sistemas, estado `manual` |
 | Estabilidad | Esquemas congelados y guía de operación |
 
 Detalle y estado de cada tarea en la [hoja de ruta](docs/13-hoja-de-ruta.md). La flota, la defensa y el modo enterprise son la [visión a largo plazo](docs/15-vision-a-largo-plazo.md), después de la v1.0.

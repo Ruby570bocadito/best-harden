@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Ruby570bocadito/adarve/internal/platform"
 	"github.com/Ruby570bocadito/adarve/internal/probes"
 )
 
@@ -717,7 +718,7 @@ type sudoersDefaults struct{}
 func (sudoersDefaults) Type() string { return "sudoers.defaults" }
 
 func (sudoersDefaults) Capture(_ context.Context, _ probes.Params) (State, error) {
-	if _, err := exec.LookPath("visudo"); err != nil {
+	if visudoBinary() == "" {
 		return nil, errors.New("visudo no está disponible (¿sudo instalado?)")
 	}
 	return captureFile(sudoersDropIn)
@@ -727,7 +728,27 @@ func (sudoersDefaults) Describe(p probes.Params, _ State) string {
 	return fmt.Sprintf("sudoers: Defaults %s  (%s)", p.String("option"), sudoersDropIn)
 }
 
+// sudoRSUnsupported son las opciones Defaults que sudo-rs no admite (registra
+// siempre en syslog). Su documentación no dice qué hace con ellas, y un
+// sudoers que no entiende puede dejar el sistema sin sudo: no se escriben.
+var sudoRSUnsupported = map[string]bool{"logfile": true}
+
+// visudoBinary es la ruta absoluta de visudo (nunca el PATH); con sudo-rs,
+// update-alternatives la enlaza a su propio visudo.
+func visudoBinary() string {
+	return firstExisting([]string{"/usr/sbin/visudo", "/usr/bin/visudo", "/sbin/visudo"})
+}
+
+// sudoersOptionName es el nombre de una opción Defaults (sin "!" ni valor).
+func sudoersOptionName(option string) string {
+	name, _, _ := strings.Cut(option, "=")
+	return strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(name), "!"))
+}
+
 func (sudoersDefaults) Apply(ctx context.Context, p probes.Params) error {
+	if platform.SudoImplementation() == platform.TagSudoRS && sudoRSUnsupported[sudoersOptionName(p.String("option"))] {
+		return fmt.Errorf("sudo-rs no admite «Defaults %s»: no se escribe en sudoers", p.String("option"))
+	}
 	before, err := captureFile(sudoersDropIn)
 	if err != nil {
 		return err
@@ -742,7 +763,7 @@ func (sudoersDefaults) Apply(ctx context.Context, p probes.Params) error {
 	}
 	// Un sudoers inválido puede dejar el sistema sin sudo: se valida y,
 	// si falla, se restaura de inmediato.
-	if _, err := run(ctx, "visudo", "-c", "-q", "-f", sudoersDropIn); err != nil {
+	if _, err := run(ctx, visudoBinary(), "-c", "-q", "-f", sudoersDropIn); err != nil {
 		_ = restoreFile(sudoersDropIn, before)
 		return fmt.Errorf("sudoers inválido, cambio deshecho: %w", err)
 	}

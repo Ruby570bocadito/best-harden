@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Ruby570bocadito/adarve/internal/platform"
 	"github.com/Ruby570bocadito/adarve/internal/probes"
 )
 
@@ -207,6 +208,32 @@ func TestSudoersDefaultsCycle(t *testing.T) {
 	_ = r.Restore(context.Background(), nil, b1)
 	if got := read(t, sudoersDropIn); got != "<no existe>" {
 		t.Errorf("el drop-in de sudoers debería eliminarse, contiene:\n%s", got)
+	}
+}
+
+// Con sudo-rs no se escribe una opción que no admite, ni siquiera un momento
+// para validarla: su documentación no dice qué hace con ella.
+func TestSudoersDefaultsSudoRSGuard(t *testing.T) {
+	sandbox(t)
+	old := platform.SudoImplementation
+	platform.SudoImplementation = func() string { return platform.TagSudoRS }
+	t.Cleanup(func() { platform.SudoImplementation = old })
+	err := sudoersDefaults{}.Apply(context.Background(), probes.Params{"option": `logfile="/var/log/sudo.log"`})
+	if err == nil || !strings.Contains(err.Error(), "sudo-rs") {
+		t.Errorf("logfile con sudo-rs debe rechazarse: %v", err)
+	}
+	if got := read(t, sudoersDropIn); got != "<no existe>" {
+		t.Errorf("no debe escribirse nada, contiene:\n%s", got)
+	}
+	for in, want := range map[string]string{
+		`logfile="/var/log/sudo.log"`: "logfile",
+		"use_pty":                     "use_pty",
+		"!use_pty":                    "use_pty",
+		" timestamp_timeout = 5 ":     "timestamp_timeout",
+	} {
+		if got := sudoersOptionName(in); got != want {
+			t.Errorf("sudoersOptionName(%q) = %q, quiero %q", in, got, want)
+		}
 	}
 }
 
