@@ -1,0 +1,119 @@
+# adarve.surface/v1 · surface.Report · json
+# superficie de ataque (adarve surface --format json)
+# Generado por internal/compat (go test ./internal/compat -update). Ver docs/16-formatos-y-compatibilidad.md.
+admins: lista
+admins[].kind: texto (opcional)
+admins[].name: texto
+admins[].source: texto (opcional)
+admins[]: objeto
+changes.items: lista
+changes.items[].after: texto (opcional)
+changes.items[].before: texto (opcional)
+changes.items[].kind: texto
+changes.items[].process: texto (opcional)
+changes.items[].severity: texto (rule.Severity) (opcional)
+changes.items[].subject: texto
+changes.items[].title: texto
+changes.items[]: objeto
+changes.score_before: número
+changes.since: fecha RFC 3339
+changes: objeto (opcional)
+exposed: número
+findings: lista
+findings[].detail: texto
+findings[].firewall_rules: lista (opcional)
+findings[].firewall_rules[]: texto
+findings[].fix: texto
+findings[].id: texto
+findings[].severity: texto (rule.Severity)
+findings[].subject: texto
+findings[].title: texto
+findings[]: objeto
+finished_at: fecha RFC 3339
+firewall.inbound_rules: número
+firewall.input_policy: texto (opcional)
+firewall.profiles: lista
+firewall.profiles[].active: booleano
+firewall.profiles[].block_inbound: booleano
+firewall.profiles[].enabled: booleano
+firewall.profiles[].name: texto
+firewall.profiles[]: objeto
+firewall.source: texto (opcional)
+firewall: objeto (opcional)
+grade: texto
+host.arch: texto
+host.build: texto (opcional)
+host.container: booleano (opcional)
+host.distro: texto (opcional)
+host.domain: texto (opcional)
+host.domain_joined: booleano
+host.entra_joined: booleano (opcional)
+host.family: texto
+host.hostname: texto
+host.is_admin: booleano
+host.kernel: texto (opcional)
+host.name: texto
+host.os: texto
+host.role: texto
+host.tags: lista
+host.tags[]: texto
+host.version: texto
+host: objeto
+limited: número
+listeners: lista
+listeners[].address: texto
+listeners[].ephemeral: booleano (opcional)
+listeners[].known: texto (opcional)
+listeners[].path: texto (opcional)
+listeners[].pid: número (opcional)
+listeners[].port: número
+listeners[].process: texto (opcional)
+listeners[].proto: texto
+listeners[].scope: texto
+listeners[].services: lista (opcional)
+listeners[].services[]: texto
+listeners[].signature: texto (opcional)
+listeners[].signer: texto (opcional)
+listeners[].user: texto (opcional)
+listeners[].user_sid: texto (opcional)
+listeners[]: objeto
+notes: lista (opcional)
+notes[]: texto
+ports: lista
+ports[].addresses: lista
+ports[].addresses[]: texto
+ports[].ephemeral: booleano (opcional)
+ports[].firewall: texto (opcional)
+ports[].firewall_limit: texto (opcional)
+ports[].firewall_why: texto (opcional)
+ports[].known: texto (opcional)
+ports[].path: texto (opcional)
+ports[].pid: número (opcional)
+ports[].port: número
+ports[].process: texto (opcional)
+ports[].proto: texto
+ports[].scope: texto
+ports[].services: lista (opcional)
+ports[].services[]: texto
+ports[].signature: texto (opcional)
+ports[].signer: texto (opcional)
+ports[].user: texto (opcional)
+ports[].user_sid: texto (opcional)
+ports[]: objeto
+reachable: número
+schema: texto
+score: número
+shares: lista
+shares[].access: lista (opcional)
+shares[].access[].account: texto
+shares[].access[].deny: booleano (opcional)
+shares[].access[].right: texto
+shares[].access[].sid: texto (opcional)
+shares[].access[]: objeto
+shares[].kind: texto
+shares[].name: texto
+shares[].options: lista (opcional)
+shares[].options[]: texto
+shares[].path: texto (opcional)
+shares[]: objeto
+version: texto

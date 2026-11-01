@@ -1,0 +1,88 @@
+{
+  "schema": "bastion.report/v1",
+  "tool": {
+    "name": "bastion",
+    "version": "0.4.2",
+    "commit": "9f1c2ab"
+  },
+  "host": {
+    "hostname": "web-01",
+    "family": "linux",
+    "os": "linux",
+    "name": "Ubuntu",
+    "version": "24.04",
+    "distro": "ubuntu",
+    "kernel": "6.8.0-52-generic",
+    "arch": "amd64",
+    "role": "server",
+    "tags": ["ubuntu-24.04", "ubuntu", "debian-family", "linux-server", "linux"],
+    "is_admin": true,
+    "domain_joined": false
+  },
+  "profile": {
+    "id": "linux-server-l1",
+    "name": "Servidor Linux · nivel 1",
+    "description": "Controles esenciales para un servidor Linux.",
+    "platforms": ["linux-server"]
+  },
+  "started_at": "2026-03-01T10:14:58+01:00",
+  "finished_at": "2026-03-01T10:15:00+01:00",
+  "duration_ms": 1830,
+  "score": {
+    "value": 50,
+    "grade": "D",
+    "scored": true,
+    "partial": false,
+    "total": 2,
+    "passed": 1,
+    "failed": 1,
+    "errors": 0,
+    "na": 0,
+    "skipped": 0,
+    "exceptions": 0,
+    "by_severity": {},
+    "by_category": []
+  },
+  "results": [
+    {
+      "rule": {
+        "id": "LNX-NET-001",
+        "title": "Reenvío de paquetes IP deshabilitado",
+        "description": "El equipo no debe reenviar paquetes entre interfaces si no es un router.",
+        "category": "Red",
+        "severity": "medium",
+        "platforms": ["linux"],
+        "profiles": ["linux-server-l1"],
+        "references": {},
+        "remediation": {
+          "summary": "Poner net.ipv4.ip_forward a 0."
+        }
+      },
+      "status": "fail",
+      "probe": "sysctl",
+      "expected": "0",
+      "actual": "1",
+      "duration_ms": 2
+    },
+    {
+      "rule": {
+        "id": "LNX-SSH-004",
+        "title": "Deshabilitar el reenvío X11",
+        "description": "El servidor SSH no debe reenviar X11.",
+        "category": "SSH",
+        "severity": "low",
+        "platforms": ["linux"],
+        "profiles": ["linux-server-l1"],
+        "references": {},
+        "remediation": {
+          "summary": "X11Forwarding no en sshd_config."
+        }
+      },
+      "status": "pass",
+      "probe": "sshd_config",
+      "expected": "no",
+      "actual": "no",
+      "duration_ms": 14
+    }
+  ]
+}

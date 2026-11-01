@@ -66,6 +66,8 @@ sudo adarve scan --min-score 85 -q -o informe.html || echo "La imagen no cumple"
 
 ### Códigos de salida
 
+Son parte del contrato estable de la versión 1: ver [16 · Formatos estables y compatibilidad](16-formatos-y-compatibilidad.md).
+
 | Código | Significado |
 |---|---|
 | 0 | Escaneo completado (y puntuación ≥ `--min-score`, si se indicó) |

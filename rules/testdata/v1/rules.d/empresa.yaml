@@ -1,0 +1,84 @@
+# Paquete de referencia del formato de reglas v1 (ver docs/16): una regla de
+# cada forma, con todos los campos. No lo cambies para que pase un test: si
+# deja de cargar, el cambio en el código rompe los paquetes de los usuarios.
+id: EMP-LNX-001
+title: Reenvío de paquetes desactivado
+description: El servidor no debe enrutar paquetes entre interfaces.
+rationale: Un servidor que enruta puede servir de puente entre redes que deberían estar separadas.
+category: Red
+severity: high
+platforms: [linux]
+requires: [sudo-classic]
+profiles: [empresa-linux]
+references:
+  nist: [SC-7]
+  cis: ["3.1.1"]
+  stig: [V-230540]
+  ens: [mp.com.1]
+  mitre_mitigations: [M1037]
+  mitre_techniques: [T1090]
+  urls: [https://example.com/politica-de-red]
+check:
+  probe: sysctl
+  key: net.ipv4.ip_forward
+  op: eq
+  expected: 0
+  default: 0
+remediation:
+  summary: Fijar net.ipv4.ip_forward = 0.
+  commands: |
+    sysctl -w net.ipv4.ip_forward=0
+  breaking_risk: medium
+  reboot_required: false
+  actions:
+    - type: sysctl.set
+      key: net.ipv4.ip_forward
+      value: '0'
+impact: Contenedores o VPN que necesiten enrutar dejarán de funcionar.
+---
+id: EMP-LNX-002
+title: /srv con nodev y nosuid
+description: La partición de datos no admite dispositivos ni setuid.
+category: Sistema de ficheros
+severity: medium
+platforms: [linux-ubuntu, linux-debian]
+profiles: [empresa-linux]
+references: {}
+check:
+  all:
+    - {label: montaje propio, probe: mount, path: /srv, op: exists}
+    - any:
+        - {label: nodev, probe: mount, path: /srv, field: options, op: contains, expected: [nodev, nosuid]}
+        - {label: sin montaje, probe: mount, path: /srv, op: absent}
+remediation:
+  summary: Montar /srv con nodev,nosuid.
+  breaking_risk: low
+---
+id: EMP-WIN-001
+title: NetBIOS desactivado en todas las interfaces
+description: Ninguna interfaz debe tener NetBIOS sobre TCP/IP activo.
+category: Red
+severity: medium
+platforms: [windows]
+profiles: [empresa-windows]
+references:
+  mitre_techniques: [T1557.001]
+check:
+  probe: registry
+  path: HKLM\SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces\Tcpip_*
+  name: NetbiosOptions
+  op: eq
+  expected: 2
+  each: all
+  on_missing: na
+remediation:
+  summary: Deshabilitar NetBIOS en todas las interfaces.
+  gpo: Computer Configuration > Administrative Templates > Network > DNS Client
+  breaking_risk: medium
+  safety: remote-access
+  actions:
+    - type: registry.set
+      path: HKLM\SYSTEM\CurrentControlSet\Services\NetBT\Parameters
+      name: NodeType
+      value: 2
+      value_type: DWORD

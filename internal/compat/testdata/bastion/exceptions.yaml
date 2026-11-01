@@ -1,0 +1,9 @@
+schema: bastion.exceptions/v1
+exceptions:
+    - rule: LNX-SSH-004
+      reason: El equipo de datos abre herramientas gráficas por SSH hasta terminar la migración
+      owner: sistemas
+      created: "2026-03-01"
+      expires: "2026-09-01"
+      hosts:
+        - web-01

@@ -1,0 +1,38 @@
+{
+  "schema": "bastion.change/v1",
+  "id": "chg-20260301-102000",
+  "created_at": "2026-03-01T09:20:00Z",
+  "updated_at": "2026-03-01T09:20:04Z",
+  "tool_version": "0.4.2",
+  "host": "web-01",
+  "profile": "linux-server-l1",
+  "wave": 1,
+  "status": "applied",
+  "entries": [
+    {
+      "seq": 1,
+      "rule_id": "LNX-NET-001",
+      "action": {
+        "type": "sysctl.set",
+        "key": "net.ipv4.ip_forward",
+        "value": 0
+      },
+      "description": "sysctl net.ipv4.ip_forward: 1 → 0  (/etc/sysctl.d/60-bastion.conf)",
+      "before": {
+        "runtime": "1",
+        "file": {
+          "exists": false
+        }
+      },
+      "attempted": true,
+      "applied": true
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "LNX-NET-001",
+      "title": "Reenvío de paquetes IP deshabilitado",
+      "outcome": "verified"
+    }
+  ]
+}

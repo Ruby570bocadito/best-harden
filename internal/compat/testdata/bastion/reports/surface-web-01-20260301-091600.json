@@ -1,0 +1,47 @@
+{
+  "schema": "bastion.surface/v1",
+  "version": "0.4.2",
+  "host": {
+    "hostname": "web-01",
+    "family": "linux",
+    "os": "linux",
+    "name": "Ubuntu",
+    "version": "24.04",
+    "distro": "ubuntu",
+    "arch": "amd64",
+    "role": "server",
+    "tags": ["ubuntu-24.04", "ubuntu", "debian-family", "linux-server", "linux"],
+    "is_admin": true,
+    "domain_joined": false
+  },
+  "finished_at": "2026-03-01T09:16:00Z",
+  "score": 74,
+  "grade": "C",
+  "exposed": 1,
+  "reachable": 1,
+  "limited": 0,
+  "listeners": [
+    {
+      "proto": "tcp",
+      "address": "0.0.0.0",
+      "port": 22,
+      "scope": "network",
+      "process": "sshd",
+      "pid": 912,
+      "user": "root"
+    },
+    {
+      "proto": "tcp",
+      "address": "127.0.0.1",
+      "port": 5432,
+      "scope": "loopback",
+      "process": "postgres",
+      "pid": 1044,
+      "user": "postgres"
+    }
+  ],
+  "ports": [],
+  "findings": [],
+  "shares": [],
+  "admins": []
+}

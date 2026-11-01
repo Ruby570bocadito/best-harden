@@ -46,7 +46,7 @@ Doce tareas en cuatro bloques. Cuando estén todas marcadas, se publica la v1.0.
 
 ### Estabilidad
 
-- [ ] Esquemas `adarve.report/v1`, `adarve.surface/v1` y formato de reglas congelados, con una política de compatibilidad escrita.
+- [x] Esquemas `adarve.report/v1`, `adarve.surface/v1`, `adarve.notify/v1`, `adarve.exceptions/v1`, `adarve.change/v1`, `config.yaml` y formato de reglas congelados, con una política de compatibilidad escrita ([16](16-formatos-y-compatibilidad.md), [ADR-0010](adr/0010-formatos-estables.md)) y tests que la hacen cumplir.
 - [ ] Guía de operación: qué hacer si un rollback falla y cómo desplegar Adarve por GPO, Intune o Ansible.
 
 ## Después de la v1.0 (1.x)

@@ -19,7 +19,7 @@
     },
     "requires": {
       "description": "Etiquetas que el equipo debe tener TODAS; si falta alguna, la regla aparece como 'no aplica'.",
-      "type": "array", "items": { "enum": ["windows-joined", "sudo-classic"] }
+      "type": "array", "items": { "enum": ["windows-joined", "sudo-classic", "sudo-rs"] }
     },
     "profiles": { "type": "array", "minItems": 1, "items": { "type": "string" } },
     "references": {

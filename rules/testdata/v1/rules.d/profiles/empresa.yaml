@@ -1,0 +1,7 @@
+# Paquete de referencia del formato de reglas v1 (ver docs/16).
+# Lo que este paquete usa debe seguir cargando en todas las versiones 1.x.
+id: empresa-linux
+name: Empresa · Linux
+description: Perfil propio que hereda del oficial y añade controles de la empresa.
+platforms: [linux]
+extends: [linux-server-l1]

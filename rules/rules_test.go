@@ -152,3 +152,122 @@ func TestSudoPTYPatterns(t *testing.T) {
 		t.Error("LNX-AUTH-007 (logfile) no debe aplicarse con sudo-rs")
 	}
 }
+
+// El esquema JSON de las reglas (validación en el editor y referencia del
+// formato v1) debe aceptar exactamente lo que acepta el código: plataformas,
+// requisitos, probes, operadores y tipos de acción. Si el código añade uno y
+// el esquema no, los editores marcarían como inválida una regla correcta.
+func TestRuleSchemaMatchesCode(t *testing.T) {
+	b, err := os.ReadFile("schema/rule.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	type enum struct {
+		Enum []string `json:"enum"`
+	}
+	var s struct {
+		Properties struct {
+			Platforms struct {
+				Items enum `json:"items"`
+			} `json:"platforms"`
+			Requires struct {
+				Items enum `json:"items"`
+			} `json:"requires"`
+		} `json:"properties"`
+		Defs struct {
+			Action struct {
+				Properties struct {
+					Type enum `json:"type"`
+				} `json:"properties"`
+			} `json:"action"`
+			Check struct {
+				Properties struct {
+					Probe enum `json:"probe"`
+					Op    enum `json:"op"`
+				} `json:"properties"`
+			} `json:"check"`
+		} `json:"$defs"`
+	}
+	if err := json.Unmarshal(b, &s); err != nil {
+		t.Fatal(err)
+	}
+	set := func(xs []string) map[string]bool {
+		m := map[string]bool{}
+		for _, x := range xs {
+			m[x] = true
+		}
+		return m
+	}
+	same := func(what string, schema, code map[string]bool) {
+		t.Helper()
+		for k := range code {
+			if !schema[k] {
+				t.Errorf("%s: el código admite %q y el esquema no", what, k)
+			}
+		}
+		for k := range schema {
+			if !code[k] {
+				t.Errorf("%s: el esquema admite %q y el código no", what, k)
+			}
+		}
+	}
+	requires := map[string]bool{}
+	for k := range rule.RequirementMessages {
+		requires[k] = true
+	}
+	same("requires", set(s.Properties.Requires.Items.Enum), requires)
+	// platforms y requires comparten el mismo conjunto de etiquetas en el código.
+	tags := set(s.Properties.Platforms.Items.Enum)
+	for k := range requires {
+		tags[k] = true
+	}
+	same("platforms y requires", tags, rule.Platforms)
+	same("check.probe", set(s.Defs.Check.Properties.Probe.Enum), probes.KnownSet())
+	same("check.op", set(s.Defs.Check.Properties.Op.Enum), rule.Ops)
+	actions := map[string]bool{}
+	for k := range remediate.Specs {
+		actions[k] = true
+	}
+	same("action.type", set(s.Defs.Action.Properties.Type.Enum), actions)
+}
+
+// El paquete de referencia de testdata/v1 usa toda la sintaxis del formato
+// de reglas v1 (perfil propio que hereda del oficial, requires, referencias,
+// all/any anidados, default, each, on_missing, acciones y safety). Los
+// paquetes de los usuarios (rules.d) deben seguir cargando en toda la 1.x:
+// si este test falla, el cambio en el código los rompe (ver docs/16).
+func TestRulePackV1Reference(t *testing.T) {
+	c := rule.NewCatalog()
+	if err := c.LoadFS(rules.FS, "rules/"); err != nil {
+		t.Fatalf("catálogo oficial: %v", err)
+	}
+	if err := c.LoadDir("testdata/v1/rules.d"); err != nil {
+		t.Fatalf("paquete de referencia v1: %v", err)
+	}
+	for _, err := range c.Validate(probes.KnownSet(), remediate.ValidateAction) {
+		t.Error(err)
+	}
+	r1, r2, r3 := c.Rule("EMP-LNX-001"), c.Rule("EMP-LNX-002"), c.Rule("EMP-WIN-001")
+	if r1 == nil || r2 == nil || r3 == nil {
+		t.Fatal("faltan reglas del paquete de referencia")
+	}
+	if len(r1.Requires) != 1 || r1.Requires[0] != "sudo-classic" || !r1.Check.HasDefault || r1.Check.Probe != "sysctl" ||
+		r1.Check.Params["key"] != "net.ipv4.ip_forward" || len(r1.References.URLs) != 1 || r1.Impact == "" {
+		t.Errorf("EMP-LNX-001 mal leída: %+v", r1)
+	}
+	if a := r1.Remediation.Actions; len(a) != 1 || a[0].Type != "sysctl.set" || a[0].Params["key"] != "net.ipv4.ip_forward" {
+		t.Errorf("acciones de EMP-LNX-001: %+v", a)
+	}
+	if len(r2.Check.All) != 2 || len(r2.Check.All[1].Any) != 2 || r2.Check.All[0].Label != "montaje propio" {
+		t.Errorf("EMP-LNX-002 (all/any anidados) mal leída: %+v", r2.Check)
+	}
+	if r3.Check.Each != "all" || r3.Check.OnMissing != "na" || r3.Remediation.Safety != "remote-access" || r3.Remediation.GPO == "" {
+		t.Errorf("EMP-WIN-001 mal leída: %+v", r3)
+	}
+	if !c.Lineage("empresa-linux")["linux-server-l1"] {
+		t.Error("el perfil propio debe heredar del oficial linux-server-l1")
+	}
+	if n := len(c.Select([]string{"linux-ubuntu", "linux-debian", "linux"}, "empresa-linux")); n <= 2 {
+		t.Errorf("empresa-linux debe incluir sus reglas y las heredadas, tiene %d", n)
+	}
+}
