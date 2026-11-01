@@ -347,24 +347,53 @@ func (s sshdSet) Apply(ctx context.Context, p probes.Params) error {
 	return nil
 }
 
+// Restore vuelve a dejar el drop-in como estaba. Lo que cuenta es el
+// fichero: si después no se puede recargar sshd, el rollback no queda a
+// medias (esa configuración ya era la del sistema antes del cambio, y sshd
+// la leerá al arrancar).
 func (sshdSet) Restore(ctx context.Context, _ probes.Params, before State) error {
 	if err := restoreFile(sshdDropIn, before); err != nil {
 		return err
 	}
-	return reloadSSHD(ctx)
+	_ = reloadSSHD(ctx)
+	return nil
 }
 
-// reloadSSHD valida la configuración con "sshd -t" y recarga el servicio.
-func reloadSSHD(ctx context.Context) error {
-	if _, err := run(ctx, sshdBinary(), "-t"); err != nil {
+// privSepDir es el directorio de separación de privilegios de sshd. Lo crea
+// la unidad de systemd al arrancar (RuntimeDirectory=sshd): con el servicio
+// parado o activado por socket (Ubuntu 22.10 en adelante) no existe y
+// "sshd -t" falla aunque la configuración sea correcta.
+var privSepDir = "/run/sshd"
+
+// validateSSHD comprueba la configuración con "sshd -t".
+func validateSSHD(ctx context.Context) error {
+	out, err := run(ctx, sshdBinary(), "-t")
+	if err != nil && strings.Contains(out, "privilege separation directory") {
+		if _, serr := os.Stat(privSepDir); errors.Is(serr, fs.ErrNotExist) {
+			if mkErr := os.Mkdir(privSepDir, 0o755); mkErr == nil {
+				_, err = run(ctx, sshdBinary(), "-t")
+			}
+		}
+	}
+	if err != nil {
 		return fmt.Errorf("la configuración de sshd no es válida: %w", err)
+	}
+	return nil
+}
+
+// reloadSSHD valida la configuración y recarga sshd si está en marcha. Si
+// está parado (o se activa por socket), no se arranca: la configuración se
+// aplicará en su próximo inicio.
+func reloadSSHD(ctx context.Context) error {
+	if err := validateSSHD(ctx); err != nil {
+		return err
 	}
 	if _, err := os.Stat("/run/systemd/system"); err != nil {
 		return nil // sin systemd: el cambio se aplicará al reiniciar sshd
 	}
 	var last error
 	for _, unit := range []string{"ssh.service", "sshd.service"} {
-		if _, err := run(ctx, "systemctl", "reload-or-restart", unit); err == nil {
+		if _, err := run(ctx, "systemctl", "try-reload-or-restart", unit); err == nil {
 			return nil
 		} else {
 			last = err
