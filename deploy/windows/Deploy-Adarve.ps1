@@ -35,13 +35,16 @@
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Version,
-    [string]$Source = $PSScriptRoot,
+    [string]$Source,
     [string]$At = '09:00',
     [switch]$NoSchedule,
     [string]$Log = (Join-Path $env:ProgramData 'Adarve-despliegue.log')
 )
 
 $ErrorActionPreference = 'Stop'
+# Aquí y no como valor por defecto del parámetro: con -File, Windows
+# PowerShell 5.1 aún no ha fijado $PSScriptRoot al leer los parámetros.
+if (-not $Source) { $Source = $PSScriptRoot }
 
 function Write-Log([string]$Message) {
     $line = '{0:yyyy-MM-dd HH:mm:ss}  {1}' -f (Get-Date), $Message
