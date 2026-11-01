@@ -186,4 +186,4 @@ curl -fsSL https://raw.githubusercontent.com/Ruby570bocadito/adarve/main/scripts
 & ([scriptblock]::Create((irm https://raw.githubusercontent.com/Ruby570bocadito/adarve/main/scripts/install.ps1))) -Uninstall [-Purge]
 ```
 
-Quita el binario, el `PATH` y el análisis programado (la tarea `\Adarve\Escaneo diario` y el origen Adarve del Visor de eventos, o el temporizador de systemd o la entrada de cron). La configuración y los informes se conservan salvo con `--purge` / `-Purge`.
+Quita el binario, el `PATH`, los dead-man switch que siguieran armados y el análisis programado (la tarea `\Adarve\Escaneo diario` y el origen Adarve del Visor de eventos, o el temporizador de systemd o la entrada de cron). La configuración y los informes se conservan salvo con `--purge` / `-Purge`.

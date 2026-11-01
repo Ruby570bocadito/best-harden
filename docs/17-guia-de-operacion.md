@@ -198,14 +198,14 @@ Un corte de luz, un proceso matado o una sesión que se cae. Adarve anota cada e
 
 ### Perdiste el acceso remoto (SSH o RDP)
 
-Con `--include-remote`, si no confirmas desde una sesión nueva en el plazo (2 minutos por defecto), el dead-man switch deshace solo los cambios de acceso remoto. **No reinicies el equipo mientras tanto**: hoy el dead-man switch es un proceso aparte que no sobrevive a un reinicio. Si el equipo se reinicia antes del plazo, los cambios se quedan.
+Con `--include-remote`, si no confirmas desde una sesión nueva en el plazo (2 minutos por defecto), el dead-man switch deshace solo los cambios de acceso remoto. Es una tarea del sistema que también arranca con el equipo: si el equipo se reinicia antes del plazo, los deshace al arrancar, y en el momento si el plazo ya venció. La excepción es cuando `harden` avisa de que el dead-man switch «no sobrevivirá a un reinicio» (sin systemd, con el ejecutable fuera de su carpeta o con `ADARVE_HOME`): entonces no reinicies hasta que venza el plazo.
 
 Si el acceso no vuelve:
 
 1. Entra por la consola: la del hipervisor, la consola serie del proveedor de nube, iLO o iDRAC. También sirve «ejecutar orden» del proveedor (AWS Systems Manager, Azure Run Command).
 2. `adarve rollback` deshace el último cambio; `adarve rollback <ID>`, uno concreto.
 3. ¿Sigues sin entrar por SSH? Al deshacer un cambio de sshd, Adarve restaura el fichero aunque sshd no recargue, porque lo leería al arrancar. Así que el sshd en marcha puede seguir con la configuración endurecida. Comprueba la configuración con `sshd -t` (el error suele estar en otro fichero de `sshd_config.d/`) y recarga: `systemctl reload ssh`, o `sshd` en RHEL.
-4. `snapshots/<ID>/deadman.log` cuenta qué hizo el dead-man switch.
+4. `snapshots/<ID>/deadman.log` cuenta qué hizo el dead-man switch. Mientras está armado, se ve con `systemctl status 'adarve-deadman@*'` o en el Programador de tareas (`\Adarve\Dead-man <ID>`). Si no consiguió deshacerlo todo, sigue armado y lo reintenta en cada arranque. Cuando `adarve rollback <ID>` lo termina, se retira solo.
 
 ### Un cambio rompió una aplicación
 

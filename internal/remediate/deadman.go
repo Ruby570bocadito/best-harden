@@ -7,7 +7,10 @@ import (
 	"time"
 )
 
-// SpawnDeadman lanza "adarve deadman <id>" como proceso independiente.
+// SpawnDeadman lanza "adarve deadman <id>" como proceso independiente:
+// sobrevive al cierre de la terminal o de la sesión, pero no a un reinicio.
+// Es el último recurso cuando no se puede armar como tarea del sistema (ver
+// armDeadman en internal/cli).
 func SpawnDeadman(storeDir, id string, timeout time.Duration) error {
 	exe, err := os.Executable()
 	if err != nil {

@@ -354,6 +354,11 @@ function Uninstall-Adarve([string]$InstallDir, [string]$DataDir) {
         $task | Unregister-ScheduledTask -Confirm:$false
         Write-Ok 'Quitado el análisis programado'
     }
+    # Los dead-man switch que siguieran armados (adarve harden --include-remote).
+    foreach ($t in @(Get-ScheduledTask -TaskPath '\Adarve\' -ErrorAction SilentlyContinue | Where-Object { $_.TaskName -like 'Dead-man *' })) {
+        Stop-ScheduledTask -TaskPath $t.TaskPath -TaskName $t.TaskName -ErrorAction SilentlyContinue
+        $t | Unregister-ScheduledTask -Confirm:$false
+    }
     Remove-Item 'HKLM:\SYSTEM\CurrentControlSet\Services\EventLog\Application\Adarve' -Recurse -ErrorAction SilentlyContinue
     if (Test-Path $InstallDir) {
         Remove-Item -Recurse -Force $InstallDir

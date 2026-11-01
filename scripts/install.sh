@@ -354,6 +354,15 @@ uninstall() {
     rm -f /etc/cron.d/adarve
     ok "Quitado el análisis programado"
   fi
+  # Los dead-man switch que siguieran armados (adarve harden --include-remote).
+  if [ -f /etc/systemd/system/adarve-deadman@.service ]; then
+    for unit in /etc/systemd/system/multi-user.target.wants/adarve-deadman@*.service; do
+      [ -e "$unit" ] || continue
+      systemctl disable --now "$(basename "$unit")" >/dev/null 2>&1 || true
+    done
+    rm -f /etc/systemd/system/adarve-deadman@.service
+    systemctl daemon-reload >/dev/null 2>&1 || true
+  fi
   if [ -L /usr/bin/adarve ] && [ "$(readlink /usr/bin/adarve)" = "$BIN" ]; then
     rm -f /usr/bin/adarve
   fi

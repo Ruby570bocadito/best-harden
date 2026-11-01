@@ -236,8 +236,12 @@ func TestDeadmanRevertsUnconfirmed(t *testing.T) {
 	m := st.NewManifest("h", "p", "test", 1)
 	go x.Execute(ctx, m, items) //nolint:errcheck // el proceso "muere" esperando
 	<-waiting
-	if err := RunDeadman(ctx, st, m.ID, time.Second); err != nil {
+	done, err := RunDeadman(ctx, st, m.ID, time.Second)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if !done {
+		t.Error("revertido todo, el dead-man switch se puede desarmar")
 	}
 	if v, _ := memGet("r"); v != "0" {
 		t.Errorf("el dead-man switch debe revertir, r = %q", v)
@@ -245,6 +249,114 @@ func TestDeadmanRevertsUnconfirmed(t *testing.T) {
 	loaded, _ := st.Load(m.ID)
 	if !loaded.DeadmanFired {
 		t.Error("debe constar que saltó el dead-man switch")
+	}
+}
+
+// remoteSessionDies aplica un cambio de acceso remoto con el dead-man switch
+// armado y deja el proceso principal "muerto" esperando la confirmación,
+// como cuando se corta la sesión o se reinicia el equipo.
+func remoteSessionDies(t *testing.T, value, mode string) (*Store, string) {
+	t.Helper()
+	memSys = map[string]string{"r": "0"}
+	rules := []*rule.Rule{memRule("T-R-001", "r", value, "low", "remote-access", act("r", value, mode))}
+	ctx := context.Background()
+	items := BuildPlan(ctx, engine.New().Run(ctx, rules, nil), Options{Wave: 1, IncludeRemote: true})
+	x, st := newExecutor(t)
+	x.ArmDeadman = func(string, time.Duration) error { return nil }
+	x.DisarmDeadman = func(string) { t.Error("el proceso principal no llega a desarmarlo") }
+	waiting := make(chan struct{})
+	x.ConfirmRemote = func(time.Duration) bool { close(waiting); select {} }
+	x.DeadmanTimeout = time.Minute
+	setMargin(t, 10*time.Millisecond)
+	m := st.NewManifest("h", "p", "test", 1)
+	go x.Execute(ctx, m, items) //nolint:errcheck // el proceso "muere" esperando
+	<-waiting
+	return st, m.ID
+}
+
+// Tras un reinicio, el dead-man switch arranca con el plazo vencido: decide
+// en el momento, con el plazo del manifiesto y no con el de la orden.
+func TestDeadmanAfterRebootPastDeadline(t *testing.T) {
+	st, id := remoteSessionDies(t, "1", "")
+	m, err := st.Load(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-time.Minute).UTC()
+	m.DeadmanDeadline = &past
+	if err := m.Save(); err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	done, err := RunDeadman(context.Background(), st, id, time.Hour)
+	if err != nil || !done {
+		t.Fatalf("done=%v err=%v", done, err)
+	}
+	if time.Since(start) > 10*time.Second {
+		t.Errorf("con el plazo vencido no debe esperar (%s)", time.Since(start))
+	}
+	if v, _ := memGet("r"); v != "0" {
+		t.Errorf("debe revertir el acceso remoto, r = %q", v)
+	}
+}
+
+// Si no puede deshacerlo todo, el dead-man switch sigue armado (done=false)
+// para reintentarlo en el siguiente arranque.
+func TestDeadmanStaysArmedWhenRollbackFails(t *testing.T) {
+	st, id := remoteSessionDies(t, "atascado", "stuck")
+	m, err := st.Load(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-time.Second).UTC()
+	m.DeadmanDeadline = &past
+	if err := m.Save(); err != nil {
+		t.Fatal(err)
+	}
+	done, err := RunDeadman(context.Background(), st, id, time.Hour)
+	if err == nil || done {
+		t.Fatalf("done=%v err=%v: con la restauración fallida debe seguir armado", done, err)
+	}
+}
+
+// Sin manifiesto (se borró con --purge) no queda nada que vigilar.
+func TestDeadmanMissingChange(t *testing.T) {
+	done, err := RunDeadman(context.Background(), &Store{Dir: t.TempDir()}, "chg-20261015-193000", time.Hour)
+	if !errors.Is(err, ErrNoChange) || !done {
+		t.Errorf("done=%v err=%v", done, err)
+	}
+}
+
+// El proceso principal desarma el dead-man switch al confirmar y al deshacer
+// él mismo el cambio, pero no si no ha podido deshacerlo todo.
+func TestDisarmAfterDecision(t *testing.T) {
+	for _, c := range []struct {
+		name, value, mode string
+		confirm, disarm   bool
+	}{
+		{"confirmado", "1", "", true, true},
+		{"no confirmado y deshecho", "1", "", false, true},
+		{"no confirmado y sin poder deshacerlo", "atascado", "stuck", false, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			memSys = map[string]string{"r": "0"}
+			rules := []*rule.Rule{memRule("T-R-001", "r", c.value, "low", "remote-access", act("r", c.value, c.mode))}
+			ctx := context.Background()
+			items := BuildPlan(ctx, engine.New().Run(ctx, rules, nil), Options{Wave: 1, IncludeRemote: true})
+			x, st := newExecutor(t)
+			x.ArmDeadman = func(string, time.Duration) error { return nil }
+			disarmed := ""
+			x.DisarmDeadman = func(id string) { disarmed = id }
+			x.ConfirmRemote = func(time.Duration) bool { return c.confirm }
+			x.DeadmanTimeout = time.Minute
+			m, err := x.Execute(ctx, st.NewManifest("h", "p", "test", 1), items)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := disarmed == m.ID; got != c.disarm {
+				t.Errorf("desarmado: %v, quiero %v", got, c.disarm)
+			}
+		})
 	}
 }
 
@@ -332,7 +444,7 @@ func TestDeadmanFiredBeforeConfirm(t *testing.T) {
 	var id string
 	x.ConfirmRemote = func(time.Duration) bool {
 		// El usuario tarda: el dead-man switch (otro proceso) salta antes.
-		if err := RunDeadman(ctx, st, id, time.Second); err != nil {
+		if _, err := RunDeadman(ctx, st, id, time.Second); err != nil {
 			t.Errorf("deadman: %v", err)
 		}
 		return true // ... y confirma tarde

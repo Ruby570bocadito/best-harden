@@ -173,7 +173,12 @@ func runHarden(f hardenFlags) error {
 	}
 	if !f.noDeadman {
 		x.ConfirmRemote = confirmRemote(s)
-		x.ArmDeadman = func(id string, t time.Duration) error { return remediate.SpawnDeadman(store.Dir, id, t) }
+		x.ArmDeadman = func(id string, t time.Duration) error { return armDeadman(s, store.Dir, id, t) }
+		x.DisarmDeadman = func(id string) {
+			if err := disarmDeadman(id, true); err != nil {
+				fmt.Printf("  %s %s\n", s.Dim("·"), s.Dim("La tarea del dead-man switch se retirará sola al vencer el plazo ("+report.Clean(err.Error())+")."))
+			}
+		}
 	}
 	fmt.Println()
 	m, err := x.Execute(ctx, store.NewManifest(info.Hostname, prof.ID, version.Version, f.wave), items)
@@ -523,7 +528,7 @@ func newDeadmanCmd() *cobra.Command {
 		Args:   cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			signal.Ignore(syscall.SIGHUP)
-			return remediate.RunDeadman(context.Background(), snapshotStore(), args[0], timeout)
+			return runDeadman(args[0], timeout)
 		},
 	}
 	cmd.Flags().DurationVar(&timeout, "timeout", 2*time.Minute, "plazo de confirmación")

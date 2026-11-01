@@ -133,13 +133,13 @@ Una regla puede tener varias acciones; se aplican en orden y, si una falla, se r
 Las reglas con `safety: remote-access` (RDP NLA; en SSH, el acceso de root, los cifrados, los MAC, el intercambio de claves y la autenticación por contraseña) se omiten salvo que se pase `--include-remote`. Con esa opción:
 
 1. Se aplican los demás cambios.
-2. Se arma un **proceso independiente** (`adarve deadman <id>`) que sobrevive al cierre de la sesión SSH o RDP.
+2. Se arma el dead-man switch como **tarea del sistema**: un servicio de systemd (`adarve-deadman@<id>.service`) o una tarea de SYSTEM en el Programador de tareas (`\Adarve\Dead-man <id>`). Arranca ya, fuera de la sesión, y otra vez en cada inicio del equipo hasta que se confirma o se deshace el cambio ([ADR-0011](adr/0011-dead-man-switch-persistente.md)).
 3. Se aplican los cambios de acceso remoto y se verifican.
-4. Adarve pide que abras **una sesión nueva** y escribas `confirmar`. Si no lo haces dentro del plazo (por defecto 2 minutos), o si la sesión se corta, los cambios de acceso remoto se revierten solos.
+4. Adarve pide que abras **una sesión nueva** y escribas `confirmar`. Si no lo haces dentro del plazo (por defecto 2 minutos), o si la sesión se corta o el equipo se reinicia, los cambios de acceso remoto se revierten solos. Tras un reinicio con el plazo ya vencido, en cuanto arranca el equipo.
 
 En modo no interactivo (`--yes`) los cambios remotos se rechazan, salvo que se indique `--no-deadman` (pensado para máquinas desechables y CI).
 
-El dead-man switch es un proceso aparte que no sobrevive a un reinicio: no reinicies el equipo antes de que venza el plazo ([qué hacer si pierdes el acceso](17-guia-de-operacion.md#perdiste-el-acceso-remoto-ssh-o-rdp)).
+Si no se puede armar como tarea del sistema (sin systemd, con el ejecutable fuera de Program Files o de `/usr/local/bin`, o con `ADARVE_HOME`), Adarve lo avisa y usa un proceso independiente, que sobrevive al cierre de la sesión pero no a un reinicio. Si el dead-man switch no consigue deshacerlo todo, sigue armado y lo reintenta en el siguiente arranque. Lo que hace queda en `snapshots/<id>/deadman.log` ([qué hacer si pierdes el acceso](17-guia-de-operacion.md#perdiste-el-acceso-remoto-ssh-o-rdp)).
 
 ### Consciencia de GPO
 

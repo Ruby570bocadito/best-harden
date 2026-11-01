@@ -167,8 +167,11 @@ type Executor struct {
 	Events func(Event)
 	// ConfirmRemote pide confirmación de que el acceso remoto sigue
 	// funcionando. Si es nil, los cambios remotos no se confirman (laboratorios).
-	ConfirmRemote  func(timeout time.Duration) bool
-	ArmDeadman     func(id string, timeout time.Duration) error
+	ConfirmRemote func(timeout time.Duration) bool
+	ArmDeadman    func(id string, timeout time.Duration) error
+	// DisarmDeadman retira el dead-man switch cuando ya no hace falta: el
+	// acceso remoto se confirmó o sus cambios están deshechos.
+	DisarmDeadman  func(id string)
 	DeadmanTimeout time.Duration
 }
 
@@ -266,6 +269,12 @@ func (x *Executor) Execute(ctx context.Context, m *Manifest, items []*Item) (*Ma
 				}
 			}
 			x.emit("remote-reverted", nil, nil)
+		}
+		// Confirmado o deshecho: el dead-man switch ya no hace falta. Si algo
+		// no se pudo deshacer, sigue armado y lo reintenta al vencer el plazo
+		// (o en el siguiente arranque).
+		if deadman && x.DisarmDeadman != nil && (m.Confirmed || m.pending(func(e *Entry) bool { return e.RemoteAccess }) == 0) {
+			x.DisarmDeadman(m.ID)
 		}
 	}
 
@@ -479,12 +488,18 @@ func rollback(ctx context.Context, m *Manifest, filter func(*Entry) bool, bestEf
 }
 
 // RunDeadman espera hasta el plazo y, si el acceso remoto no se confirmó,
-// deshace los cambios de acceso remoto. Se ejecuta en un proceso separado
-// que sobrevive al cierre de la sesión SSH/RDP.
-func RunDeadman(ctx context.Context, s *Store, id string, timeout time.Duration) error {
+// deshace los cambios de acceso remoto. Se ejecuta aparte del proceso
+// principal: como tarea del sistema, que arranca otra vez en cada inicio
+// del equipo hasta que se desarma, o como proceso independiente. Si arranca
+// con el plazo ya vencido (tras un reinicio), decide en el momento.
+//
+// done indica que ya no hace falta y se puede desarmar: se confirmó, no
+// queda nada que deshacer o el cambio ya no existe. Si deshacer falla, done
+// es false y el siguiente arranque lo vuelve a intentar.
+func RunDeadman(ctx context.Context, s *Store, id string, timeout time.Duration) (done bool, err error) {
 	m, err := s.Load(id)
 	if err != nil {
-		return err
+		return errors.Is(err, ErrNoChange), err
 	}
 	deadline := time.Now().Add(timeout)
 	if m.DeadmanDeadline != nil {
@@ -493,7 +508,7 @@ func RunDeadman(ctx context.Context, s *Store, id string, timeout time.Duration)
 	select {
 	case <-time.After(time.Until(deadline)):
 	case <-ctx.Done():
-		return ctx.Err()
+		return false, ctx.Err()
 	}
 	remote := func(e *Entry) bool { return e.RemoteAccess }
 	fire := false
@@ -511,9 +526,15 @@ func RunDeadman(ctx context.Context, s *Store, id string, timeout time.Duration)
 		fire = true
 		m.DeadmanFired = true
 		return m.Save()
-	}); err != nil || !fire {
-		return err
+	}); err != nil {
+		return false, err
+	}
+	if !fire {
+		return true, nil
 	}
 	s.Log(id, "", "deadman", "acceso remoto no confirmado: revirtiendo")
-	return Rollback(ctx, m, remote)
+	if err := Rollback(ctx, m, remote); err != nil {
+		return false, err
+	}
+	return true, nil
 }

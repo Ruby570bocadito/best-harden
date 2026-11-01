@@ -337,7 +337,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - run: shellcheck scripts/install.sh scripts/e2e/install-linux.sh scripts/e2e/deploy-linux.sh
+      - run: shellcheck scripts/install.sh scripts/e2e/install-linux.sh scripts/e2e/deploy-linux.sh scripts/e2e/deadman-linux.sh
 
   cross:
     name: Compilación cruzada
@@ -445,3 +445,20 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: .\scripts\e2e\deploy-windows.ps1 -Dir "$env:RUNNER_TEMP\e2e"
+
+  # El dead-man switch con systemd de verdad: harden en una terminal simulada
+  # aplica un cambio de SSH, la sesión se corta sin confirmar y un «reinicio»
+  # mata el dead-man switch; al volver a arrancar debe deshacer el cambio.
+  # En Windows, la tarea de SYSTEM la prueba internal/schedule en el job Test.
+  deadman-e2e:
+    name: Dead-man switch de punta a punta (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - name: Compilar
+        run: go build -o "$RUNNER_TEMP/adarve" ./cmd/adarve
+      - name: Cortar la sesión y reiniciar sin confirmar el acceso remoto
+        run: sudo env CI=true bash scripts/e2e/deadman-linux.sh "$RUNNER_TEMP/adarve"

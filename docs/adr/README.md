@@ -14,3 +14,4 @@ Registro de decisiones importantes: contexto, decisión y consecuencias. Una ADR
 | [0008](0008-consola-local.md) | Consola local en 127.0.0.1, con token y de solo lectura | Aceptada |
 | [0009](0009-releases-firmadas.md) | Releases firmadas con una clave ECDSA propia | Aceptada |
 | [0010](0010-formatos-estables.md) | Formatos estables y política de compatibilidad | Aceptada |
+| [0011](0011-dead-man-switch-persistente.md) | Dead-man switch como tarea del sistema | Aceptada |

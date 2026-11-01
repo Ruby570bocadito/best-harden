@@ -11,7 +11,7 @@ Endurecer un sistema en producción da miedo por una razón: los cambios rompen 
 - Por cada acción se guarda el estado previo en un **manifiesto en disco antes de aplicar** (registro previo).
 - Tras aplicar, se **reevalúa el control**: si no se cumple, se revierte. Un cambio que no surte efecto es peor que no hacer nada, porque da una falsa sensación de seguridad.
 - Los cambios se agrupan en **olas por riesgo de rotura**, declarado en cada regla.
-- Los cambios que pueden cortar el acceso remoto llevan un **dead-man switch** en un proceso independiente.
+- Los cambios que pueden cortar el acceso remoto llevan un **dead-man switch** en un proceso independiente (desde el [ADR-0011](0011-dead-man-switch-persistente.md), una tarea del sistema que también sobrevive a un reinicio).
 
 ## Consecuencias
 - ✅ Rollback exacto, también desde otro proceso o tras un corte (`adarve rollback`).

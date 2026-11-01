@@ -25,6 +25,10 @@ const (
 	timerPath   = "/etc/systemd/system/adarve-scan.timer"
 	cronPath    = "/etc/cron.d/adarve"
 
+	// La plantilla del dead-man switch: una instancia por cambio,
+	// adarve-deadman@<cambio>.service.
+	deadmanTemplate = "/etc/systemd/system/adarve-deadman@.service"
+
 	// El análisis programado de Bastion, el nombre anterior de Adarve.
 	legacyUnit    = "bastion-scan"
 	legacyService = "/etc/systemd/system/bastion-scan.service"
@@ -225,4 +229,60 @@ func writeFile(path, content string) error {
 		return err
 	}
 	return os.Rename(tmp, path)
+}
+
+func deadmanUnitName(id string) string { return "adarve-deadman@" + id + ".service" }
+
+// deadmanUnit es la plantilla del dead-man switch. Type=simple: arrancarla
+// no espera al plazo, ni en el inicio del equipo.
+func deadmanUnit(exe string) string {
+	return fmt.Sprintf(`# Creado por «adarve harden --include-remote». Cada cambio de acceso remoto
+# activa una instancia (adarve-deadman@<cambio>.service) que se desactiva al
+# confirmarlo o al deshacerlo.
+[Unit]
+Description=Adarve: dead-man switch del acceso remoto (%%i)
+After=local-fs.target
+
+[Service]
+Type=simple
+ExecStart=%s deadman %%i
+
+[Install]
+WantedBy=multi-user.target
+`, systemdQuote(exe))
+}
+
+// ArmDeadman activa adarve-deadman@<id>.service: arranca ya y en cada
+// inicio del equipo. Como servicio de systemd queda fuera de la sesión SSH,
+// así que tampoco lo termina logind al cerrarla (KillUserProcesses=yes).
+func (u *unixScheduler) ArmDeadman(ctx context.Context, exe, id string) error {
+	if err := checkDeadmanID(id); err != nil {
+		return err
+	}
+	if !u.systemd() {
+		return fmt.Errorf("%w: el sistema no arranca con systemd", ErrUnsupported)
+	}
+	if err := writeFile(u.path(deadmanTemplate), deadmanUnit(exe)); err != nil {
+		return err
+	}
+	if _, err := u.run(ctx, "systemctl", "daemon-reload"); err != nil {
+		return err
+	}
+	_, err := u.run(ctx, "systemctl", "enable", "--now", deadmanUnitName(id))
+	return err
+}
+
+func (u *unixScheduler) DisarmDeadman(ctx context.Context, id string, stop bool) error {
+	if err := checkDeadmanID(id); err != nil {
+		return err
+	}
+	if _, err := os.Stat(u.path(deadmanTemplate)); err != nil || !u.systemd() {
+		return nil // no se armó como servicio de systemd
+	}
+	args := []string{"disable"}
+	if stop {
+		args = append(args, "--now")
+	}
+	_, err := u.run(ctx, "systemctl", append(args, deadmanUnitName(id))...)
+	return err
 }
