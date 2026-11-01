@@ -67,10 +67,12 @@ jobs:
           set -euo pipefail
           sudo unshare -n sh -c '
             iptables-nft-restore < internal/surface/testdata/ufw.rules
-            for p in 22 3306 8080; do python3 -m http.server $p --bind 0.0.0.0 >/dev/null 2>&1 & done
+            pids=""
+            for p in 22 3306 8080; do python3 -m http.server $p --bind 0.0.0.0 >/dev/null 2>&1 & pids="$pids $!"; done
             sleep 2
             ./bin/adarve surface --format json > fw.json
-            kill $(jobs -p)'
+            # En sh (dash) no interactivo, "jobs -p" no devuelve nada.
+            kill $pids'
           jq -r '.ports[] | select(.scope == "network") | "\(.port)/\(.proto) \(.firewall) \(.firewall_limit // "") · \(.firewall_why)"' fw.json
           jq -e '.firewall.source == "iptables" and .firewall.input_policy == "drop"
             and ([.ports[] | select(.port == 22)][0].firewall == "open")
@@ -125,6 +127,7 @@ jobs:
           if (-not ($r.listeners | Where-Object { $_.process })) { throw 'ningún puerto asociado a su proceso' }
           if (-not $r.firewall -or $r.firewall.profiles.Count -ne 3) { throw 'no se evaluó el Firewall de Windows' }
           $r.ports | Where-Object { $_.scope -eq 'network' } | Select-Object port, proto, process, signature, signer | Format-Table | Out-String | Write-Host
+          $r.notes | ForEach-Object { Write-Host "nota: $_" }
           if (-not ($r.ports | Where-Object { $_.signature -eq 'valid' -and $_.signer -match 'Microsoft' })) { throw 'no se comprobó la firma de los programas que escuchan en la red' }
           # Como administrador, las reglas salen completas del registro.
           if ($r.firewall.source -ne 'registry' -or $r.firewall.inbound_rules -eq 0) { throw "reglas del firewall no leídas del registro (origen: $($r.firewall.source))" }
@@ -291,6 +294,11 @@ jobs:
             Remove-NetFirewallRule -Name 'Adarve-CI-Test' -ErrorAction SilentlyContinue
             foreach ($p in $profiles) { Set-NetFirewallProfile -Name $p.Name -Enabled $p.Enabled -DefaultInboundAction $p.DefaultInboundAction }
           }
+      # Los informes los escribe root (sudo, permisos 0640): se devuelven al
+      # usuario del runner para que la acción pueda subirlos.
+      - name: Informes legibles para subirlos
+        if: always() && runner.os == 'Linux'
+        run: sudo chown "$(id -u):$(id -g)" report.* 2>/dev/null || true
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
