@@ -180,26 +180,36 @@ jobs:
           set -euo pipefail
           b=./bin/adarve
           before=$(sudo $b scan --format json | jq .score.value)
+          # harden no debe dejar cambios fuera de la instantánea (p. ej. /run/sshd).
+          sshd_dir_before=$(test -e /run/sshd && echo sí || echo no)
           sudo $b harden --wave 1 --no-color
           sudo $b harden --wave 1 --apply --yes --no-color
           after=$(sudo $b scan --format json | jq .score.value)
           sudo $b history --no-color
           sudo $b rollback --yes --no-color
           restored=$(sudo $b scan --format json | jq .score.value)
-          echo "Postura: $before → $after → $restored"
+          sshd_dir_after=$(test -e /run/sshd && echo sí || echo no)
+          echo "Postura: $before → $after → $restored · /run/sshd: $sshd_dir_before → $sshd_dir_after"
           test "$after" -gt "$before"
           test "$restored" -eq "$before"
+          test "$sshd_dir_before" = "$sshd_dir_after"
       - name: Ciclo harden → rollback (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $b = '.\bin\adarve.exe'
+          # Estado de Microsoft Defender en cada fase: si deja de responder
+          # en el runner, el rollback de sus preferencias no puede hacerse.
+          function Defender([string]$fase) { $s = Get-Service WinDefend -ErrorAction SilentlyContinue; "Defender ($fase): servicio $($s.Status), inicio $($s.StartType)" }
+          Defender 'antes'
           $before = (& $b scan --format json | ConvertFrom-Json).score.value
           & $b harden --wave 1 --no-color
           & $b harden --wave 1 --apply --yes --no-color
           if ($LASTEXITCODE -ne 0) { throw 'harden falló' }
+          Defender 'tras aplicar'
           $after = (& $b scan --format json | ConvertFrom-Json).score.value
           & $b history --no-color
+          Defender 'antes del rollback'
           & $b rollback --yes --no-color
           if ($LASTEXITCODE -ne 0) { throw 'rollback falló' }
           $restored = (& $b scan --format json | ConvertFrom-Json).score.value

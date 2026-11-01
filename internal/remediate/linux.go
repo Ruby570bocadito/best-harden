@@ -363,22 +363,42 @@ func (sshdSet) Restore(ctx context.Context, _ probes.Params, before State) error
 // la unidad de systemd al arrancar (RuntimeDirectory=sshd): con el servicio
 // parado o activado por socket (Ubuntu 22.10 en adelante) no existe y
 // "sshd -t" falla aunque la configuración sea correcta.
-var privSepDir = "/run/sshd"
+const privSepDir = "/run/sshd"
 
-// validateSSHD comprueba la configuración con "sshd -t".
+// sshdTestScript monta un /run temporal y vacío, crea en él el directorio de
+// separación de privilegios y ejecuta "sshd -t". Las rutas llegan como
+// argumentos ($1 mount, $2 mkdir, $3 sshd), nunca dentro del script.
+const sshdTestScript = `"$1" -t tmpfs -o mode=0755 tmpfs /run && "$2" -m 0755 /run/sshd && exec "$3" -t`
+
+// validateSSHD comprueba la configuración con "sshd -t". Si falla solo
+// porque falta privSepDir, la comprueba de nuevo en un espacio de montaje
+// privado (unshare) con un /run temporal: sshd encuentra su directorio y el
+// sistema no cambia (crearlo de verdad dejaría un cambio fuera de la
+// instantánea y haría que los escaneos leyeran sshd de otra forma).
 func validateSSHD(ctx context.Context) error {
 	out, err := run(ctx, sshdBinary(), "-t")
 	if err != nil && strings.Contains(out, "privilege separation directory") {
 		if _, serr := os.Stat(privSepDir); errors.Is(serr, fs.ErrNotExist) {
-			if mkErr := os.Mkdir(privSepDir, 0o755); mkErr == nil {
-				_, err = run(ctx, sshdBinary(), "-t")
-			}
+			_, err = sshdTestIsolated(ctx)
 		}
 	}
 	if err != nil {
 		return fmt.Errorf("la configuración de sshd no es válida: %w", err)
 	}
 	return nil
+}
+
+// sshdTestIsolated ejecuta "sshd -t" con un /run temporal en un espacio de
+// montaje privado: el montaje no se propaga al sistema.
+func sshdTestIsolated(ctx context.Context) (string, error) {
+	unshare := firstExisting([]string{"/usr/bin/unshare", "/bin/unshare"})
+	sh := firstExisting([]string{"/bin/sh", "/usr/bin/sh"})
+	mount := firstExisting([]string{"/usr/bin/mount", "/bin/mount"})
+	mkdir := firstExisting([]string{"/usr/bin/mkdir", "/bin/mkdir"})
+	if unshare == "" || sh == "" || mount == "" || mkdir == "" {
+		return "", fmt.Errorf("falta %s y no se puede comprobar sin él (se necesitan unshare, sh, mount y mkdir)", privSepDir)
+	}
+	return run(ctx, unshare, "--mount", "--propagation", "private", sh, "-c", sshdTestScript, "sshd-t", mount, mkdir, sshdBinary())
 }
 
 // reloadSSHD valida la configuración y recarga sshd si está en marcha. Si
