@@ -69,7 +69,7 @@ function Install-Adarve {
     # El proceso elevado arranca en otra carpeta: una ruta relativa dejaría
     # de apuntar al archivo.
     if ($Local) { $Local = (Resolve-Path -LiteralPath $Local -ErrorAction Stop).Path }
-    $InstallDir = Join-Path $env:ProgramFiles 'Adarve'
+    $InstallDir = Join-Path (Get-ProgramFiles) 'Adarve'
     $Exe        = Join-Path $InstallDir 'adarve.exe'
     $DataDir    = Join-Path $env:ProgramData 'Adarve'
 
@@ -232,6 +232,14 @@ function Get-PowerShellExe {
     return (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe')
 }
 
+# Get-ProgramFiles es la carpeta de programas de 64 bits también desde un
+# PowerShell de 32 bits (el agente de Intune instala así las aplicaciones
+# Win32), donde $env:ProgramFiles es «Program Files (x86)».
+function Get-ProgramFiles {
+    if ($env:ProgramW6432) { return $env:ProgramW6432 }
+    return $env:ProgramFiles
+}
+
 function Get-AdarveArch {
     $a = $env:PROCESSOR_ARCHITEW6432
     if (-not $a) { $a = $env:PROCESSOR_ARCHITECTURE }
@@ -327,7 +335,7 @@ function Remove-Bastion([string]$Exe) {
             Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue
     }
     Remove-Item 'HKLM:\SYSTEM\CurrentControlSet\Services\EventLog\Application\Bastion' -Recurse -ErrorAction SilentlyContinue
-    $oldDir = Join-Path $env:ProgramFiles 'Bastion'
+    $oldDir = Join-Path (Get-ProgramFiles) 'Bastion'
     if (Test-Path -LiteralPath (Join-Path $oldDir 'bastion.exe')) {
         Remove-Item -Recurse -Force -LiteralPath $oldDir -ErrorAction SilentlyContinue
         if (-not (Test-Path -LiteralPath $oldDir)) { Write-Ok "Retirado $oldDir (Bastion es ahora Adarve)" }

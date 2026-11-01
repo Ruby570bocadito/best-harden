@@ -10,3 +10,6 @@
 .DS_Store
 .idea/
 .vscode/
+
+# Informes que trae el playbook de ejemplo (deploy/ansible)
+/deploy/ansible/informes/

@@ -18,6 +18,7 @@
 | 14 | [Marcos normativos y licencias](14-marcos-y-licencias.md) | CIS, STIG, NIST, ENS, ISO 27001, NIS2 y consideraciones de licencia |
 | 15 | [Visión a largo plazo](15-vision-a-largo-plazo.md) | Flota, defensa y enterprise: fuera de la v1.0 |
 | 16 | [Formatos estables y compatibilidad](16-formatos-y-compatibilidad.md) | Qué formatos son estables, qué puede cambiar en la v1 y cómo se hace cumplir |
+| 17 | [Guía de operación](17-guia-de-operacion.md) | Desplegar por GPO, Intune o Ansible, llevar el hardening a la flota y qué hacer si algo falla |
 | — | [Decisiones de arquitectura (ADR)](adr/) | Por qué Go, reglas declarativas, standalone primero, etc. |
 
 ## Convenciones

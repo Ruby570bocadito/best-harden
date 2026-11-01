@@ -328,7 +328,7 @@ jobs:
             Set-PSRepository PSGallery -InstallationPolicy Trusted
             Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
           }
-          $r = Invoke-ScriptAnalyzer -Path scripts/install.ps1 -Severity Warning,Error
+          $r = 'scripts/install.ps1', 'deploy/windows', 'deploy/intune' | ForEach-Object { Invoke-ScriptAnalyzer -Path $_ -Severity Warning,Error }
           $r | Format-Table -AutoSize
           if ($r | Where-Object Severity -eq 'Error') { exit 1 }
 
@@ -337,7 +337,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - run: shellcheck scripts/install.sh scripts/e2e/install-linux.sh
+      - run: shellcheck scripts/install.sh scripts/e2e/install-linux.sh scripts/e2e/deploy-linux.sh
 
   cross:
     name: Compilación cruzada
@@ -415,3 +415,33 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: .\scripts\e2e\install-windows.ps1 -Dir "$env:RUNNER_TEMP\e2e"
+
+  # Los ejemplos de deploy/ en máquinas reales, contra el espejo firmado de
+  # mkmirror (docs/17-guia-de-operacion.md): el playbook de Ansible contra el
+  # propio runner, y el script de la GPO e Intune con los de Intune.
+  despliegue-e2e:
+    name: Despliegue de ejemplo (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - name: Espejo de releases firmado con una clave de prueba
+        shell: bash
+        run: go run ./scripts/e2e/mkmirror -out "$RUNNER_TEMP/e2e"
+      - name: Ansible (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q ansible-core
+          ansible-playbook --version
+          bash scripts/e2e/deploy-linux.sh "$RUNNER_TEMP/e2e"
+      - name: GPO e Intune (Windows PowerShell 5.1, como administrador)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: .\scripts\e2e\deploy-windows.ps1 -Dir "$env:RUNNER_TEMP\e2e"

@@ -99,11 +99,14 @@ gh attestation verify adarve_windows_amd64.zip --repo Ruby570bocadito/adarve
 
 ## Despliegue masivo
 
+Hay ejemplos en [`deploy/`](../deploy), que el CI prueba en máquinas reales. Cómo usarlos y qué hacer cuando algo falla: [17 · Guía de operación](17-guia-de-operacion.md).
+
 | Entorno | Cómo |
 |---|---|
-| GPO | Tarea programada de inicio que ejecute el one-liner con `-NoScan -NoOpen`, o copia del `.exe` + `adarve init` |
-| Intune / SCCM | Script de PowerShell con el one-liner; detección por `C:\Program Files\Adarve\adarve.exe` |
-| Ansible | `ansible.builtin.shell: curl -fsSL …/install.sh \| bash -s -- --no-scan` o `win_shell` con el one-liner de PowerShell |
+| GPO | Script de inicio o tarea inmediata que ejecuta `Deploy-Adarve.ps1 -Version vX.Y.Z` desde un recurso compartido con la release |
+| Intune | Aplicación Win32 con esa misma carpeta y `Detect-Adarve.ps1` como regla de detección; Remediations para la postura de cada equipo |
+| SCCM | Una aplicación con la misma carpeta, la misma orden de instalación y el mismo script de detección que en Intune |
+| Ansible | `deploy/ansible/adarve.yml` en Linux; en Windows, `Deploy-Adarve.ps1` con `win_command` |
 | Imágenes doradas | Packer: instalar y ejecutar `adarve scan --min-score 90` como validación |
 | 🔜 Paquetes nativos | MSI (WiX), `.deb` y `.rpm` (nfpm) en la fase 3 |
 
@@ -157,7 +160,7 @@ En Windows, `C:\Program Files\Adarve` solo lo puede modificar un administrador. 
 | Configuración | `/etc/adarve/config.yaml` | `C:\ProgramData\Adarve\config.yaml` |
 | Reglas propias | `/etc/adarve/rules.d/` | `C:\ProgramData\Adarve\rules.d\` |
 | Informes | `/var/lib/adarve/reports/` | `C:\ProgramData\Adarve\reports\` |
-| Instantáneas (fase 2) | `/var/lib/adarve/snapshots/` | `C:\ProgramData\Adarve\snapshots\` |
+| Instantáneas de `harden` | `/var/lib/adarve/snapshots/` | `C:\ProgramData\Adarve\snapshots\` |
 
 `ADARVE_HOME` sustituye la configuración y los datos por un único directorio (útil en desarrollo). Con privilegios solo se usa con `--trust-env`.
 

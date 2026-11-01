@@ -19,6 +19,7 @@ Una herramienta de hardening solo es creíble si sus resultados son correctos. U
 | Análisis estático | `govulncheck`, `staticcheck` y `gosec` (Linux y Windows) | CI, job «Análisis de seguridad» | ✅ |
 | Permisos como root | La carpeta de datos se restringe sin seguir enlaces simbólicos | `internal/config/perms_unix_test.go` con `sudo` en CI | ✅ |
 | Instaladores de punta a punta | Migración desde Bastion (datos, configuración, binario, PATH y ronda diaria a la misma hora), reinstalación, `update`, releases manipuladas y sin firma (también con `--insecure`), `--local` con y sin firma, desinstalación con y sin `--purge`, en Ubuntu y Windows reales contra un espejo firmado con una clave de prueba | `scripts/e2e/`, job «Instaladores de punta a punta» | ✅ CI |
+| Despliegue de punta a punta | El playbook de Ansible contra el propio runner (versión fija, `changed=0` al repetirlo, cambio de hora y de versión, releases manipuladas y sin firma, puntuación mínima) y `Deploy-Adarve.ps1` desde PowerShell de 64 y de 32 bits con los scripts de Intune (detección, Remediations con la ola 1 y su rollback) | `scripts/e2e/deploy-*`, job «Despliegue de ejemplo» | ✅ CI |
 | Fixtures por regla | Cada regla con un caso que pasa y otro que falla sobre un sistema simulado | `adarve rules test` | 🔜 fase 2 |
 | Laboratorio de VMs | Ciclo `scan → harden → verify → rollback → verify` + idempotencia | Packer/Vagrant | 🔜 fase 2 |
 | Validación cruzada | Comparar resultados con CIS-CAT Lite, OpenSCAP y HardeningKitty | Laboratorio | 🔜 |

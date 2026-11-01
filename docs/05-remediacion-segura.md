@@ -139,6 +139,8 @@ Las reglas con `safety: remote-access` (RDP NLA; en SSH, el acceso de root, los 
 
 En modo no interactivo (`--yes`) los cambios remotos se rechazan, salvo que se indique `--no-deadman` (pensado para máquinas desechables y CI).
 
+El dead-man switch es un proceso aparte que no sobrevive a un reinicio: no reinicies el equipo antes de que venza el plazo ([qué hacer si pierdes el acceso](17-guia-de-operacion.md#perdiste-el-acceso-remoto-ssh-o-rdp)).
+
 ### Consciencia de GPO
 
 En un equipo unido a dominio, las acciones sobre claves `...\Policies\...` se marcan como **gestionadas por GPO** y no se aplican en local, porque la directiva las volvería a sobrescribir en el siguiente `gpupdate`. Corrígelas en la GPO o usa `--force-local`.
@@ -176,6 +178,8 @@ En un equipo unido a dominio, las acciones sobre claves `...\Policies\...` se ma
   "rules": [ { "rule_id": "WIN-NET-006", "outcome": "verified" } ]
 }
 ```
+
+Si un rollback falla, un hardening se corta a medias o hay que restaurar algo a mano desde el manifiesto: [17 · Guía de operación](17-guia-de-operacion.md#cuando-algo-sale-mal).
 
 ## Pendiente
 
