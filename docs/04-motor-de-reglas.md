@@ -6,6 +6,7 @@ Las reglas son **datos declarativos en YAML**: describen qué leer del sistema y
 - Reglas propias: cualquier `*.yaml` en `rules.d` (`/etc/adarve/rules.d` o `%ProgramData%\Adarve\rules.d`) o en `--rules-dir`.
 - Esquema para editores: [`rules/schema/rule.schema.json`](../rules/schema/rule.schema.json).
 - Validación: `adarve rules lint [directorio]` (también se ejecuta en CI y al arrancar cada comando).
+- Estabilidad: el formato es estable en toda la versión 1 ([16 · Formatos estables y compatibilidad](16-formatos-y-compatibilidad.md)).
 
 ## Anatomía de una regla
 

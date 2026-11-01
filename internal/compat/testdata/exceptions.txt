@@ -1,0 +1,13 @@
+# adarve.exceptions/v1 · exceptions.File · yaml
+# excepciones (exceptions.yaml)
+# Generado por internal/compat (go test ./internal/compat -update). Ver docs/16-formatos-y-compatibilidad.md.
+exceptions: lista
+exceptions[].created: texto
+exceptions[].expires: texto
+exceptions[].hosts: lista (opcional)
+exceptions[].hosts[]: texto
+exceptions[].owner: texto (opcional)
+exceptions[].reason: texto
+exceptions[].rule: texto
+exceptions[]: objeto
+schema: texto

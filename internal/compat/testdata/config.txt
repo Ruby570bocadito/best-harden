@@ -1,0 +1,17 @@
+# config.yaml · config.Config · yaml
+# configuración (config.yaml)
+# Generado por internal/compat (go test ./internal/compat -update). Ver docs/16-formatos-y-compatibilidad.md.
+notify.format: texto (opcional)
+notify.webhook: texto (opcional)
+notify.when: texto (opcional)
+notify: objeto
+profile: texto
+reports.dir: texto
+reports.keep: número
+reports: objeto
+rules.extra_dirs: lista
+rules.extra_dirs[]: texto
+rules: objeto
+update.releases_url: texto
+update.repo: texto
+update: objeto

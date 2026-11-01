@@ -110,7 +110,10 @@ func Save(dir string, rep *engine.Report, keep int) (string, string, error) {
 // equipo renombrado, una carpeta compartida) no se borran los de otro.
 func prune(dir, host string, keep int) {
 	for _, ext := range []string{".html", ".json"} {
-		files := hostFiles(dir, "adarve-", host, ext)
+		var files []string // del más antiguo al último: los de Bastion primero
+		for _, prefix := range savedPrefixes {
+			files = append(files, hostFiles(dir, prefix, host, ext)...)
+		}
 		if len(files) > keep {
 			for _, f := range files[:len(files)-keep] {
 				os.Remove(f)
@@ -163,18 +166,28 @@ type Meta struct {
 	Score       engine.Score `json:"score"`
 }
 
-var reReportID = regexp.MustCompile(`^adarve-[A-Za-z0-9._-]+-[0-9]{8}-[0-9]{6}$`)
+// savedPrefixes son los prefijos de los informes guardados. Los de Bastion,
+// el nombre anterior de Adarve, siguen en la historia; van primero porque
+// siempre son más antiguos que los de Adarve.
+var savedPrefixes = []string{"bastion-", "adarve-"}
+
+var reReportID = regexp.MustCompile(`^(adarve|bastion)-[A-Za-z0-9._-]+-[0-9]{8}-[0-9]{6}$`)
 
 // ValidReportID indica si id es el nombre (sin extensión) de un informe
 // guardado. Impide rutas fuera del directorio de informes.
 func ValidReportID(id string) bool { return reReportID.MatchString(id) && !strings.Contains(id, "..") }
 
-// ListSaved devuelve los informes JSON guardados en dir, del más antiguo
-// al más reciente. Si host no está vacío, solo los de ese equipo.
+// ListSaved devuelve los informes JSON guardados en dir (también los de
+// Bastion), del más antiguo al más reciente. Si host no está vacío, solo los
+// de ese equipo.
 func ListSaved(dir, host string) ([]Meta, error) {
-	files, err := filepath.Glob(filepath.Join(dir, "adarve-*.json"))
-	if err != nil {
-		return nil, err
+	var files []string
+	for _, prefix := range savedPrefixes {
+		m, err := filepath.Glob(filepath.Join(dir, prefix+"*.json"))
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, m...)
 	}
 	var out []Meta
 	for _, f := range files {

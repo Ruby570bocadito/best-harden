@@ -77,6 +77,43 @@ func TestPrunePerHost(t *testing.T) {
 	}
 }
 
+// Los informes que guardó Bastion (el nombre anterior de Adarve) siguen en la
+// historia y salen de ella por antigüedad, como los demás.
+func TestBastionReportsInHistory(t *testing.T) {
+	dir := t.TempDir()
+	old := `{"schema":"bastion.report/v1","finished_at":"2026-03-01T10:15:00+01:00","host":{"hostname":"web-01"}}`
+	for _, ext := range []string{".json", ".html"} {
+		if err := os.WriteFile(filepath.Join(dir, "bastion-web-01-20260301-101500"+ext), []byte(old), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	base := time.Date(2026, 10, 1, 9, 0, 0, 0, time.Local)
+	save := func(day int) {
+		t.Helper()
+		rep := &engine.Report{Schema: engine.SchemaVersion, Host: platform.Info{Hostname: "web-01"}, FinishedAt: base.AddDate(0, 0, day)}
+		if _, _, err := Save(dir, rep, 2); err != nil {
+			t.Fatal(err)
+		}
+	}
+	save(1)
+	metas, err := ListSaved(dir, "web-01")
+	if err != nil || len(metas) != 2 || metas[0].ID != "bastion-web-01-20260301-101500" {
+		t.Fatalf("historia = %+v, %v; quiero el informe de Bastion y después el nuevo", metas, err)
+	}
+	if _, err := LoadSaved(dir, metas[0].ID); err != nil {
+		t.Errorf("informe de Bastion: %v", err)
+	}
+	save(2) // con keep 2 sale el más antiguo: el de Bastion
+	for _, ext := range []string{".json", ".html"} {
+		if n := len(hostFiles(dir, "bastion-", "web-01", ext)); n != 0 {
+			t.Errorf("%s: sigue el informe de Bastion; con keep 2 debía salir por ser el más antiguo", ext)
+		}
+		if n := len(hostFiles(dir, "adarve-", "web-01", ext)); n != 2 {
+			t.Errorf("%s: %d informes de Adarve, quiero 2", ext, n)
+		}
+	}
+}
+
 func TestConsoleUnscored(t *testing.T) {
 	var b bytes.Buffer
 	Console(&b, &engine.Report{Schema: engine.SchemaVersion, Score: engine.Score{Grade: "N/A"}}, ConsoleOptions{})

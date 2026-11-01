@@ -1,0 +1,160 @@
+# adarve.report/v1 · engine.Report · json
+# informe de escaneo (adarve scan --format json, informes guardados)
+# Generado por internal/compat (go test ./internal/compat -update). Ver docs/16-formatos-y-compatibilidad.md.
+changes.fixed: lista
+changes.fixed[].after: texto (engine.Status)
+changes.fixed[].before: texto (engine.Status)
+changes.fixed[].id: texto
+changes.fixed[].severity: texto (rule.Severity)
+changes.fixed[].title: texto
+changes.fixed[]: objeto
+changes.regressions: lista
+changes.regressions[].after: texto (engine.Status)
+changes.regressions[].before: texto (engine.Status)
+changes.regressions[].id: texto
+changes.regressions[].severity: texto (rule.Severity)
+changes.regressions[].title: texto
+changes.regressions[]: objeto
+changes.score_before: número
+changes.since: fecha RFC 3339
+changes: objeto (opcional)
+duration_ms: número
+finished_at: fecha RFC 3339
+host.arch: texto
+host.build: texto (opcional)
+host.container: booleano (opcional)
+host.distro: texto (opcional)
+host.domain: texto (opcional)
+host.domain_joined: booleano
+host.entra_joined: booleano (opcional)
+host.family: texto
+host.hostname: texto
+host.is_admin: booleano
+host.kernel: texto (opcional)
+host.name: texto
+host.os: texto
+host.role: texto
+host.tags: lista
+host.tags[]: texto
+host.version: texto
+host: objeto
+profile.default_for: lista (opcional)
+profile.default_for[]: texto
+profile.description: texto
+profile.extends: lista (opcional)
+profile.extends[]: texto
+profile.id: texto
+profile.name: texto
+profile.platforms: lista
+profile.platforms[]: texto
+profile: objeto
+results: lista
+results[].actual: texto (opcional)
+results[].children: lista (opcional)
+results[].children[].actual: texto (opcional)
+results[].children[].children: lista (opcional)
+results[].children[].children[]: objeto (recursivo: engine.Eval)
+results[].children[].expected: texto (opcional)
+results[].children[].field: texto (opcional)
+results[].children[].label: texto (opcional)
+results[].children[].message: texto (opcional)
+results[].children[].probe: texto (opcional)
+results[].children[].source: texto (opcional)
+results[].children[].status: texto (engine.Status)
+results[].children[]: objeto
+results[].duration_ms: número
+results[].exception.created: texto
+results[].exception.expired: booleano
+results[].exception.expires: texto
+results[].exception.hosts: lista (opcional)
+results[].exception.hosts[]: texto
+results[].exception.owner: texto (opcional)
+results[].exception.reason: texto
+results[].exception.rule: texto
+results[].exception: objeto (opcional)
+results[].expected: texto (opcional)
+results[].field: texto (opcional)
+results[].label: texto (opcional)
+results[].message: texto (opcional)
+results[].probe: texto (opcional)
+results[].rule.category: texto
+results[].rule.description: texto
+results[].rule.id: texto
+results[].rule.impact: texto (opcional)
+results[].rule.platforms: lista
+results[].rule.platforms[]: texto
+results[].rule.profiles: lista
+results[].rule.profiles[]: texto
+results[].rule.rationale: texto (opcional)
+results[].rule.references.cis: lista (opcional)
+results[].rule.references.cis[]: texto
+results[].rule.references.ens: lista (opcional)
+results[].rule.references.ens[]: texto
+results[].rule.references.mitre_mitigations: lista (opcional)
+results[].rule.references.mitre_mitigations[]: texto
+results[].rule.references.mitre_techniques: lista (opcional)
+results[].rule.references.mitre_techniques[]: texto
+results[].rule.references.nist: lista (opcional)
+results[].rule.references.nist[]: texto
+results[].rule.references.stig: lista (opcional)
+results[].rule.references.stig[]: texto
+results[].rule.references.urls: lista (opcional)
+results[].rule.references.urls[]: texto
+results[].rule.references: objeto
+results[].rule.remediation.actions: lista (opcional)
+results[].rule.remediation.actions[]: formato propio (rule.Action)
+results[].rule.remediation.breaking_risk: texto
+results[].rule.remediation.commands: texto (opcional)
+results[].rule.remediation.gpo: texto (opcional)
+results[].rule.remediation.reboot_required: booleano (opcional)
+results[].rule.remediation.safety: texto (opcional)
+results[].rule.remediation.summary: texto
+results[].rule.remediation: objeto
+results[].rule.requires: lista (opcional)
+results[].rule.requires[]: texto
+results[].rule.severity: texto (rule.Severity)
+results[].rule.source: texto (opcional)
+results[].rule.title: texto
+results[].rule: objeto
+results[].source: texto (opcional)
+results[].status: texto (engine.Status)
+results[]: objeto
+schema: texto
+score.by_category: lista
+score.by_category[].errors: número
+score.by_category[].exceptions: número
+score.by_category[].failed: número
+score.by_category[].na: número
+score.by_category[].name: texto
+score.by_category[].passed: número
+score.by_category[].scored: booleano
+score.by_category[].skipped: número
+score.by_category[].total: número
+score.by_category[].value: número
+score.by_category[]: objeto
+score.by_severity.*.errors: número
+score.by_severity.*.exceptions: número
+score.by_severity.*.failed: número
+score.by_severity.*.na: número
+score.by_severity.*.passed: número
+score.by_severity.*.skipped: número
+score.by_severity.*.total: número
+score.by_severity.*: objeto
+score.by_severity: objeto
+score.errors: número
+score.exceptions: número
+score.failed: número
+score.grade: texto
+score.na: número
+score.partial: booleano
+score.passed: número
+score.scored: booleano
+score.skipped: número
+score.total: número
+score.value: número
+score: objeto
+started_at: fecha RFC 3339
+tool.commit: texto
+tool.name: texto
+tool.version: texto
+tool: objeto

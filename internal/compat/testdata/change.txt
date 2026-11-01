@@ -1,0 +1,35 @@
+# adarve.change/v1 · remediate.Manifest · json
+# manifiesto de un cambio de hardening (rollback)
+# Generado por internal/compat (go test ./internal/compat -update). Ver docs/16-formatos-y-compatibilidad.md.
+confirmed: booleano (opcional)
+created_at: fecha RFC 3339
+deadman_deadline: fecha RFC 3339 (opcional)
+deadman_fired: booleano (opcional)
+entries: lista
+entries[].action: formato propio (rule.Action)
+entries[].applied: booleano
+entries[].attempted: booleano
+entries[].before.*: cualquiera
+entries[].before: objeto
+entries[].description: texto
+entries[].error: texto (opcional)
+entries[].remote_access: booleano (opcional)
+entries[].rolled_back: booleano (opcional)
+entries[].rule_id: texto
+entries[].seq: número
+entries[]: objeto
+host: texto
+id: texto
+profile: texto
+reboot_required: booleano (opcional)
+rules: lista
+rules[].message: texto (opcional)
+rules[].outcome: texto
+rules[].rule_id: texto
+rules[].title: texto
+rules[]: objeto
+schema: texto
+status: texto
+tool_version: texto
+updated_at: fecha RFC 3339
+wave: número

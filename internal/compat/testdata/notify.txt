@@ -1,0 +1,19 @@
+# adarve.notify/v1 · notify.Event · json
+# aviso por webhook en formato JSON (adarve schedule)
+# Generado por internal/compat (go test ./internal/compat -update). Ver docs/16-formatos-y-compatibilidad.md.
+errors: lista (opcional)
+errors[]: texto
+host: texto
+level: texto
+lines: lista
+lines[]: texto
+new_exposure: lista (opcional)
+new_exposure[]: texto
+regressions: lista (opcional)
+regressions[]: texto
+scan_score: número
+schema: texto
+surface_score: número
+test: booleano (opcional)
+time: fecha RFC 3339
+title: texto
