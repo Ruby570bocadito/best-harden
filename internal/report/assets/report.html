@@ -113,7 +113,7 @@ body {
 .tower .more { font: 600 11.5px ui-monospace, Consolas, monospace; color: var(--stone-ink); }
 .wall-row.labels { padding-top: 8px; }
 .wall-row.labels div { text-align: center; display: flex; flex-direction: column; min-width: 0; }
-.wall-row.labels .n { font-size: 12.5px; font-weight: 600; line-height: 1.25; overflow-wrap: break-word; hyphens: auto; }
+.wall-row.labels .n { font-size: 12.5px; font-weight: 600; line-height: 1.25; overflow-wrap: break-word; hyphens: manual; }
 .wall-row.labels .v { font: 12.5px ui-monospace, Consolas, monospace; color: var(--muted); }
 .wall-row.labels .c { font-size: 12px; font-weight: 500; }
 .voice { font-size: 17px !important; line-height: 1.45; color: var(--ink) !important; }
@@ -356,6 +356,11 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
     (children || []).forEach(function (c) { if (c) n.appendChild(c); });
     return n;
   }
+  // syllables inserta guiones blandos (U+00AD) entre sílabas con la regla
+  // básica del español (vocal-consonante-vocal): las etiquetas largas de la
+  // muralla («Actualizaciones») se parten por una sílaba y con guion, no a
+  // mitad, sin depender de que el navegador tenga diccionario de español.
+  function syllables(s) { return String(s).replace(/([aeiouáéíóú])([bcdfghjklmnñpqrstvwxyz])(?=[aeiouáéíóú])/gi, "$1\u00AD$2"); }
   function scoreColor(v) { return v >= 80 ? "var(--good)" : v >= 60 ? "var(--warning)" : "var(--critical)"; }
   function scoreWord(v) { return v >= 90 ? "Excelente" : v >= 80 ? "Buena" : v >= 70 ? "Mejorable" : v >= 60 ? "Débil" : "Crítica"; }
   function dot(color) { return el("span", { class: "dot", style: "background:" + color }); }
@@ -535,7 +540,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
       if (c.failed > 3) tower.appendChild(el("span", { class: "more", text: "+" + (c.failed - 3) }));
       towers.appendChild(el("div", { class: "tramo", role: "img", "aria-label": c.name + ": " + c.value + " de 100, " + c.failed + " fallidos de " + (c.passed + c.failed) }, [
         el("span", { class: "merlons", "aria-hidden": "true" }, [el("span", { class: "stone" }), el("span", { class: "stone" }), el("span", { class: "stone" })]), tower]));
-      labels.appendChild(el("div", null, [el("span", { class: "n", text: c.name }), el("span", { class: "v", text: c.value + " / 100" }),
+      labels.appendChild(el("div", null, [el("span", { class: "n", text: syllables(c.name) }), el("span", { class: "v", text: c.value + " / 100" }),
         el("span", { class: "c", text: c.failed ? (c.failed === 1 ? "1 brecha" : c.failed + " brechas") : "intacto", style: "color:" + (c.failed ? "var(--serious)" : "var(--good-text)") })]));
     });
     catCard.appendChild(el("div", { class: "wall" }, [towers, labels]));

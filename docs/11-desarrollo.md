@@ -77,6 +77,18 @@ Ver [02-arquitectura.md](02-arquitectura.md#estructura-del-repositorio). Reglas 
 - Commits: `tipo(área): descripción` (`feat`, `fix`, `docs`, `rules`, `test`, `chore`).
 - Toda regla nueva o modificada pasa `rules lint` en CI. Todo probe nuevo tiene test de su parser.
 
+## Datos de demostración y capturas
+
+Para capturas, documentación y probar la interfaz sin enseñar datos de un equipo real, `scripts/demo` genera un servidor ficticio (`web-01`, Ubuntu 24.04) evaluado con el código de verdad: reglas del catálogo, puntuación, superficie de ataque y firewall.
+
+```bash
+go run ./scripts/demo -out /tmp/demo                # informe.html, puertas.html y sus JSON
+go run ./scripts/demo -serve 127.0.0.1:8799         # la consola real con esos datos (abre la dirección que imprime)
+node scripts/demo/capturas.mjs                      # regenera docs/assets: capturas PNG y demo.gif
+```
+
+`capturas.mjs` necesita Node 22 o posterior, un navegador Chromium (Chrome, Chromium o Edge; se le puede pasar la ruta) y `ffmpeg` para el GIF. Vuelve a ejecutarlo cuando cambie el diseño de la consola o del informe.
+
 ## Publicar una release
 
 1. Actualiza el changelog si procede y crea la etiqueta: `git tag v0.2.0 && git push origin v0.2.0`.

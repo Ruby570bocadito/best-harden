@@ -1014,6 +1014,14 @@ func firstLine(s string) string {
 	return ""
 }
 
+// ParseLinuxFirewall evalúa un firewall de Linux a partir de la salida de
+// "nft -j list ruleset" y de iptables-save (IPv4 e IPv6), como los
+// colectores, pero con datos ya guardados: lo usan las herramientas que no
+// leen el sistema (scripts/demo).
+func ParseLinuxFirewall(nft []byte, save4, save6 string) (*Firewall, error) {
+	return newLinuxFirewall(nft, save4, save6)
+}
+
 // newLinuxFirewall une nftables e iptables en la vista del firewall.
 func newLinuxFirewall(nft []byte, save4, save6 string) (*Firewall, error) {
 	nf := &netfilter{chains: map[string]*nfChain{}}

@@ -169,7 +169,7 @@ section { margin-top: 18px; }
 .tower .more { font: 600 12px ui-monospace, Consolas, monospace; color: var(--stone-ink); }
 .wall-row.labels { padding-top: 10px; }
 .wall-row.labels div { text-align: center; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.wall-row.labels .n { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.25; }
+.wall-row.labels .n { font-size: 13px; font-weight: 600; overflow-wrap: break-word; hyphens: manual; line-height: 1.25; }
 .wall-row.labels .v { font: 13px ui-monospace, Consolas, monospace; color: var(--muted); }
 .wall-row.labels .c { font-size: 12.5px; font-weight: 500; }
 .detail { display: flex; flex-wrap: wrap; gap: 20px 32px; border-top: 1px solid var(--hair); margin-top: 22px; padding-top: 22px; }
@@ -432,6 +432,11 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     if (h < 48) return "hace " + h + " h";
     return "hace " + Math.round(h / 24) + " días";
   }
+  // syllables inserta guiones blandos (U+00AD) entre sílabas con la regla
+  // básica del español (vocal-consonante-vocal): las etiquetas largas de la
+  // muralla («Actualizaciones») se parten por una sílaba y con guion, no a
+  // mitad, sin depender de que el navegador tenga diccionario de español.
+  function syllables(s) { return String(s).replace(/([aeiouáéíóú])([bcdfghjklmnñpqrstvwxyz])(?=[aeiouáéíóú])/gi, "$1\u00AD$2"); }
   function plural(n, one, many) { return n === 1 ? "1 " + one : n + " " + many; }
   function cmdBox(text) {
     var b = el("button", { class: "btn copy", type: "button", text: "Copiar" });
@@ -726,7 +731,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
         el("span", { class: "merlons", "aria-hidden": "true" }, [el("span", { class: "stone" }), el("span", { class: "stone" }), el("span", { class: "stone" })]),
         tower
       ]));
-      labels.appendChild(el("div", null, [el("span", { class: "n", text: c.name }), el("span", { class: "v", text: c.value + " %" }),
+      labels.appendChild(el("div", null, [el("span", { class: "n", text: syllables(c.name) }), el("span", { class: "v", text: c.value + " %" }),
         el("span", { class: "c", text: c.open.length ? plural(c.open.length, "brecha", "brechas") : "intacto",
           style: "color:" + (c.open.length ? "var(--serious)" : "var(--good-text)") })]));
     });
@@ -987,8 +992,8 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
       shut = gates.filter(function (g) { return g.access === 2; });
     var risky = open.filter(function (g) { return g.sev; });
     var worst = (sf.findings || []).slice().sort(function (a, b) { return (SEV[a.severity] || SEV.info).rank - (SEV[b.severity] || SEV.info).rank; })[0];
-    var voice = "Tienes " + plural(gates.length, "puerta", "puertas") + " que dan a la red: " + open.length + " abiertas a cualquiera, " +
-      limited.length + " con rastrillo (solo ciertas redes) y " + shut.length + " cerradas por el firewall." +
+    var voice = "Tienes " + plural(gates.length, "puerta", "puertas") + " que dan a la red: " + plural(open.length, "abierta", "abiertas") + " a cualquiera, " +
+      limited.length + " con rastrillo (solo ciertas redes) y " + plural(shut.length, "cerrada", "cerradas") + " por el firewall." +
       (worst ? " La que yo atendería primero: «" + worst.title + "»." : " Ninguna con un riesgo conocido.") +
       (sf.firewall ? "" : " No he podido leer el firewall, así que doy por abiertas todas.");
     var color = scoreColor(sf.score);
