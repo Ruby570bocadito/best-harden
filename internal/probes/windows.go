@@ -399,10 +399,11 @@ var psQueries = map[string]struct{ desc, script string }{
 	// Solo los perfiles: las reglas se leen del registro (adarve surface).
 	"firewall_profiles": {"HNetCfg.FwPolicy2 (perfiles del Firewall de Windows)",
 		`try { $p=New-Object -ComObject HNetCfg.FwPolicy2; $cur=[int]$p.CurrentProfileTypes; $prof=@(); foreach($b in 1,2,4){ $prof+=@{Bit=$b;Enabled=[bool]$p.FirewallEnabled($b);BlockInbound=([int]$p.DefaultInboundAction($b) -eq 0);Active=(($cur -band $b) -ne 0)} }; @{profiles=$prof} | ConvertTo-Json -Compress -Depth 4 } catch { @{__err=$_.Exception.Message} | ConvertTo-Json -Compress }`},
-	// Miembros del grupo Administradores por SID (S-1-5-32-544). Si
+	// Miembros del grupo Administradores por SID (S-1-5-32-544), cada uno
+	// con Name (y Type y Source si los da Get-LocalGroupMember). Si
 	// Get-LocalGroupMember falla (SIDs huérfanos), se usa ADSI.
 	"local_admins": {"miembros de Administradores (S-1-5-32-544)",
-		`$m=@(); try { Get-LocalGroupMember -SID S-1-5-32-544 -ErrorAction Stop | ForEach-Object { $m+=@{Name=[string]$_.Name;Type=[string]$_.ObjectClass;Source=[string]$_.PrincipalSource} } } catch { try { $g=(New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')).Translate([System.Security.Principal.NTAccount]).Value.Split('\')[-1]; ([ADSI]"WinNT://$env:COMPUTERNAME/$g,group").psbase.Invoke('Members') | ForEach-Object { $m+=[string]$_.GetType().InvokeMember('Name','GetProperty',$null,$_,$null) } } catch { $m=@{__err=$_.Exception.Message} } }; if ($m -is [hashtable]) { $m | ConvertTo-Json -Compress } else { @{members=$m} | ConvertTo-Json -Compress -Depth 4 }`},
+		`$m=@(); try { Get-LocalGroupMember -SID S-1-5-32-544 -ErrorAction Stop | ForEach-Object { $m+=@{Name=[string]$_.Name;Type=[string]$_.ObjectClass;Source=[string]$_.PrincipalSource} } } catch { try { $g=(New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')).Translate([System.Security.Principal.NTAccount]).Value.Split('\')[-1]; ([ADSI]"WinNT://$env:COMPUTERNAME/$g,group").psbase.Invoke('Members') | ForEach-Object { $m+=@{Name=[string]$_.GetType().InvokeMember('Name','GetProperty',$null,$_,$null)} } } catch { $m=@{__err=$_.Exception.Message} } }; if ($m -is [hashtable]) { $m | ConvertTo-Json -Compress } else { @{members=$m} | ConvertTo-Json -Compress -Depth 4 }`},
 	// Firma Authenticode de los ficheros de ADARVE_PATHS (una ruta por
 	// línea): la incrustada o la de un catálogo, como la de casi todo
 	// Windows.

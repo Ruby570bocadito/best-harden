@@ -124,6 +124,7 @@ score.by_category: lista
 score.by_category[].errors: número
 score.by_category[].exceptions: número
 score.by_category[].failed: número
+score.by_category[].manual: número (opcional)
 score.by_category[].na: número
 score.by_category[].name: texto
 score.by_category[].passed: número
@@ -135,6 +136,7 @@ score.by_category[]: objeto
 score.by_severity.*.errors: número
 score.by_severity.*.exceptions: número
 score.by_severity.*.failed: número
+score.by_severity.*.manual: número (opcional)
 score.by_severity.*.na: número
 score.by_severity.*.passed: número
 score.by_severity.*.skipped: número
@@ -145,6 +147,7 @@ score.errors: número
 score.exceptions: número
 score.failed: número
 score.grade: texto
+score.manual: número (opcional)
 score.na: número
 score.partial: booleano
 score.passed: número

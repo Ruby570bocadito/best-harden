@@ -17,6 +17,8 @@ type Counts struct {
 	Skipped    int `json:"skipped"`
 	Exceptions int `json:"exceptions"`
 	NA         int `json:"na"`
+	// Manual son los controles que debe revisar una persona (op: manual).
+	Manual int `json:"manual,omitempty"`
 }
 
 func (c *Counts) add(s Status) {
@@ -32,6 +34,8 @@ func (c *Counts) add(s Status) {
 		c.Skipped++
 	case Exception:
 		c.Exceptions++
+	case Manual:
+		c.Manual++
 	default:
 		c.NA++
 	}
@@ -49,8 +53,9 @@ type CategoryScore struct {
 //
 // Valor = Σ peso(superados) / Σ peso(superados + fallidos) × 100, con pesos
 // crítico 10, alto 5, medio 3, bajo 1. Los errores, los no evaluados por
-// falta de privilegios, las excepciones vigentes y los "no aplica" no
-// cuentan; si hay errores o no evaluados la puntuación se marca como parcial.
+// falta de privilegios, las excepciones vigentes, los de revisión manual y
+// los "no aplica" no cuentan; si hay errores o no evaluados la puntuación se
+// marca como parcial.
 // Si no hay ningún control superado ni fallido (todo error, no evaluado o
 // no aplica) no hay puntuación: Scored es false, Value 0 y Grade "N/A".
 type Score struct {

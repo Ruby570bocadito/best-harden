@@ -47,6 +47,24 @@ func TestValidateCheckLint(t *testing.T) {
 	}
 }
 
+// op manual: sin expected, y solo como comprobación principal.
+func TestValidateManual(t *testing.T) {
+	if errs := lint(t, "check: {probe: file, path: /etc/group, field: matches, op: manual}\n"); len(errs) != 0 {
+		t.Fatalf("revisión manual válida rechazada: %v", errs)
+	}
+	bad := map[string]string{
+		"con expected":  "check: {probe: file, path: /x, op: manual, expected: 1}\n",
+		"con each":      "check: {probe: file, path: /x, op: manual, each: all}\n",
+		"dentro de all": "check: {all: [{probe: file, path: /x, op: manual}, {probe: sysctl, key: a.b, op: eq, expected: 1}]}\n",
+		"dentro de any": "check: {any: [{probe: file, path: /x, op: manual}]}\n",
+	}
+	for name, y := range bad {
+		if errs := lint(t, y); len(errs) == 0 {
+			t.Errorf("%s: debería rechazarse", name)
+		}
+	}
+}
+
 func TestValidateActionOS(t *testing.T) {
 	old := ActionOS
 	ActionOS = func(typ string) string {

@@ -102,7 +102,7 @@ Un perfil incluye las reglas que lo nombran a él **o a cualquiera de sus ancest
 |---|---|
 | `probe` | Recolector a usar (tabla siguiente) |
 | *parámetros del probe* | `path`, `name`, `key`, `unit`... según el probe |
-| `field` | Campo de la observación a comparar (por defecto, el del probe). Admite rutas con puntos: `Domain.Enabled` |
+| `field` | Campo de la observación a comparar (por defecto, el del probe). Admite rutas con puntos: `Domain.Enabled`. En una lista de objetos, la ruta da el campo de cada uno: `members.Name` son los nombres de los miembros |
 | `op` | Operador |
 | `expected` | Valor esperado |
 | `default` | Valor que se asume si el elemento no existe (el valor por defecto del sistema operativo) |
@@ -163,6 +163,21 @@ check:
 | `bits_any` | algún bit de `expected` activo | AES permitido: `24` |
 | `mode_max` | permisos octales no más permisivos que `expected` | `expected: "0640"` (entre comillas) |
 | `exists` / `absent` | el elemento existe / no existe | |
+| `manual` | nunca: el control queda **para revisar a mano** (ver abajo) | `field: members.Name` |
+
+### Revisión manual (`op: manual`)
+
+Hay controles que una herramienta no puede decidir: quién debe ser administrador, quién puede usar sudo, qué carpetas tienen que estar compartidas. Con `op: manual`, el probe reúne la evidencia (la lista de administradores, las líneas de sudoers…) y el control queda en el estado `manual`. Lo revisa una persona, con la descripción de la regla como guía y la remediación como qué hacer si algo sobra. No cuenta en la puntuación ni entra en `harden`.
+
+```yaml
+check:
+  probe: ps
+  query: local_admins
+  field: members.Name          # los nombres de los miembros
+  op: manual                   # sin expected: el veredicto es de una persona
+```
+
+Solo puede ser la comprobación principal (no va dentro de `all`/`any`) y no admite `expected` ni `each`. Si el probe no puede reunir la evidencia (por ejemplo, sin privilegios), el control sigue en `manual`, con el motivo.
 
 ## Probes
 

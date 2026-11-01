@@ -366,3 +366,27 @@ remediation:
       path: 'HKLM\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters'
       name: 'DisableIPSourceRouting'
       value: 2
+---
+id: WIN-NET-015
+title: Revisar las carpetas compartidas
+description: Cada carpeta compartida del equipo debe tener un motivo y solo los permisos necesarios. Adarve reúne la lista; los permisos de cada una están en la superficie de ataque (adarve surface).
+rationale: Una carpeta compartida olvidada, sobre todo con permisos para Todos, expone datos a toda la red y le sirve al ransomware para cifrarlos desde otro equipo.
+category: Red
+severity: medium
+platforms: [windows]
+profiles: [win-workstation-l1, win-server-l1]
+references:
+  nist: [AC-3, AC-6]
+  mitre_mitigations: [M1022]
+  mitre_techniques: [T1039, T1135]
+check:
+  probe: ps
+  query: smb_shares
+  field: shares.Name
+  op: manual
+remediation:
+  summary: Dejar de compartir las carpetas que nadie necesita y quitar los permisos de Todos o de Usuarios autentificados donde no hagan falta.
+  commands: |
+    Get-SmbShare | Where-Object { -not $_.Special }
+    Remove-SmbShare -Name <nombre>
+  breaking_risk: medium

@@ -210,13 +210,16 @@ func writeCatalogMarkdown(w io.Writer, cat *rule.Catalog) {
 	sort.Slice(profiles, func(i, j int) bool { return profiles[i].ID < profiles[j].ID })
 
 	fmt.Fprintln(w, "<!-- Generado con \"adarve rules doc\". No editar a mano: edita las reglas en rules/. -->")
-	auto := 0
+	auto, manual := 0, 0
 	for _, r := range cat.Rules {
 		if len(r.Remediation.Actions) > 0 {
 			auto++
 		}
+		if r.Check.Op == "manual" {
+			manual++
+		}
 	}
-	fmt.Fprintf(w, "\n**%d controles** en el paquete oficial, **%d con corrección automática** (`adarve harden`). ⚡ = afecta al acceso remoto (requiere `--include-remote`).\n\n", len(cat.Rules), auto)
+	fmt.Fprintf(w, "\n**%d controles** en el paquete oficial, **%d con corrección automática** (`adarve harden`) y **%d de revisión manual** (Adarve reúne la evidencia y el veredicto es tuyo; no cuentan en la puntuación). ⚡ = afecta al acceso remoto (requiere `--include-remote`).\n\n", len(cat.Rules), auto, manual)
 	fmt.Fprintln(w, "### Perfiles")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "| Perfil | Nombre | Hereda de | Por defecto en |")
@@ -253,7 +256,11 @@ func writeCatalogMarkdown(w io.Writer, cat *rule.Catalog) {
 					auto = "✓ ⚡"
 				}
 			}
-			fmt.Fprintf(w, "| `%s` | %s | %s | %s | %s | %s | %s |\n", r.ID, strings.ReplaceAll(r.Title, "|", "\\|"),
+			title := strings.ReplaceAll(r.Title, "|", "\\|")
+			if r.Check.Op == "manual" {
+				title += " *(revisión manual)*"
+			}
+			fmt.Fprintf(w, "| `%s` | %s | %s | %s | %s | %s | %s |\n", r.ID, title,
 				strings.ToLower(report.SeverityLabel(r.Severity)), strings.Join(r.Profiles, ", "),
 				strings.Join(r.References.MitreTechniques, ", "), report.RiskLabel(r.Remediation.BreakingRisk), auto)
 		}
@@ -270,6 +277,9 @@ func printRule(r *rule.Rule) {
 	}
 	fmt.Printf("\n  %s  %s\n", s.Cyan(s.Bold(r.ID)), s.Bold(r.Title))
 	fmt.Printf("  %s · %s · %s\n", report.SeverityLabel(r.Severity), r.Category, s.Dim(strings.Join(r.Platforms, ", ")))
+	if r.Check.Op == "manual" {
+		fmt.Printf("  %s\n", s.Cyan("Revisión manual: Adarve reúne la evidencia y el veredicto es tuyo. No cuenta en la puntuación."))
+	}
 	sec("Descripción")
 	para(r.Description)
 	if r.Rationale != "" {

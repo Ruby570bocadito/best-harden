@@ -123,6 +123,9 @@ func Console(w io.Writer, rep *engine.Report, o ConsoleOptions) {
 	if sc.Exceptions > 0 {
 		counts = append(counts, s.Blue(Sym("◇")+" "+plural(sc.Exceptions, "excepción", "excepciones")))
 	}
+	if sc.Manual > 0 {
+		counts = append(counts, s.Cyan(fmt.Sprintf("? %d para revisar a mano", sc.Manual)))
+	}
 	counts = append(counts, s.Dim(fmt.Sprintf(Sym("○")+" %d no aplican", sc.NA)))
 	fmt.Fprintf(w, "           %s\n", strings.Join(counts, "   "))
 	scanChanges(w, rep, s)
@@ -132,8 +135,8 @@ func Console(w io.Writer, rep *engine.Report, o ConsoleOptions) {
 	fmt.Fprintf(w, "  %s\n", s.Bold("FALLIDOS POR SEVERIDAD"))
 	for _, sev := range rule.Severities {
 		c, ok := sc.BySeverity[string(sev)]
-		if !ok || c.Total == 0 {
-			continue
+		if !ok || c.Passed+c.Failed == 0 {
+			continue // nada evaluado (sin privilegios, manual o no aplica): "0 de 0 ✓" engañaría
 		}
 		label := pad(SeverityLabel(sev), 9)
 		count := fmt.Sprintf("%2d de %-3d", c.Failed, c.Passed+c.Failed)
@@ -165,6 +168,8 @@ func Console(w io.Writer, rep *engine.Report, o ConsoleOptions) {
 	groups := []group{
 		{engine.Fail, "FALLIDOS", s.Red, Sym("✗")},
 		{engine.Error, "ERRORES", s.Yellow, "!"},
+		// Lo que Adarve no puede decidir: se enseña siempre, con la evidencia.
+		{engine.Manual, "PARA REVISAR A MANO", s.Cyan, "?"},
 	}
 	if o.ShowAll {
 		groups = append(groups,
@@ -248,6 +253,12 @@ func detailLine(ev engine.Eval) string {
 			parts = append(parts, leaf.Message)
 		}
 		return strings.Join(parts, " ")
+	}
+	if leaf.Status == engine.Manual {
+		if leaf.Actual == "" {
+			return leaf.Message
+		}
+		return "evidencia: " + truncate(leaf.Actual, 96)
 	}
 	if leaf.Actual != "" {
 		parts = append(parts, "actual "+truncate(leaf.Actual, 48))

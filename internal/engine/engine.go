@@ -30,6 +30,9 @@ const (
 	// Exception: el control falla, pero hay una excepción vigente que lo
 	// acepta. No cuenta en la puntuación ni entra en "harden".
 	Exception Status = "exception"
+	// Manual: el control necesita el juicio de una persona (op: manual).
+	// Adarve reúne la evidencia, pero no cuenta en la puntuación.
+	Manual Status = "manual"
 )
 
 // Eval es la evaluación de una comprobación (hoja o compuesta).
@@ -171,12 +174,14 @@ func statusRank(s Status) int {
 		return 1
 	case Skipped:
 		return 2
-	case Exception:
+	case Manual:
 		return 3
-	case Pass:
+	case Exception:
 		return 4
+	case Pass:
+		return 5
 	}
-	return 5
+	return 6
 }
 
 func (e *Engine) evalCheck(ctx context.Context, c rule.Check) (ev Eval) {
@@ -276,6 +281,14 @@ func (e *Engine) evalLeaf(ctx context.Context, c rule.Check) Eval {
 			ev.Status, ev.Message = NA, reason
 			return ev
 		}
+		if c.Op == "manual" {
+			// Sin evidencia, la revisión la sigue teniendo que hacer una persona.
+			ev.Status, ev.Message = Manual, "no se ha podido reunir la evidencia: "+err.Error()
+			if reason, ok := probes.AsPrivilege(err); ok {
+				ev.Message = "sin privilegios no se ha podido reunir la evidencia: " + reason
+			}
+			return ev
+		}
 		if reason, ok := probes.AsPrivilege(err); ok {
 			ev.Status, ev.Message = Skipped, reason
 			return ev
@@ -289,6 +302,11 @@ func (e *Engine) evalLeaf(ctx context.Context, c rule.Check) Eval {
 		field = p.DefaultField()
 	}
 	ev.Field = field
+
+	if c.Op == "manual" {
+		ev.Status, ev.Actual = Manual, manualEvidence(obs, field, c)
+		return ev
+	}
 
 	switch c.Op {
 	case "exists", "absent":
@@ -343,6 +361,23 @@ func (e *Engine) evalLeaf(ctx context.Context, c rule.Check) Eval {
 		ev.Status = Fail
 	}
 	return ev
+}
+
+// manualEvidence es lo que ve quien revisa un control manual: el valor del
+// campo, «(ninguno)» si es una lista vacía o «no presente».
+func manualEvidence(obs probes.Observation, field string, c rule.Check) string {
+	if obs.Found {
+		if v, ok := lookupField(obs.Fields, field); ok {
+			if s := formatValue(v); s != "" {
+				return s
+			}
+			return "(ninguno)"
+		}
+	}
+	if c.HasDefault {
+		return formatValue(c.Default) + " (por defecto)"
+	}
+	return "no presente"
 }
 
 // compareEach aplica el operador a cada elemento cuando each = all|any.

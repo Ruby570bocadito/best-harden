@@ -223,6 +223,9 @@ var Ops = map[string]bool{
 	"contains": true, "not_contains": true, "regex": true, "not_regex": true,
 	"bits_set": true, "bits_clear": true, "bits_any": true,
 	"mode_max": true, "exists": true, "absent": true,
+	// manual: el probe solo reúne la evidencia; el veredicto es de una
+	// persona (estado "manual", fuera de la puntuación).
+	"manual": true,
 }
 
 // Platforms reconocidas en el campo platforms de las reglas.
@@ -395,7 +398,16 @@ func validateCheck(c *Check, knownProbes map[string]bool, path string) []error {
 	if !Ops[c.Op] {
 		add("op %q inválido", c.Op)
 	}
-	if c.Op != "exists" && c.Op != "absent" && c.Expected == nil {
+	if c.Op == "manual" {
+		// Una revisión manual es la regla entera: dentro de all/any su
+		// resultado no se podría combinar con los demás.
+		if path != "check" {
+			add("op manual solo puede ir en la comprobación principal, no dentro de all/any")
+		}
+		if c.Expected != nil || c.Each != "" {
+			add("op manual no admite expected ni each: el veredicto lo da una persona")
+		}
+	} else if c.Op != "exists" && c.Op != "absent" && c.Expected == nil {
 		add("falta expected")
 	}
 	switch c.Op {

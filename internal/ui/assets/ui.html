@@ -358,6 +358,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     error: { label: "Error", icon: "!", color: "var(--warning)" },
     skipped: { label: "Sin evaluar", icon: "⊘", color: "var(--muted)" },
     exception: { label: "Excepción", icon: "◇", color: "var(--info)" },
+    manual: { label: "Revisión manual", icon: "?", color: "var(--moon)" },
     pass: { label: "Superado", icon: "✓", color: "var(--good)" },
     na: { label: "No aplica", icon: "–", color: "var(--info)" }
   };
@@ -689,6 +690,9 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
         (auto === failed.length ? "todas las puedo reparar yo." : auto ? auto + " las puedo reparar yo y " + plural(failed.length - auto, "necesita", "necesitan") + " tu decisión." :
           "ninguna se repara sola, necesitan tu decisión.") + " Empieza por «" + top.rule.title + "».";
     }
+    // Lo que no puedo juzgar yo (op: manual): no son brechas, pero hay que mirarlo.
+    var manual = results.filter(function (x) { return x.status === "manual"; }).length;
+    if (!S.sim && manual) voice += " Y " + plural(manual, "control lo tienes", "controles los tienes") + " que revisar tú: eso no lo puedo decidir yo.";
     var deltaEl = null;
     if (!S.sim && prev && scored(prev.score)) {
       var d = sc.value - prev.score.value;
@@ -817,6 +821,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 24px 0 8px; }
     });
     var kp = el("p", { class: "note", style: "margin-top:16px", text: sc.passed + " controles en pie · " + sc.failed + " brechas" +
       (sc.exceptions ? " · " + plural(sc.exceptions, "excepción", "excepciones") : "") + ((sc.errors || 0) + (sc.skipped || 0) ? " · " + ((sc.errors || 0) + (sc.skipped || 0)) + " sin revisar" : "") +
+      (sc.manual ? " · " + sc.manual + " para revisar a mano" : "") +
       " · " + sc.na + " no aplican" });
     app.appendChild(el("section", { class: "two" }, [prioCard, el("div", { class: "card" }, [el("h2", { text: "Brechas por severidad" }), sevWrap, kp])]));
   }
