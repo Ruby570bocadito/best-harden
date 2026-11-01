@@ -157,14 +157,24 @@ func writeFileAtomic(path string, b []byte, mode fs.FileMode) error {
 	return nil
 }
 
+// ErrNoChange indica que no hay manifiesto con ese ID.
+var ErrNoChange = errors.New("no existe el cambio")
+
+// ValidChangeID indica si id tiene el formato de un cambio
+// (chg-AAAAMMDD-HHMMSS[-N]): no puede salir de la carpeta de instantáneas.
+func ValidChangeID(id string) bool { return reChangeID.MatchString(id) }
+
 // Load lee un manifiesto por ID.
 func (s *Store) Load(id string) (*Manifest, error) {
 	if !reChangeID.MatchString(id) {
 		return nil, fmt.Errorf("ID de cambio inválido: %q (formato chg-AAAAMMDD-HHMMSS)", id)
 	}
 	b, err := os.ReadFile(filepath.Join(s.Dir, id, "manifest.json"))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, fmt.Errorf("%w %s", ErrNoChange, id)
+	}
 	if err != nil {
-		return nil, fmt.Errorf("no existe el cambio %s", id)
+		return nil, fmt.Errorf("no se pudo leer el cambio %s: %w", id, err)
 	}
 	var m Manifest
 	if err := json.Unmarshal(b, &m); err != nil {
