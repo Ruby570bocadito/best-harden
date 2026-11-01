@@ -2,9 +2,29 @@
 
 Adarve tiene hoy dos superficies visuales: la **consola** y el **informe HTML**. La **consola web de flota** llegará en la fase 3. Las tres comparten el mismo lenguaje visual.
 
+![La consola: la muralla y la simulación de la ola 1](assets/demo.gif)
+
 | | |
 |---|---|
 | ![Informe claro](assets/informe-claro.png) | ![Informe oscuro](assets/informe-oscuro.png) |
+
+Las capturas salen de datos de demostración (un servidor ficticio, `web-01`) y se regeneran con `node scripts/demo/capturas.mjs` (ver [11 · Desarrollo](11-desarrollo.md#datos-de-demostración-y-capturas)).
+
+## Identidad: el adarve
+
+El adarve es el camino de ronda en lo alto de la muralla, por donde el centinela la recorre y comprueba que está entera. Esa es la metáfora de toda la interfaz:
+
+| En el código | En la interfaz |
+|---|---|
+| `scan` | la ronda |
+| puntuación | el estado de la muralla (68 %) |
+| control fallido | brecha |
+| categoría | tramo |
+| `harden` | reparar |
+| `surface` | las puertas |
+| `schedule` | la ronda diaria |
+
+La voz es la de un centinela tranquilo: habla en primera persona, dice qué repara él y qué decides tú, y nunca asusta sin dar una salida («Hay 14 brechas: 10 las reparo yo solo y 4 necesitan tu decisión»). La metáfora vive en los textos y en la consola; los comandos y el informe para auditores mantienen los términos técnicos («Fallidos», «Superados»).
 
 ## Principios
 
@@ -16,26 +36,29 @@ Adarve tiene hoy dos superficies visuales: la **consola** y el **informe HTML**.
 
 ## Tokens de diseño
 
-| Rol | Claro | Oscuro |
+Tres colores de marca: **noche** (el fondo), **piedra** (la muralla) y **luna** (enlaces y acción). El tema oscuro es el de la marca y el que abre la consola; el informe, que se comparte e imprime, parte del claro.
+
+| Rol | Día (claro) | Noche (oscuro) |
 |---|---|---|
-| Página | `#f6f6f3` | `#0d0d0d` |
-| Superficie (tarjeta) | `#fcfcfb` | `#1a1a19` |
-| Texto principal | `#0b0b0b` | `#f0efec` |
-| Texto secundario | `#52514e` | `#c3c2b7` |
-| Línea fina | `#e1e0d9` | `#2c2c2a` |
-| Acento (marca) | `#2a78d6` | `#3987e5` |
+| Página | `#f2eee5` | `#0e1218` |
+| Superficie (tarjeta) | `#fbf9f4` | `#151a22` |
+| Texto principal | `#1a1d23` | `#ece6da` |
+| Texto secundario | `#3d4250` | `#c9cdd4` |
+| Línea fina | `#ddd5c4` | `#252c37` |
+| Piedra (la muralla) | `#c9b48a` | `#cdbb95` |
+| Luna (enlaces y acción) | `#2f5fa8` | `#9cc2ff` |
 
 ### Paleta de estado (fija, nunca tematizada)
 
-| Rol | Color | Uso en Adarve |
-|---|---|---|
-| good | `#0ca30c` | Superado, puntuación ≥ 80 |
-| warning | `#fab219` | Severidad media, errores, puntuación 60-79 |
-| serious | `#ec835a` | Severidad alta |
-| critical | `#d03b3b` | Severidad crítica, fallido, puntuación < 60 |
-| neutral | `#898781` | Severidad baja, no aplica |
+| Rol | Día | Noche | Uso en Adarve |
+|---|---|---|---|
+| good | `#2e9a5a` | `#6fd99a` | Superado, intacto, puntuación ≥ 80 |
+| warning | `#c79a00` | `#f2c94c` | Severidad media, errores, puntuación 60-79 |
+| serious | `#c2621f` | `#ffa463` | Severidad alta, brechas |
+| critical | `#b3261e` | `#ff8a7d` | Severidad crítica, puntuación < 60 |
+| neutral | `#6e7381` | `#b9bfca` | Severidad baja, no aplica |
 
-Tipografía: la del sistema (`system-ui`, Segoe UI, Roboto). Monoespaciada para IDs, rutas y valores (`ui-monospace`, Cascadia Code, Consolas). Los números grandes usan cifras proporcionales y las columnas alineadas usan `tabular-nums`.
+Tipografía: Bahnschrift (en Windows; en otros sistemas, una condensada del sistema) para las cifras grandes y los títulos, y la del sistema para el texto. Monoespaciada para IDs, rutas y valores (`ui-monospace`, Cascadia Code, Consolas). Sin fuentes externas: la CSP de la consola y del informe no permite cargarlas. Las etiquetas largas de la muralla se parten por sílabas, con guion.
 
 ## Informe HTML (✅)
 
@@ -59,19 +82,22 @@ Características técnicas:
 
 ## Consola local: `adarve ui` (✅)
 
-![Consola local de Adarve](assets/consola.png)
+| La muralla | Las puertas |
+|---|---|
+| ![Consola de Adarve: la muralla](assets/consola.png) | ![Consola de Adarve: las puertas](assets/consola-puertas.png) |
 
-Un panel en el navegador para trabajar con un equipo, no solo mirar una foto. Se sirve desde el propio binario en `127.0.0.1` con un token por sesión y no tiene dependencias externas ([ADR-0008](adr/0008-consola-local.md)).
+Un panel en el navegador para trabajar con un equipo, no solo mirar una foto. Se sirve desde el propio binario en `127.0.0.1` con un token por sesión y no tiene dependencias externas ([ADR-0008](adr/0008-consola-local.md)). Solo mira y hace rondas: las reparaciones se aplican desde la terminal.
 
 | Pestaña | Contenido |
 |---|---|
-| **Panel** | Postura con la variación desde el escaneo anterior, KPIs, **tendencia** de la puntuación (SVG, cada punto abre ese escaneo), **corrección automática** (cuántos fallidos se corrigen solos, por ola) con el comando listo para copiar, prioridades, severidad y categorías más débiles |
-| **Controles** | El informe HTML del escaneo, incrustado y abierto directamente en la tabla de controles |
-| **Plan de hardening** | La simulación de `harden` para la ola 1, 2 o 3: el diff "actual → nuevo" de cada cambio y qué queda para otra ola, para el acceso remoto, para la GPO o es manual |
-| **Historial** | Escaneos guardados con su puntuación y variación (se puede abrir cualquiera) y los cambios de hardening aplicados, con el comando para deshacerlos |
+| **Muralla** | El estado de la muralla con la variación desde la ronda anterior y una frase que resume qué repara Adarve y qué decides tú. Cada **tramo** es una categoría: su altura es la puntuación y cada grieta, una brecha; al pulsarlo se ven sus brechas. **Simular ola 1, 2 o 3** recalcula la puntuación como si se aplicara (misma fórmula que el motor) y los tramos crecen. Debajo: las rondas como torres (cada una abre esa ronda), «Reparar ahora» con el comando listo para copiar, prioridades y brechas por severidad |
+| **Brechas** | El informe HTML de la ronda, incrustado y abierto directamente en la tabla de controles |
+| **Plan de reparación** | La simulación de `harden` para la ola 1, 2 o 3: el cambio «actual → nuevo» de cada control y qué queda para otra ola, para el acceso remoto, para la GPO o es manual |
+| **Puertas** | Los puertos que escuchan en la red, agrupados por programa: **abiertas a cualquiera**, **con rastrillo** (solo desde ciertas redes) o **cerradas** por el firewall, con su hallazgo y cómo cerrarlas; la tabla completa, los recursos compartidos y quién tiene las llaves (administradores) |
+| **Rondas** | La ronda diaria (`schedule`) y sus ejecuciones, las rondas guardadas con su puntuación y variación, y las reparaciones aplicadas con el comando para deshacerlas |
 | **Excepciones** | Vigencia de cada excepción: en naranja si caduca en menos de 30 días, en rojo si ha caducado |
 
-Al abrirla escanea si el último escaneo tiene más de una hora. El botón **Escanear ahora** añade un punto a la tendencia. Mismos tokens, temas claro y oscuro y comportamiento responsive que el informe.
+Al abrirla hace una ronda si la última tiene más de una hora. El botón **Hacer la ronda** añade una torre a las rondas. Temas noche (por defecto) y día, y diseño adaptable hasta 375 px sin scroll horizontal.
 
 ## Consola de texto (✅)
 

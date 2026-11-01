@@ -19,12 +19,20 @@ calcula una puntuación de postura, la mapea a MITRE ATT&CK y te dice qué corre
 
 ---
 
-![Informe HTML de Adarve](docs/assets/informe-claro.png)
+![La consola de Adarve: cada tramo de la muralla es una categoría de controles; al simular la ola 1, los tramos que se reparan solos crecen y la puntuación sube del 74 % al 89 %](docs/assets/demo.gif)
 
 <details>
-<summary>Consola local (<code>adarve ui</code>)</summary>
+<summary>Más capturas: la muralla, las puertas y el informe HTML</summary>
 
-![Consola local de Adarve](docs/assets/consola.png)
+| La muralla (`adarve ui`) | Las puertas: superficie de ataque |
+|---|---|
+| ![Consola de Adarve: la muralla por categorías y el tramo seleccionado](docs/assets/consola.png) | ![Consola de Adarve: los puertos de la red como puertas abiertas, con rastrillo o cerradas](docs/assets/consola-puertas.png) |
+
+| Informe de la ronda, de día | Informe de la ronda, de noche |
+|---|---|
+| ![Informe HTML de Adarve, tema claro](docs/assets/informe-claro.png) | ![Informe HTML de Adarve, tema oscuro](docs/assets/informe-oscuro.png) |
+
+<sub>Datos de demostración de un servidor ficticio (`web-01`), evaluado con el código real de Adarve: [`scripts/demo`](scripts/demo).</sub>
 
 </details>
 

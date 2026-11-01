@@ -30,7 +30,7 @@ Doce tareas en cuatro bloques. Cuando estén todas marcadas, se publica la v1.0.
 - [x] Consola con la identidad de Adarve: muralla, puertas y voz.
 - [ ] Renombrado de Bastion a Adarve con migración de las instalaciones existentes (hecho en el código) y repositorio renombrado en GitHub (pendiente).
 - [x] Informes HTML con la misma identidad.
-- [ ] README con capturas nuevas y un GIF de 30 segundos: ronda → simular ola 1 → reparar → muralla más alta.
+- [x] README con capturas nuevas y un GIF de la muralla simulando las olas, generados con datos de demostración (`scripts/demo`).
 
 ### Confianza
 
