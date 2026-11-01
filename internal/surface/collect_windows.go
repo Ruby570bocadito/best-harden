@@ -157,13 +157,13 @@ func collectSignatures(ctx context.Context, inv *Inventory) {
 // imagePath devuelve la ruta del ejecutable de un proceso (vacía si no se
 // puede abrir: sin privilegios, los de otros usuarios).
 func imagePath(pid int) string {
-	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid)) // #nosec G115 -- los PID de Windows son de 32 bits
 	if err != nil {
 		return ""
 	}
 	defer windows.CloseHandle(h)
 	buf := make([]uint16, windows.MAX_LONG_PATH)
-	n := uint32(len(buf))
+	n := uint32(len(buf)) // #nosec G115 -- buffer de tamaño fijo (MAX_PATH ampliado)
 	if err := windows.QueryFullProcessImageName(h, 0, &buf[0], &n); err != nil {
 		return ""
 	}
@@ -177,7 +177,7 @@ func processOwner(pid int) (user, sid string) {
 	if pid <= 4 { // 0 y 4: inactivo y System
 		return "", ""
 	}
-	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid)) // #nosec G115 -- los PID de Windows son de 32 bits
 	if err != nil {
 		return "", ""
 	}

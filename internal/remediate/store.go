@@ -276,7 +276,7 @@ const staleLockAge = 30 * time.Minute
 
 // lockStale indica si el fichero de bloqueo está abandonado.
 func lockStale(path string) bool {
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(path) // #nosec G703 -- el bloqueo, dentro de la carpeta de datos de root
 	if err != nil {
 		return false // desapareció o no se puede leer: se reintenta
 	}
@@ -285,7 +285,7 @@ func lockStale(path string) bool {
 			return !processAlive(pid)
 		}
 	}
-	st, err := os.Stat(path)
+	st, err := os.Stat(path) // #nosec G703 -- el bloqueo, dentro de la carpeta de datos de root
 	return err == nil && time.Since(st.ModTime()) > staleLockAge
 }
 

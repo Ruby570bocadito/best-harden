@@ -9,11 +9,12 @@ import (
 	"path/filepath"
 	"unsafe"
 
+	"github.com/Ruby570bocadito/adarve/internal/sysdir"
 	"golang.org/x/sys/windows"
 )
 
 func icacls(args ...string) error {
-	return exec.Command(filepath.Join(os.Getenv("SystemRoot"), "System32", "icacls.exe"), args...).Run()
+	return exec.Command(sysdir.System32("icacls.exe"), args...).Run()
 }
 
 // restrictPermissions limita el directorio a Administradores y SYSTEM.

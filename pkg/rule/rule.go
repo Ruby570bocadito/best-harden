@@ -309,9 +309,7 @@ func (r *Rule) Validate(knownProbes map[string]bool, profiles map[string]*Profil
 			}
 		}
 	}
-	for _, e := range validateCheck(&r.Check, knownProbes, "check") {
-		errs = append(errs, e)
-	}
+	errs = append(errs, validateCheck(&r.Check, knownProbes, "check")...)
 	return errs
 }
 

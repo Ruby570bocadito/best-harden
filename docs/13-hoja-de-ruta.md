@@ -35,7 +35,7 @@ Doce tareas en cuatro bloques. Cuando estén todas marcadas, se publica la v1.0.
 ### Confianza
 
 - [x] Releases firmadas, verificadas en `adarve update`, `install.sh` e `install.ps1`, más la atestación de procedencia de GitHub ([ADR-0009](adr/0009-releases-firmadas.md)).
-- [ ] CI con `govulncheck`, `staticcheck` y `gosec`, y *fuzzing* (`go test -fuzz`) de los parsers de netfilter, `sshd_config`, netstat y reglas del registro.
+- [x] CI con `govulncheck`, `staticcheck` y `gosec`, y *fuzzing* (`go test -fuzz`) de 14 parsers de la salida del sistema auditado.
 - [ ] Prueba de punta a punta de los instaladores en CI contra un espejo local: instalar, actualizar, migrar desde Bastion, `--local` y desinstalar.
 
 ### Precisión

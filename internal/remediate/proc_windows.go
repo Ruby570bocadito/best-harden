@@ -15,7 +15,7 @@ func processAlive(pid int) bool {
 	if pid <= 0 {
 		return false
 	}
-	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid)) // #nosec G115 -- los PID de Windows son de 32 bits
 	if err != nil {
 		// Sin permiso para abrirlo: existe. Parámetro inválido: no existe.
 		return errors.Is(err, windows.ERROR_ACCESS_DENIED)

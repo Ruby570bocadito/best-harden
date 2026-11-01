@@ -265,7 +265,7 @@ func buildModuleIndex() (map[string]bool, error) {
 		return idx, nil
 	}
 	root := filepath.Join("/lib/modules", strings.TrimSpace(string(rel)))
-	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error { // #nosec G703 -- /lib/modules/<versión del kernel>, que da el propio kernel
 		if err != nil || d.IsDir() {
 			return nil
 		}

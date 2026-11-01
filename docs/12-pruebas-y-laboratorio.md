@@ -15,6 +15,9 @@ Una herramienta de hardening solo es creíble si sus resultados son correctos. U
 | Ciclo real en CI | `harden --apply` en Ubuntu y Windows Server de GitHub: la postura debe subir y, tras `rollback`, volver exactamente al valor inicial | `.github/workflows/ci.yml` | ✅ |
 | Escaneo real en CI | `adarve scan` en Ubuntu y Windows Server de GitHub Actions; informes como artefacto | `.github/workflows/ci.yml` | ✅ |
 | Instaladores | ShellCheck, PSScriptAnalyzer | CI | ✅ |
+| Fuzzing | 14 parsers de la salida del sistema auditado: ninguna entrada debe hacer caer a Adarve | `internal/surface/fuzz_test.go`, `internal/probes/fuzz_test.go`; cada noche en `.github/workflows/fuzz.yml` | ✅ |
+| Análisis estático | `govulncheck`, `staticcheck` y `gosec` (Linux y Windows) | CI, job «Análisis de seguridad» | ✅ |
+| Permisos como root | La carpeta de datos se restringe sin seguir enlaces simbólicos | `internal/config/perms_unix_test.go` con `sudo` en CI | ✅ |
 | Instaladores de punta a punta | Instalación limpia, reejecución, actualización, archivo manipulado, desinstalación contra un espejo local | Manual, ver abajo | ✅ manual · 🔜 CI |
 | Fixtures por regla | Cada regla con un caso que pasa y otro que falla sobre un sistema simulado | `adarve rules test` | 🔜 fase 2 |
 | Laboratorio de VMs | Ciclo `scan → harden → verify → rollback → verify` + idempotencia | Packer/Vagrant | 🔜 fase 2 |

@@ -1,0 +1,56 @@
+name: Fuzzing
+
+# Cada noche, cinco minutos de "go test -fuzz" por parser. En cada PR los
+# fuzz tests ya se ejecutan con sus semillas dentro de "go test ./...".
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      fuzztime:
+        description: Tiempo por parser (p. ej. 5m, 30m)
+        default: 5m
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: ${{ matrix.pkg }} ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { pkg: ./internal/surface, target: FuzzLinuxFirewall }
+          - { pkg: ./internal/surface, target: FuzzParseNetstat }
+          - { pkg: ./internal/surface, target: FuzzParseTasklist }
+          - { pkg: ./internal/surface, target: FuzzParseProcNet }
+          - { pkg: ./internal/surface, target: FuzzParseShares }
+          - { pkg: ./internal/surface, target: FuzzParseLinuxAdmins }
+          - { pkg: ./internal/surface, target: FuzzParseRegRule }
+          - { pkg: ./internal/probes, target: FuzzParseSSHD }
+          - { pkg: ./internal/probes, target: FuzzParseMountinfo }
+          - { pkg: ./internal/probes, target: FuzzModprobe }
+          - { pkg: ./internal/probes, target: FuzzParseSecpol }
+          - { pkg: ./internal/probes, target: FuzzParseAuditpol }
+          - { pkg: ./internal/probes, target: FuzzSplitRegistryPath }
+          - { pkg: ./internal/probes, target: FuzzDecodeText }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - name: go test -fuzz
+        env:
+          FUZZTIME: ${{ inputs.fuzztime || '5m' }}
+        run: go test -run '^$' -fuzz '^${{ matrix.target }}$' -fuzztime "$FUZZTIME" ${{ matrix.pkg }}
+      # La entrada que lo hace caer queda en testdata/fuzz: se añade al
+      # repositorio para que el fallo se repita en cada "go test" hasta
+      # corregirlo.
+      - name: Guardar la entrada que falla
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: fuzz-${{ matrix.target }}
+          path: ${{ matrix.pkg }}/testdata/fuzz

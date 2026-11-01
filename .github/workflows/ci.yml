@@ -31,6 +31,13 @@ jobs:
       - name: Tests con detector de carreras
         if: runner.os == 'Linux'
         run: go test -race ./...
+      # Los permisos de la carpeta de datos solo se cambian como root: se
+      # comprueba que un enlace colocado dentro no desvía el cambio.
+      - name: Tests como root (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          go test -c -o "$RUNNER_TEMP/config.test" ./internal/config/
+          sudo "$RUNNER_TEMP/config.test" -test.v -test.run 'RestrictPermissions'
       - name: Validar reglas
         run: go run ./cmd/adarve rules lint
       - name: Compilar
@@ -326,3 +333,39 @@ jobs:
             GOOS=${target%/*} GOARCH=${target#*/} CGO_ENABLED=0 go build -o /dev/null ./cmd/adarve
             echo "ok $target"
           done
+
+  # Análisis de seguridad. Las versiones van fijadas para que el resultado no
+  # cambie de un día para otro sin que cambie el código.
+  seguridad:
+    name: Análisis de seguridad
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - name: Instalar las herramientas
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          go install honnef.co/go/tools/cmd/staticcheck@v0.8.2
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.30.0
+      # Vulnerabilidades conocidas que el código llega a usar, también en la
+      # librería estándar (la versión de Go la fija "toolchain" en go.mod).
+      - name: govulncheck
+        run: govulncheck ./...
+      - name: staticcheck
+        run: |
+          GOOS=linux staticcheck ./...
+          GOOS=windows staticcheck ./...
+      # Se excluyen las reglas que este proyecto incumple a propósito (ver
+      # docs/08-seguridad-de-la-plataforma.md, "Análisis estático"): lanzar
+      # herramientas del sistema (G204) y leer sus ficheros (G304) es su
+      # trabajo; G103 es la API de Windows; G301/G302/G306 son permisos 0640
+      # y 0755 deliberados dentro de carpetas ya restringidas; G104 son
+      # cierres y limpiezas sin error útil. El resto falla el CI; los falsos
+      # positivos se anotan en el código con "#nosec <regla> -- motivo".
+      - name: gosec
+        run: |
+          EXCLUDE=G104,G204,G304,G103,G301,G302,G306
+          GOOS=linux gosec -quiet -exclude=$EXCLUDE ./...
+          GOOS=windows gosec -quiet -exclude=$EXCLUDE ./...

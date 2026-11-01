@@ -8,7 +8,7 @@ Adarve se ejecuta como **SYSTEM/root** en equipos críticos. Para un atacante es
 |---|---|---|
 | Adarve como herramienta de ejecución remota (C2) | Servidor comprometido que envía comandos | **No existe** la capacidad de ejecutar comandos arbitrarios ([ADR-0004](adr/0004-sin-ejecucion-arbitraria.md)) |
 | Paquete de reglas malicioso | Regla que intenta ejecutar código | Reglas declarativas; los probes usan comandos fijos; `ps` solo admite una lista blanca |
-| Secuestro de binarios | `PATH` manipulado para suplantar `secedit` o `powershell` | Rutas absolutas `%SystemRoot%\System32\...` en Windows |
+| Secuestro de binarios | `PATH`, `SystemRoot` o `ProgramData` manipulados (cualquier programa del usuario puede cambiarlos y una consola de administrador los hereda) para suplantar `secedit`, `powershell` o `icacls` | Rutas absolutas que se piden al sistema (`GetSystemDirectory`, `SHGetKnownFolderPath`), nunca a las variables de entorno (`internal/sysdir`) |
 | Actualización manipulada | Mirror comprometido o MITM | Firma de `checksums.txt` con la clave de las releases, comprobada antes de creer ninguna suma ([ADR-0009](adr/0009-releases-firmadas.md)) + SHA-256 del archivo + HTTPS obligatorio (también en las redirecciones; `http://` solo hacia el propio equipo); con privilegios se ignoran `ADARVE_RELEASES_URL`/`ADARVE_REPO`/`ADARVE_HOME` salvo con `--trust-env`; atestación de procedencia SLSA verificable con `gh attestation verify` |
 | XSS en el informe | Valor hostil leído del sistema (p. ej. una línea de `sudoers`) | JSON escapado, `textContent`, CSP con nonce |
 | Lectura de datos sensibles | Informes y configuración legibles por cualquiera | Directorios con permisos restringidos a root / Administradores+SYSTEM |
@@ -67,6 +67,10 @@ Adarve se ejecuta como **SYSTEM/root** en equipos críticos. Para un atacante es
 - Las reglas propias (`rules.d`) y las excepciones (`exceptions.yaml`) solo las puede escribir un administrador. Una excepción nunca es permanente: caduca como mucho al año.
 
 ### Desarrollo seguro
+- **Análisis en cada PR** (job «Análisis de seguridad» del CI): `govulncheck` (vulnerabilidades conocidas que el código llega a usar, también en la librería estándar: la versión de Go la fija `toolchain` en `go.mod`), `staticcheck` y `gosec` para Linux y Windows, con versiones fijadas.
+- `gosec` excluye solo las reglas que Adarve incumple a propósito: lanzar herramientas del sistema (G204) y leer sus ficheros (G304), la API de Windows (G103), permisos 0640/0755 deliberados dentro de carpetas ya restringidas (G301, G302, G306) y cierres sin error útil (G104). Cualquier otro hallazgo rompe el CI; los falsos positivos revisados se anotan en el código con `#nosec <regla> -- motivo`.
+- **Fuzzing** de los parsers que leen lo que devuelve el sistema auditado (JSON de nftables, `iptables-save`, netstat, `/proc/net`, `tasklist`, `exports`, `smb.conf`, `passwd`/`group`, reglas del firewall del registro, `sshd -T`, mountinfo, modprobe, secedit, auditpol, rutas del registro y decodificación de texto): con sus semillas en cada `go test` y cinco minutos por parser cada noche (`.github/workflows/fuzz.yml`).
+- `restrictPermissions` recorre la carpeta de datos con descriptores (`openat` + `O_NOFOLLOW` + `fchmod`): si otro usuario creó la carpeta, no puede desviar el `chmod` de root con un enlace simbólico. Se prueba como root en el CI.
 - CI con `go vet` y tests en Linux y Windows (con detector de carreras en Linux), ShellCheck y PSScriptAnalyzer.
 - Releases reproducibles con GoReleaser y SBOM (Syft).
 - Atestación de procedencia SLSA de cada archivo publicado (`actions/attest-build-provenance`), firmada con la identidad OIDC del workflow en Sigstore: prueba qué workflow, commit y etiqueta lo construyeron.

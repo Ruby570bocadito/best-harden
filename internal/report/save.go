@@ -16,6 +16,7 @@ import (
 
 	"github.com/Ruby570bocadito/adarve/internal/engine"
 	"github.com/Ruby570bocadito/adarve/internal/surface"
+	"github.com/Ruby570bocadito/adarve/internal/sysdir"
 )
 
 // JSON escribe el informe en el formato estable adarve.report/v1.
@@ -140,7 +141,7 @@ func hostFiles(dir, prefix, host, ext string) []string {
 func Open(path string) error {
 	switch runtime.GOOS {
 	case "windows":
-		return exec.Command(filepath.Join(os.Getenv("SystemRoot"), "System32", "rundll32.exe"), "url.dll,FileProtocolHandler", path).Start()
+		return exec.Command(sysdir.System32("rundll32.exe"), "url.dll,FileProtocolHandler", path).Start()
 	case "darwin":
 		return exec.Command("open", path).Start()
 	}
