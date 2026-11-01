@@ -248,7 +248,7 @@ func secpolConfigure(ctx context.Context, section, key, value string) error {
 	u := utf16.Encode([]rune(inf))
 	buf := []byte{0xFF, 0xFE}
 	for _, c := range u {
-		buf = append(buf, byte(c), byte(c>>8))
+		buf = append(buf, byte(c), byte(c>>8)) // #nosec G115 -- UTF-16LE: byte bajo y byte alto
 	}
 	cfg := filepath.Join(dir, "adarve.inf")
 	if err := os.WriteFile(cfg, buf, 0o600); err != nil {

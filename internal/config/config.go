@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/Ruby570bocadito/adarve/internal/sysdir"
 	"gopkg.in/yaml.v3"
 )
 
@@ -79,10 +80,7 @@ func DataDir() string {
 }
 
 func programData() string {
-	pd := os.Getenv("ProgramData")
-	if pd == "" {
-		pd = `C:\ProgramData`
-	}
+	pd := sysdir.ProgramData() // no %ProgramData%: el usuario puede cambiarla
 	return migrated(filepath.Join(pd, "Adarve"), filepath.Join(pd, "Bastion"))
 }
 
@@ -100,14 +98,14 @@ func Env(name string) string {
 // (sin privilegios, ficheros en uso), sigue usando legacy para no perder
 // el historial, las excepciones ni las instantáneas de rollback.
 func migrated(dir, legacy string) string {
-	if _, err := os.Lstat(dir); err == nil {
+	if _, err := os.Lstat(dir); err == nil { // #nosec G703 -- rutas fijas o de ADARVE_HOME, que con privilegios exige --trust-env
 		return dir
 	}
-	fi, err := os.Lstat(legacy)
+	fi, err := os.Lstat(legacy) // #nosec G703 -- ver migrated
 	if err != nil || !fi.IsDir() {
 		return dir
 	}
-	if err := os.Rename(legacy, dir); err != nil {
+	if err := os.Rename(legacy, dir); err != nil { // #nosec G703 -- ver migrated
 		return legacy
 	}
 	return dir
@@ -295,7 +293,7 @@ func SetNotify(n Notify) error {
 		return err
 	}
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, []byte(text), 0o640); err != nil {
+	if err := os.WriteFile(tmp, []byte(text), 0o640); err != nil { // #nosec G703 G306 -- config.yaml en ConfigDir, junto al original
 		return err
 	}
 	return os.Rename(tmp, path)

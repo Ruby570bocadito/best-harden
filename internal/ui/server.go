@@ -285,7 +285,7 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) error {
 		IdleTimeout:       2 * time.Minute,
 		MaxHeaderBytes:    32 << 10,
 	}
-	go func() {
+	go func() { // #nosec G118 -- cierra el servidor al cancelar ctx; el apagado no puede depender de una petición
 		<-ctx.Done()
 		sh, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
@@ -444,7 +444,7 @@ func (s *Server) authAPI(r *http.Request) bool {
 
 // setSession fija la cookie de sesión del navegador.
 func (s *Server) setSession(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{Name: s.cookie, Value: s.token, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
+	http.SetCookie(w, &http.Cookie{Name: s.cookie, Value: s.token, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode}) // #nosec G124 -- consola en http://127.0.0.1: una cookie Secure no se enviaría; HttpOnly y SameSite=Strict
 }
 
 type httpError struct {

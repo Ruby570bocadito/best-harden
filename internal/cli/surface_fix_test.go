@@ -138,7 +138,7 @@ func TestSurfaceFixCycle(t *testing.T) {
 	broken := &stuckFirewall{fakeFirewall: fw}
 	remediate.Register(broken)
 	items = []*remediate.Item{remediate.PlanRule(context.Background(), rules[0])}
-	m, _ = x.Execute(context.Background(), store.NewManifest("pc-01", "surface", "test", 0), items)
+	_, _ = x.Execute(context.Background(), store.NewManifest("pc-01", "surface", "test", 0), items)
 	if items[0].Outcome != remediate.OutcomeNotEffective || fw.remote["{CFB7}"] != "Any" {
 		t.Errorf("sin efecto: %s %v", items[0].Outcome, fw.remote)
 	}

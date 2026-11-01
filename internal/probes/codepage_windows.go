@@ -25,7 +25,7 @@ func consoleCP() uint32 {
 	}
 	if procGetOEMCP.Find() == nil {
 		if cp, _, _ := procGetOEMCP.Call(); cp != 0 {
-			return uint32(cp)
+			return uint32(cp) // #nosec G115 -- una página de códigos cabe en 32 bits
 		}
 	}
 	return windows.GetACP()
@@ -36,12 +36,12 @@ func decodeCodePage(cp uint32, b []byte) string {
 	if len(b) == 0 {
 		return ""
 	}
-	n, err := windows.MultiByteToWideChar(cp, 0, &b[0], int32(len(b)), nil, 0)
+	n, err := windows.MultiByteToWideChar(cp, 0, &b[0], int32(len(b)), nil, 0) // #nosec G115 -- b sale de readLimited (pocos MiB)
 	if err != nil || n <= 0 {
 		return latin1(b)
 	}
 	u := make([]uint16, n)
-	if _, err := windows.MultiByteToWideChar(cp, 0, &b[0], int32(len(b)), &u[0], n); err != nil {
+	if _, err := windows.MultiByteToWideChar(cp, 0, &b[0], int32(len(b)), &u[0], n); err != nil { // #nosec G115 -- b sale de readLimited (pocos MiB)
 		return latin1(b)
 	}
 	return string(utf16.Decode(u))

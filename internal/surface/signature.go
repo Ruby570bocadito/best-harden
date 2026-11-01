@@ -104,7 +104,7 @@ func parseRpmQuery(paths []string, out string) map[string]string {
 	for i, l := range lines {
 		l = strings.TrimSpace(l)
 		if l != "" && !strings.Contains(l, " ") {
-			pkgs[paths[i]] = l
+			pkgs[paths[i]] = l // #nosec G602 -- len(lines) == len(paths), comprobado arriba
 		}
 	}
 	return pkgs

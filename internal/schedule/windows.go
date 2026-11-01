@@ -109,7 +109,7 @@ func (taskScheduler) Get(ctx context.Context) (Status, error) {
 		// ejecutable); los códigos de Adarve (0, 1, 3) se ven en decimal.
 		code := fmt.Sprintf("%d", v.Result)
 		if v.Result > 255 {
-			code = fmt.Sprintf("0x%08X", uint32(v.Result))
+			code = fmt.Sprintf("0x%08X", uint32(v.Result)) // #nosec G115 -- HRESULT de 32 bits
 		}
 		st.Detail = fmt.Sprintf("última ejecución %s, código %s", v.Last, code)
 	}

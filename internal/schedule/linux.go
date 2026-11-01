@@ -44,6 +44,10 @@ func (u *unixScheduler) removeLegacy(ctx context.Context) {
 	_ = os.Remove(u.path(legacyCron))
 }
 
+// newUnix lo usa new_linux.go; este fichero se compila en todas las plataformas
+// para poder probar el planificador con systemd y cron en cualquier sistema.
+//
+//lint:ignore U1000 se usa en Linux (new_linux.go)
 func newUnix() *unixScheduler {
 	return &unixScheduler{run: func(ctx context.Context, name string, args ...string) (string, error) {
 		ctx, cancel := context.WithTimeout(ctx, time.Minute)

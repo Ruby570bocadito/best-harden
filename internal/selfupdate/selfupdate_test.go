@@ -272,7 +272,12 @@ func TestReleaseKeyEverywhere(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name, v := range map[string][]byte{"X": k.X.FillBytes(make([]byte, 32)), "Y": k.Y.FillBytes(make([]byte, 32))} {
+	// Punto sin comprimir: 0x04 || X || Y.
+	pt, err := k.Bytes()
+	if err != nil || len(pt) != 65 {
+		t.Fatalf("clave pública: %v", err)
+	}
+	for name, v := range map[string][]byte{"X": pt[1:33], "Y": pt[33:]} {
 		if !bytes.Contains(ps, []byte(base64.StdEncoding.EncodeToString(v))) {
 			t.Errorf("install.ps1 no lleva la coordenada %s de la clave pública", name)
 		}

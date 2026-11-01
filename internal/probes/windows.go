@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Ruby570bocadito/adarve/internal/sysdir"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 	"golang.org/x/sys/windows/svc"
@@ -28,19 +29,14 @@ func init() {
 }
 
 // sys32 devuelve la ruta absoluta de una herramienta del sistema. Nunca se
-// confía en el PATH para evitar secuestro de binarios.
-func sys32(exe string) string {
-	root := os.Getenv("SystemRoot")
-	if root == "" {
-		root = `C:\Windows`
-	}
-	return filepath.Join(root, "System32", exe)
-}
+// confía en el PATH ni en SystemRoot para evitar secuestro de binarios (ver
+// internal/sysdir).
+func sys32(exe string) string { return sysdir.System32(exe) }
 
 // privateTempDir crea un directorio temporal sin espacios en la ruta (algunas
 // herramientas como auditpol no aceptan rutas entrecomilladas).
 func privateTempDir() (string, error) {
-	base := filepath.Join(os.Getenv("SystemRoot"), "Temp")
+	base := sysdir.WindowsTemp()
 	if st, err := os.Stat(base); err != nil || !st.IsDir() {
 		base = os.TempDir()
 	}
