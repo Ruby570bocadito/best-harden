@@ -89,6 +89,16 @@ func do(h http.Handler, method, target string, hdr map[string]string) *httptest.
 	return rec
 }
 
+// wrongToken devuelve un token de la misma longitud que tok y distinto de él.
+// Cambiar siempre el primer carácter por una «x» fallaba con 1 de cada 64
+// tokens: los que ya empiezan por «x».
+func wrongToken(tok string) string {
+	if tok[0] == 'x' {
+		return "y" + tok[1:]
+	}
+	return "x" + tok[1:]
+}
+
 func TestShellCSP(t *testing.T) {
 	_, h, _ := newTest(t)
 	rec := do(h, "GET", "/", nil)
@@ -116,7 +126,7 @@ func TestToken(t *testing.T) {
 	s, h, _ := newTest(t)
 	for name, hdr := range map[string]map[string]string{
 		"sin token":     nil,
-		"token erróneo": {"X-Adarve-Token": "x" + s.Token()[1:]},
+		"token erróneo": {"X-Adarve-Token": wrongToken(s.Token())},
 		"en la query":   nil, // la API no acepta el token en la URL
 	} {
 		target := "/api/state"
@@ -209,7 +219,7 @@ func TestSessionCookieAndLaunchCode(t *testing.T) {
 		t.Fatalf("cookie de sesión: %+v", c)
 	}
 	// Un token erróneo no abre sesión.
-	if rec := do(h, "GET", "/?t=x"+s.Token()[1:], nil); len(rec.Result().Cookies()) != 0 {
+	if rec := do(h, "GET", "/?t="+wrongToken(s.Token()), nil); len(rec.Result().Cookies()) != 0 {
 		t.Error("un token erróneo no debe abrir sesión")
 	}
 	cookie := s.cookie + "=" + s.Token()
