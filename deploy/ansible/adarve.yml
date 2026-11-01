@@ -1,0 +1,91 @@
+# Adarve en equipos Linux con Ansible: instala o actualiza a una versión
+# fija, programa la ronda diaria, hace una ronda y trae el informe de cada
+# equipo al controlador.
+#
+#   ansible-playbook -i inventario deploy/ansible/adarve.yml -e adarve_version=v0.5.0
+#
+# Se puede repetir: solo instala si la versión del equipo es otra y solo
+# programa la ronda si no está a esa hora. Guía: docs/17-guia-de-operacion.md.
+# Lo prueba el CI contra un espejo firmado: scripts/e2e/deploy-linux.sh.
+- name: Adarve en Linux
+  hosts: "{{ adarve_hosts | default('all') }}"
+  become: true
+  gather_facts: false
+  vars:
+    # Versión que debe quedar instalada (vX.Y.Z). Obligatoria: así todos los
+    # equipos llevan la misma y se actualizan cuando tú lo decides.
+    adarve_version: ""
+    # Espejo interno de releases (https://…). Vacío: GitHub.
+    adarve_releases_url: ""
+    # El instalador sale del controlador: los equipos no ejecutan curl | bash.
+    adarve_installer: "{{ playbook_dir }}/../../scripts/install.sh"
+    adarve_prefix: /usr/local/bin
+    # Hora de la ronda diaria (HH:MM). Vacío: no se programa.
+    adarve_schedule_at: "09:00"
+    # Dónde deja cada equipo el informe de la ronda que hace el playbook.
+    adarve_report: /var/lib/adarve/ultima-ronda.json
+    # Carpeta del controlador donde se guarda <equipo>.json (adarve.report/v1).
+    # Vacío: los informes no se traen.
+    adarve_reports_dir: "{{ playbook_dir }}/informes"
+    # Mayor que 0: el equipo cuenta como fallido si su puntuación es menor.
+    adarve_min_score: 0
+  tasks:
+    - name: Comprobar los parámetros
+      ansible.builtin.assert:
+        that:
+          - adarve_version is match('^v?[0-9]+[.][0-9]+[.][0-9]+(-[0-9A-Za-z.]+)?$')
+          - adarve_schedule_at == '' or adarve_schedule_at is match('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+        fail_msg: "Indica una versión concreta (-e adarve_version=v0.5.0) y la hora como HH:MM"
+        quiet: true
+
+    - name: Ver la versión instalada
+      ansible.builtin.command: "{{ adarve_prefix }}/adarve version --short"
+      register: adarve_installed
+      changed_when: false
+      failed_when: false
+
+    - name: Instalar o actualizar Adarve
+      ansible.builtin.script:
+        cmd: >-
+          {{ adarve_installer }} --version {{ adarve_version }} --prefix {{ adarve_prefix }} --no-scan
+          {% if adarve_releases_url %}--releases-url {{ adarve_releases_url }}{% endif %}
+        executable: /bin/bash
+      when: >-
+        adarve_installed.rc != 0 or
+        adarve_installed.stdout | trim | regex_replace('^v', '') != adarve_version | regex_replace('^v', '')
+
+    - name: Ver la ronda diaria
+      ansible.builtin.command: "{{ adarve_prefix }}/adarve schedule status --no-color"
+      register: adarve_schedule
+      changed_when: false
+      failed_when: false
+      when: adarve_schedule_at | length > 0
+
+    - name: Programar la ronda diaria
+      ansible.builtin.command: "{{ adarve_prefix }}/adarve schedule enable --at {{ adarve_schedule_at }} --no-color"
+      when: adarve_schedule_at | length > 0 and ('a las ' ~ adarve_schedule_at) not in adarve_schedule.stdout
+
+    # Solo lectura. Código 2: la puntuación no llega a adarve_min_score.
+    - name: Hacer una ronda
+      ansible.builtin.command: >-
+        {{ adarve_prefix }}/adarve scan --save --no-color
+        --output {{ adarve_report }} --min-score {{ adarve_min_score }}
+      register: adarve_scan
+      changed_when: false
+      failed_when: adarve_scan.rc not in [0, 2]
+
+    # Cada ronda da un informe distinto, pero traerlo no cambia el equipo.
+    - name: Traer el informe al controlador
+      ansible.builtin.fetch:
+        src: "{{ adarve_report }}"
+        dest: "{{ adarve_reports_dir }}/{{ inventory_hostname }}.json"
+        flat: true
+      changed_when: false
+      when: adarve_reports_dir | length > 0
+
+    - name: Comprobar la puntuación mínima
+      ansible.builtin.assert:
+        that: adarve_scan.rc == 0
+        fail_msg: "{{ inventory_hostname }} no llega a {{ adarve_min_score }} (ver {{ adarve_reports_dir }}/{{ inventory_hostname }}.json)"
+        quiet: true
+      when: adarve_min_score | int > 0
