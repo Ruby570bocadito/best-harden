@@ -39,14 +39,17 @@ func TestDisplayName(t *testing.T) {
 	}
 }
 
-func TestSudoClassic(t *testing.T) {
-	for p, want := range map[string]bool{
-		"/usr/bin/sudo":           true,
-		"/usr/lib/cargo/bin/sudo": false, // sudo-rs en Ubuntu 25.10+
-		"/usr/bin/sudo-rs":        false,
+func TestSudoImpl(t *testing.T) {
+	for _, c := range []struct{ path, version, want string }{
+		{"/usr/bin/sudo", "Sudo version 1.9.15p5", TagSudoClassic},
+		{"/usr/bin/sudo.ws", "Sudo version 1.9.16p2", TagSudoClassic}, // el clásico en Ubuntu 25.10+
+		{"/usr/lib/cargo/bin/sudo", "", TagSudoRS},                    // sudo-rs en Ubuntu 25.10+
+		{"/usr/bin/sudo-rs", "", TagSudoRS},
+		{"/usr/bin/sudo", "sudo-rs 0.2.8", TagSudoRS}, // sudo-rs instalado como /usr/bin/sudo
+		{"/usr/bin/sudo", "", TagSudoClassic},
 	} {
-		if got := sudoClassic(p); got != want {
-			t.Errorf("sudoClassic(%q) = %v, quiero %v", p, got, want)
+		if got := sudoImpl(c.path, c.version); got != c.want {
+			t.Errorf("sudoImpl(%q, %q) = %s, quiero %s", c.path, c.version, got, c.want)
 		}
 	}
 }

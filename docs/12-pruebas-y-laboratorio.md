@@ -13,7 +13,7 @@ Una herramienta de hardening solo es creíble si sus resultados son correctos. U
 | Hardening (motor) | Plan por olas, aplicación, fallo con reversión, cambio sin efecto con reversión, rollback desde disco, acceso remoto no confirmado, dead-man switch, GPO, validación de acciones (incluidos intentos de inyección) | `internal/remediate/plan_test.go` | ✅ |
 | Remediadores Linux | Ciclo capturar → aplicar → restaurar en un sistema de ficheros simulado (sysctl, login.defs, permisos, modprobe, sudoers con `visudo` real) | `internal/remediate/linux_test.go` | ✅ |
 | Ciclo real en CI | `harden --apply` en Ubuntu y Windows Server de GitHub: la postura debe subir y, tras `rollback`, volver exactamente al valor inicial | `.github/workflows/ci.yml` | ✅ |
-| Escaneo real en CI | `adarve scan` en Ubuntu y Windows Server de GitHub Actions; informes como artefacto | `.github/workflows/ci.yml` | ✅ |
+| Escaneo real en CI | `adarve scan` en Ubuntu 24.04, Ubuntu 26.04 (sudo-rs por defecto) y Windows Server de GitHub Actions; informes como artefacto | `.github/workflows/ci.yml` | ✅ |
 | Instaladores | ShellCheck, PSScriptAnalyzer | CI | ✅ |
 | Fuzzing | 14 parsers de la salida del sistema auditado: ninguna entrada debe hacer caer a Adarve | `internal/surface/fuzz_test.go`, `internal/probes/fuzz_test.go`; cada noche en `.github/workflows/fuzz.yml` | ✅ |
 | Análisis estático | `govulncheck`, `staticcheck` y `gosec` (Linux y Windows) | CI, job «Análisis de seguridad» | ✅ |

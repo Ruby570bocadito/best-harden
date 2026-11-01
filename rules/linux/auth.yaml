@@ -133,6 +133,8 @@ rationale: Impide que un proceso lanzado con sudo siga ejecutándose en segundo 
 category: Autenticación
 severity: medium
 platforms: [linux]
+# Con sudo-rs, use_pty está activado por defecto: allí vale LNX-AUTH-009.
+requires: [sudo-classic]
 profiles: [linux-server-l1]
 references:
   nist: [AC-6]
@@ -160,7 +162,7 @@ rationale: Un registro dedicado facilita auditar el uso de privilegios.
 category: Autenticación
 severity: low
 platforms: [linux]
-# sudo-rs no admite "Defaults logfile" (visudo lo rechaza) y registra en el journal.
+# sudo-rs no admite "Defaults logfile": registra siempre en syslog.
 requires: [sudo-classic]
 profiles: [linux-server-l1]
 references:
@@ -202,3 +204,29 @@ remediation:
   summary: Eliminar NOPASSWD de sudoers salvo para cuentas de automatización acotadas a comandos concretos.
   breaking_risk: medium
 impact: Scripts y herramientas de automatización que usen sudo sin contraseña dejarán de funcionar.
+---
+id: LNX-AUTH-009
+title: sudo-rs no desactiva el pseudo-terminal (use_pty)
+description: Ninguna línea Defaults de sudoers debe desactivar use_pty ("Defaults !use_pty").
+rationale: sudo-rs ejecuta los comandos en un pseudo-terminal por defecto, lo que impide que un proceso lanzado con sudo siga en segundo plano tras la sesión e inyecte comandos en la terminal del usuario. "!use_pty" quita esa protección.
+category: Autenticación
+severity: medium
+platforms: [linux]
+# Con sudo-rs, use_pty está activado salvo que se desactive: se vigila que
+# nadie lo haga (con el sudo clásico, LNX-AUTH-006). sudo-rs lee
+# /etc/sudoers-rs si existe y, si no, /etc/sudoers.
+requires: [sudo-rs]
+profiles: [linux-server-l1]
+references:
+  nist: [AC-6]
+  mitre_techniques: [T1548.003]
+check:
+  probe: file_regex
+  path: [/etc/sudoers-rs, /etc/sudoers, /etc/sudoers.d/*]
+  pattern: '^\s*Defaults\s+([^#]*,\s*)?!\s*use_pty\b'
+  op: eq
+  expected: 0
+  on_missing: na
+remediation:
+  summary: Quitar "!use_pty" de las líneas Defaults de sudoers con visudo.
+  breaking_risk: none

@@ -231,7 +231,7 @@ var Platforms = map[string]bool{
 	"windows-member": true, "windows-dc": true, "windows-joined": true,
 	"linux": true, "linux-debian": true, "linux-ubuntu": true,
 	"linux-rhel": true, "linux-fedora": true, "linux-suse": true,
-	"sudo-classic": true,
+	"sudo-classic": true, "sudo-rs": true,
 }
 
 var validBreakingRisk = map[string]bool{"none": true, "low": true, "medium": true, "high": true}
@@ -468,7 +468,8 @@ func validID(id string) bool {
 // RequirementMessages explica por qué una regla con requires no aplica.
 var RequirementMessages = map[string]string{
 	"windows-joined": "solo aplica a equipos unidos a un dominio de Active Directory o a Entra ID",
-	"sudo-classic":   "solo aplica al sudo clásico (sudo-rs no admite esta opción y registra en el journal)",
+	"sudo-classic":   "solo aplica al sudo clásico (con sudo-rs, la opción no existe o la cubre otro control)",
+	"sudo-rs":        "solo aplica a sudo-rs (con el sudo clásico lo cubre otro control)",
 }
 
 // MissingRequirement devuelve el primer requisito de la regla que el equipo

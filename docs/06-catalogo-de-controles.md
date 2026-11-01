@@ -15,7 +15,7 @@ adarve rules show WIN-CRED-001
 
 <!-- Generado con "adarve rules doc". No editar a mano: edita las reglas en rules/. -->
 
-**155 controles** en el paquete oficial, **121 con corrección automática** (`adarve harden`). ⚡ = afecta al acceso remoto (requiere `--include-remote`).
+**157 controles** en el paquete oficial, **121 con corrección automática** (`adarve harden`). ⚡ = afecta al acceso remoto (requiere `--include-remote`).
 
 ### Perfiles
 
@@ -29,7 +29,7 @@ adarve rules show WIN-CRED-001
 | `win-workstation-l1` | Windows Estación de trabajo · Nivel 1 |  | windows-client |
 | `win-workstation-l2` | Windows Estación de trabajo · Nivel 2 | win-workstation-l1 |  |
 
-### Linux (74)
+### Linux (75)
 
 #### Actualizaciones
 
@@ -56,6 +56,7 @@ adarve rules show WIN-CRED-001
 | `LNX-AUTH-006` | sudo usa un pseudo-terminal (use_pty) | medio | linux-server-l1 | T1548.003 | ninguno | ✓ |
 | `LNX-AUTH-007` | sudo registra en fichero propio | bajo | linux-server-l1 |  | ninguno | ✓ |
 | `LNX-AUTH-008` | sudo exige contraseña (sin NOPASSWD) | medio | linux-server-l2 | T1548.003 | medio |  |
+| `LNX-AUTH-009` | sudo-rs no desactiva el pseudo-terminal (use_pty) | medio | linux-server-l1 | T1548.003 | ninguno |  |
 
 #### Control de acceso
 
@@ -110,11 +111,11 @@ adarve rules show WIN-CRED-001
 | `LNX-NET-002` | No aceptar redirecciones ICMP | medio | linux-server-l1 | T1557 | ninguno | ✓ |
 | `LNX-NET-003` | No enviar redirecciones ICMP | medio | linux-server-l1 |  | ninguno | ✓ |
 | `LNX-NET-004` | No aceptar paquetes con enrutamiento de origen | medio | linux-server-l1 |  | ninguno | ✓ |
-| `LNX-NET-005` | Filtro de ruta inversa (anti-spoofing) | medio | linux-server-l1 |  | medio | ✓ |
+| `LNX-NET-005` | Filtro de ruta inversa (anti-spoofing) | medio | linux-server-l1 |  | medio | ✓ ⚡ |
 | `LNX-NET-006` | SYN cookies activadas | medio | linux-server-l1 | T1499 | ninguno | ✓ |
 | `LNX-NET-007` | Registrar paquetes marcianos | bajo | linux-server-l1 |  | ninguno | ✓ |
 | `LNX-NET-008` | Ignorar ICMP de difusión y respuestas falsas | bajo | linux-server-l1 |  | ninguno | ✓ |
-| `LNX-NET-009` | No aceptar anuncios de router IPv6 | medio | linux-server-l2 | T1557 | alto | ✓ |
+| `LNX-NET-009` | No aceptar anuncios de router IPv6 | medio | linux-server-l2 | T1557 | alto | ✓ ⚡ |
 
 #### Registro y auditoría
 
@@ -129,7 +130,7 @@ adarve rules show WIN-CRED-001
 |---|---|---|---|---|---|---|
 | `LNX-SSH-001` | Prohibir el acceso de root por SSH | alto | linux-server-l1 | T1021.004, T1110 | medio | ✓ ⚡ |
 | `LNX-SSH-002` | Prohibir contraseñas vacías en SSH | alto | linux-server-l1 | T1078 | ninguno | ✓ |
-| `LNX-SSH-003` | Limitar intentos de autenticación SSH | medio | linux-server-l1 | T1110 | bajo | ✓ |
+| `LNX-SSH-003` | Limitar intentos de autenticación SSH | medio | linux-server-l1 | T1110 | bajo | ✓ ⚡ |
 | `LNX-SSH-004` | Deshabilitar el reenvío X11 | medio | linux-server-l1 |  | bajo | ✓ |
 | `LNX-SSH-005` | Deshabilitar autenticación basada en host (rhosts) | medio | linux-server-l1 |  | ninguno | ✓ |
 | `LNX-SSH-006` | Tiempo de gracia de login reducido | bajo | linux-server-l1 |  | ninguno | ✓ |
@@ -170,7 +171,7 @@ adarve rules show WIN-CRED-001
 | `LNX-FS-006` | Permisos de /etc/crontab | medio | linux-server-l1 | T1053.003 | ninguno | ✓ |
 | `LNX-FS-007` | Permisos de los directorios de cron | medio | linux-server-l1 | T1053.003 | ninguno | ✓ |
 
-### Windows y Windows Server (81)
+### Windows y Windows Server (82)
 
 #### Acceso remoto
 
@@ -311,7 +312,8 @@ adarve rules show WIN-CRED-001
 | `WIN-SYS-008` | Bloqueo de la sesión tras 15 minutos de inactividad | medio | win-workstation-l1, win-server-l1 | T1078 | bajo | ✓ |
 | `WIN-SYS-009` | Protección SEHOP activada | bajo | win-workstation-l1, win-server-l1 | T1203 | ninguno | ✓ |
 | `WIN-SYS-010` | Descarga de controladores de impresora por HTTP deshabilitada | bajo | win-workstation-l1, win-server-l1 | T1557 | ninguno | ✓ |
-| `WIN-UPD-001` | Actualizaciones automáticas de Windows no desactivadas | alto | win-workstation-l1, win-server-l1 | T1190, T1203 | bajo | ✓ |
+| `WIN-UPD-001` | Actualizaciones automáticas de Windows no desactivadas por directiva | alto | win-workstation-l1, win-server-l1 | T1190, T1203 | bajo | ✓ |
+| `WIN-UPD-002` | Servicio Windows Update no deshabilitado | alto | win-workstation-l1, win-server-l1 | T1190, T1203 | bajo |  |
 
 ## 2. Catálogo objetivo (🔜)
 

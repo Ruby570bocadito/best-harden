@@ -3,6 +3,7 @@ package rules_test
 import (
 	"encoding/json"
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/Ruby570bocadito/adarve/internal/probes"
@@ -105,5 +106,49 @@ func TestSchemaActionTypes(t *testing.T) {
 	}
 	if len(got) != len(remediate.Specs) {
 		t.Errorf("el esquema tiene %d tipos de acción y el motor %d", len(got), len(remediate.Specs))
+	}
+}
+
+// Los controles de use_pty: LNX-AUTH-006 (sudo clásico) busca la opción y
+// LNX-AUTH-009 (sudo-rs, donde está activada por defecto) busca que alguien
+// la desactive. Las dos se evalúan línea a línea, sin los comentarios.
+func TestSudoPTYPatterns(t *testing.T) {
+	c := rule.NewCatalog()
+	if err := c.LoadFS(rules.FS, "rules/"); err != nil {
+		t.Fatalf("carga: %v", err)
+	}
+	pattern := func(id string) *regexp.Regexp {
+		r := c.Rule(id)
+		if r == nil {
+			t.Fatalf("no existe %s", id)
+		}
+		return regexp.MustCompile(r.Check.Params["pattern"].(string))
+	}
+	enable, disable := pattern("LNX-AUTH-006"), pattern("LNX-AUTH-009")
+	for line, want := range map[string][2]bool{ // [activa use_pty, lo desactiva]
+		"Defaults use_pty":                        {true, false},
+		"Defaults\tenv_reset, use_pty":            {true, false},
+		"Defaults !use_pty":                       {false, true},
+		"Defaults ! use_pty":                      {false, true},
+		"Defaults env_reset,!use_pty":             {false, true},
+		"Defaults env_reset, timestamp_timeout=5": {false, false},
+		"Defaults:alice !use_pty":                 {false, false}, // por usuario: fuera del alcance de ambos controles
+		"Defaults use_ptyx":                       {false, false},
+	} {
+		if got := enable.MatchString(line); got != want[0] {
+			t.Errorf("LNX-AUTH-006 con %q: %v, quiero %v", line, got, want[0])
+		}
+		if got := disable.MatchString(line); got != want[1] {
+			t.Errorf("LNX-AUTH-009 con %q: %v, quiero %v", line, got, want[1])
+		}
+	}
+	if r := c.Rule("LNX-AUTH-006"); r.MissingRequirement([]string{"linux", "sudo-rs"}) == "" {
+		t.Error("LNX-AUTH-006 no debe aplicarse con sudo-rs")
+	}
+	if r := c.Rule("LNX-AUTH-009"); r.MissingRequirement([]string{"linux", "sudo-classic"}) == "" {
+		t.Error("LNX-AUTH-009 no debe aplicarse con el sudo clásico")
+	}
+	if r := c.Rule("LNX-AUTH-007"); r.MissingRequirement([]string{"linux", "sudo-rs"}) == "" {
+		t.Error("LNX-AUTH-007 (logfile) no debe aplicarse con sudo-rs")
 	}
 }

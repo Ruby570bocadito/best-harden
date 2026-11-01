@@ -68,7 +68,8 @@ Etiquetas adicionales de estado:
 | Etiqueta | Cuándo |
 |---|---|
 | `windows-joined` | El equipo está unido a un dominio de Active Directory o a Entra ID |
-| `sudo-classic` | El sudo instalado es el clásico, no sudo-rs (Ubuntu 25.10+), que no admite opciones como `Defaults logfile` |
+| `sudo-classic` | El sudo instalado es el clásico (sudo.ws), no sudo-rs |
+| `sudo-rs` | El sudo instalado es sudo-rs (por defecto en Ubuntu 25.10 y posteriores): no admite `Defaults logfile` (registra en syslog) y tiene `use_pty` activado por defecto. Se detecta por la ruta de `/usr/bin/sudo` (`/usr/lib/cargo/bin`) o, si no basta, por `sudo --version` |
 
 ### `requires`: condiciones que deben cumplirse todas
 

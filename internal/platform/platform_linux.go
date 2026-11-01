@@ -3,9 +3,13 @@
 package platform
 
 import (
+	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 )
 
 func detect(info *Info) {
@@ -21,8 +25,8 @@ func detect(info *Info) {
 		info.Name = "Linux"
 		info.Tags = []string{"linux"}
 	}
-	if sudo, err := filepath.EvalSymlinks("/usr/bin/sudo"); err == nil && sudoClassic(sudo) {
-		info.Tags = append(info.Tags, "sudo-classic")
+	if impl := SudoImplementation(); impl != "" {
+		info.Tags = append(info.Tags, impl)
 	}
 	if b, err := os.ReadFile("/proc/sys/kernel/osrelease"); err == nil {
 		info.Kernel = strings.TrimSpace(string(b))
@@ -32,6 +36,32 @@ func detect(info *Info) {
 	if isGraphical() {
 		info.Role = "workstation"
 	}
+}
+
+// SudoImplementation devuelve TagSudoRS o TagSudoClassic según el sudo del
+// sistema, o "" si no hay sudo. Lo usan la detección de la plataforma y la
+// remediación de sudoers (sudo-rs no admite todas las opciones).
+var SudoImplementation = sync.OnceValue(func() string {
+	sudo, err := filepath.EvalSymlinks("/usr/bin/sudo")
+	if err != nil {
+		return ""
+	}
+	if impl := sudoImpl(sudo, ""); impl == TagSudoRS {
+		return impl
+	}
+	return sudoImpl(sudo, sudoVersion(sudo))
+})
+
+// sudoVersion devuelve la primera línea de "<sudo> --version" ("" si falla).
+func sudoVersion(bin string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, bin, "--version").Output()
+	if err != nil {
+		return ""
+	}
+	first, _, _ := strings.Cut(string(out), "\n")
+	return strings.TrimSpace(first)
 }
 
 // InContainer detecta si Adarve se ejecuta dentro de un contenedor (los
