@@ -177,6 +177,13 @@ func evaluate(selected []*rule.Rule, host platform.Info, prof *rule.Profile, fai
 		switch {
 		case r.MissingRequirement(host.Tags) != "":
 			res.Status, res.Message = engine.NA, r.MissingRequirement(host.Tags)
+		case r.Check.Op == "manual":
+			// Lo que revisa una persona: la evidencia del equipo ficticio.
+			res.Status, res.Actual, res.Expected = engine.Manual, demoEvidence[r.ID], "revisión manual"
+			res.Probe, res.Source = r.Check.Probe, "demostración: equipo ficticio "+hostname
+			if res.Actual == "" {
+				res.Actual = "(ninguno)"
+			}
 		case current && r.ID == demoException.Rule:
 			res.Status = engine.Exception
 			res.Exception = &engine.ExceptionRef{Entry: demoException}
@@ -200,6 +207,14 @@ func evaluate(selected []*rule.Rule, host platform.Info, prof *rule.Profile, fai
 		Score:      engine.ComputeScore(results),
 		Results:    results,
 	}
+}
+
+// demoEvidence es lo que encontraría en web-01 cada regla de revisión manual.
+var demoEvidence = map[string]string{
+	"LNX-AUTH-010": "/etc/group:27: sudo:x:27:ana,deploy, /etc/sudoers:50: %sudo ALL=(ALL:ALL) ALL, " +
+		"/etc/sudoers.d/90-deploy:1: deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart web",
+	"LNX-AUTH-011": "/etc/passwd:1: root:x:0:0:root:/root:/bin/bash, /etc/passwd:31: ana:x:1000:1000:Ana Ruiz:/home/ana:/bin/bash, " +
+		"/etc/passwd:32: deploy:x:1001:1001:despliegues:/home/deploy:/bin/bash, /etc/passwd:33: backup-old:x:1002:1002::/home/backup-old:/bin/sh",
 }
 
 // expected resume el valor esperado de una regla para la evidencia.

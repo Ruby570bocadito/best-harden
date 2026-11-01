@@ -15,7 +15,7 @@ adarve rules show WIN-CRED-001
 
 <!-- Generado con "adarve rules doc". No editar a mano: edita las reglas en rules/. -->
 
-**157 controles** en el paquete oficial, **121 con corrección automática** (`adarve harden`). ⚡ = afecta al acceso remoto (requiere `--include-remote`).
+**161 controles** en el paquete oficial, **121 con corrección automática** (`adarve harden`) y **4 de revisión manual** (Adarve reúne la evidencia y el veredicto es tuyo; no cuentan en la puntuación). ⚡ = afecta al acceso remoto (requiere `--include-remote`).
 
 ### Perfiles
 
@@ -29,7 +29,7 @@ adarve rules show WIN-CRED-001
 | `win-workstation-l1` | Windows Estación de trabajo · Nivel 1 |  | windows-client |
 | `win-workstation-l2` | Windows Estación de trabajo · Nivel 2 | win-workstation-l1 |  |
 
-### Linux (75)
+### Linux (77)
 
 #### Actualizaciones
 
@@ -57,6 +57,8 @@ adarve rules show WIN-CRED-001
 | `LNX-AUTH-007` | sudo registra en fichero propio | bajo | linux-server-l1 |  | ninguno | ✓ |
 | `LNX-AUTH-008` | sudo exige contraseña (sin NOPASSWD) | medio | linux-server-l2 | T1548.003 | medio |  |
 | `LNX-AUTH-009` | sudo-rs no desactiva el pseudo-terminal (use_pty) | medio | linux-server-l1 | T1548.003 | ninguno |  |
+| `LNX-AUTH-010` | Revisar quién puede usar sudo *(revisión manual)* | alto | linux-server-l1 | T1548.003 | medio |  |
+| `LNX-AUTH-011` | Revisar las cuentas que pueden iniciar sesión *(revisión manual)* | medio | linux-server-l1 | T1078.003 | medio |  |
 
 #### Control de acceso
 
@@ -171,7 +173,7 @@ adarve rules show WIN-CRED-001
 | `LNX-FS-006` | Permisos de /etc/crontab | medio | linux-server-l1 | T1053.003 | ninguno | ✓ |
 | `LNX-FS-007` | Permisos de los directorios de cron | medio | linux-server-l1 | T1053.003 | ninguno | ✓ |
 
-### Windows y Windows Server (82)
+### Windows y Windows Server (84)
 
 #### Acceso remoto
 
@@ -240,6 +242,7 @@ adarve rules show WIN-CRED-001
 | `WIN-ACC-004` | Cuenta de invitado deshabilitada | alto | win-workstation-l1, win-server-l1 | T1078.001 | ninguno | ✓ |
 | `WIN-ACC-005` | Contraseñas en blanco solo en consola local | alto | win-workstation-l1, win-server-l1 | T1078 | ninguno | ✓ |
 | `WIN-ACC-006` | Contraseña del administrador local gestionada con LAPS | alto | win-workstation-l1, win-server-l1 | T1550.002, T1078.003 | ninguno |  |
+| `WIN-ACC-007` | Revisar quién es administrador del equipo *(revisión manual)* | alto | win-workstation-l1, win-server-l1 | T1078.003 | medio |  |
 
 #### Defender
 
@@ -291,6 +294,7 @@ adarve rules show WIN-CRED-001
 | `WIN-NET-012` | Controlador cliente SMBv1 deshabilitado | medio | win-workstation-l1, win-server-l1 | T1210 | medio |  |
 | `WIN-NET-013` | No aceptar redirecciones ICMP | bajo | win-workstation-l1, win-server-l1 | T1557 | ninguno | ✓ |
 | `WIN-NET-014` | Enrutamiento de origen IP deshabilitado | bajo | win-workstation-l1, win-server-l1 | T1599 | ninguno | ✓ |
+| `WIN-NET-015` | Revisar las carpetas compartidas *(revisión manual)* | medio | win-workstation-l1, win-server-l1 | T1039, T1135 | medio |  |
 
 #### Servicios
 

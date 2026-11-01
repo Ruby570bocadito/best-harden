@@ -230,3 +230,54 @@ check:
 remediation:
   summary: Quitar "!use_pty" de las líneas Defaults de sudoers con visudo.
   breaking_risk: none
+---
+id: LNX-AUTH-010
+title: Revisar quién puede usar sudo
+description: Solo deben poder usar sudo las cuentas que administran el equipo. Adarve reúne los grupos de administración (sudo, wheel, admin) y las reglas de sudoers que dan permisos; revisa que cada cuenta los necesite.
+rationale: Una cuenta con sudo es, en la práctica, root. Una de más, o una regla NOPASSWD olvidada, convierte cualquier contraseña robada en el control total del equipo.
+category: Autenticación
+severity: high
+platforms: [linux]
+profiles: [linux-server-l1]
+references:
+  nist: [AC-6(5), AC-2]
+  mitre_mitigations: [M1026]
+  mitre_techniques: [T1548.003]
+check:
+  probe: file_regex
+  path: [/etc/group, /etc/sudoers, /etc/sudoers.d/*]
+  pattern: '^(sudo|wheel|admin):|^\s*[^#\s]\S*\s+ALL\s*='
+  field: matches
+  op: manual
+remediation:
+  summary: Sacar de los grupos sudo, wheel o admin a quien no administre el equipo y borrar con visudo las reglas de sudoers que sobren.
+  commands: |
+    getent group sudo wheel admin
+    sudo gpasswd -d <cuenta> sudo
+    sudo visudo -f /etc/sudoers.d/<fichero>
+  breaking_risk: medium
+---
+id: LNX-AUTH-011
+title: Revisar las cuentas que pueden iniciar sesión
+description: Solo deben tener intérprete de órdenes (bash, sh…) las cuentas que lo necesitan; las de sistema llevan /usr/sbin/nologin. Adarve reúne las cuentas con intérprete; revisa que cada una deba poder entrar.
+rationale: Una cuenta de servicio con intérprete, o la de alguien que ya no está, es una puerta más. Si se filtran su contraseña o sus claves SSH, da una sesión en el equipo.
+category: Autenticación
+severity: medium
+platforms: [linux]
+profiles: [linux-server-l1]
+references:
+  nist: [AC-2(3)]
+  mitre_mitigations: [M1018]
+  mitre_techniques: [T1078.003]
+check:
+  probe: file_regex
+  path: /etc/passwd
+  pattern: ':(/usr)?/bin/(ba|z|k|c|tc|da|fi)?sh$'
+  field: matches
+  op: manual
+remediation:
+  summary: Quitar el intérprete a las cuentas que no deben iniciar sesión y bloquear las de quien ya no lo necesita.
+  commands: |
+    sudo usermod -s /usr/sbin/nologin <cuenta>
+    sudo usermod -L <cuenta>
+  breaking_risk: medium

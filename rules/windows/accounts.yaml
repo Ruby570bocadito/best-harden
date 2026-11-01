@@ -165,3 +165,27 @@ remediation:
   gpo: Computer Configuration > Administrative Templates > System > LAPS > Configure password backup directory
   breaking_risk: none
 impact: Solo se evalúa en equipos unidos a un dominio o a Entra ID; en equipos aislados aparece como "no aplica".
+---
+id: WIN-ACC-007
+title: Revisar quién es administrador del equipo
+description: Solo deben ser administradores locales las cuentas que lo necesitan para su trabajo. Adarve no puede saber quién lo necesita, así que reúne la lista para que la revises.
+rationale: Cualquier programa que ejecuta un administrador tiene control total del equipo. Un administrador de más es la vía más corta para robar credenciales y saltar a otros equipos.
+category: Cuentas
+severity: high
+platforms: [windows]
+profiles: [win-workstation-l1, win-server-l1]
+references:
+  nist: [AC-6(5), AC-2]
+  mitre_mitigations: [M1026]
+  mitre_techniques: [T1078.003]
+check:
+  probe: ps
+  query: local_admins
+  field: members.Name
+  op: manual
+remediation:
+  summary: Quitar del grupo Administradores a quien no lo necesite y darle una cuenta de usuario estándar para el día a día. En un dominio, fijar los miembros con una GPO (Grupos restringidos) y usar LAPS para la cuenta Administrador local.
+  commands: |
+    Get-LocalGroupMember -SID S-1-5-32-544
+    Remove-LocalGroupMember -SID S-1-5-32-544 -Member <cuenta>
+  breaking_risk: medium

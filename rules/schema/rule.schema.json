@@ -83,7 +83,7 @@
         },
         "field": { "type": "string" },
         "op": {
-          "enum": ["eq", "ne", "gt", "gte", "lt", "lte", "between", "in", "not_in", "contains", "not_contains", "regex", "not_regex", "bits_set", "bits_clear", "bits_any", "mode_max", "exists", "absent"]
+          "enum": ["eq", "ne", "gt", "gte", "lt", "lte", "between", "in", "not_in", "contains", "not_contains", "regex", "not_regex", "bits_set", "bits_clear", "bits_any", "mode_max", "exists", "absent", "manual"]
         },
         "expected": {},
         "default": {},

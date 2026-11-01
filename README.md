@@ -40,8 +40,8 @@ calcula una puntuación de postura, la mapea a MITRE ATT&CK y te dice qué corre
 
 | | |
 |---|---|
-| 🔍 **Auditoría de solo lectura** | 157 controles reales para Windows 10/11, Windows Server 2016-2025 (miembro y DC) y Linux (Ubuntu, Debian, RHEL y derivados). `scan` nunca modifica el sistema. |
-| 🛡️ **Hardening seguro** | `adarve harden` corrige 100 controles con simulación, instantánea previa, verificación y **rollback automático**; olas por riesgo de rotura y dead-man switch para SSH/RDP. |
+| 🔍 **Auditoría de solo lectura** | 161 controles reales para Windows 10/11, Windows Server 2016-2025 (miembro y DC) y Linux (Ubuntu, Debian, RHEL y derivados). `scan` nunca modifica el sistema. Lo que solo puede juzgar una persona (quién debe ser administrador, quién puede usar sudo…) queda **para revisar a mano**, con la evidencia reunida y fuera de la puntuación. |
+| 🛡️ **Hardening seguro** | `adarve harden` corrige 121 controles con simulación, instantánea previa, verificación y **rollback automático**; olas por riesgo de rotura y dead-man switch para SSH/RDP. |
 | 🎯 **Perfiles por rol** | Estación de trabajo, servidor miembro, controlador de dominio y servidor Linux, con niveles L1/L2. Adarve detecta el rol y elige el perfil. |
 | 📊 **Puntuación de postura** | Puntuación ponderada por severidad (0-100, A-F), por categoría y por severidad. |
 | 📝 **Excepciones con caducidad** | Acepta un control fallido con motivo, responsable y fecha de caducidad (máximo un año): sale aparte, no cuenta y vuelve a fallar al caducar. |

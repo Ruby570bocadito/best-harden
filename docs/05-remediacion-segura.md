@@ -1,6 +1,6 @@
 # 05 · Remediación segura (`adarve harden`)
 
-> Estado: ✅ implementado en la v0.2.0. 121 de los 157 controles tienen corrección automática.
+> Estado: ✅ implementado en la v0.2.0. 121 de los 161 controles tienen corrección automática.
 
 ## Objetivo
 

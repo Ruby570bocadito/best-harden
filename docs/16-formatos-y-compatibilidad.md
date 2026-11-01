@@ -22,7 +22,7 @@ Cada «forma de referencia» lista, campo a campo, la ruta, el tipo y si es opci
 **Se puede** (cambios compatibles, en cualquier versión 1.x):
 
 - Añadir campos **opcionales** a cualquier formato.
-- Añadir **valores nuevos** a una enumeración: estados de un control (por ejemplo, el estado `manual` previsto en la hoja de ruta), tipos de hallazgo, probes, operadores, tipos de acción, etiquetas de `platforms` y `requires`.
+- Añadir **valores nuevos** a una enumeración: estados de un control (como `manual`, que se añadió así), tipos de hallazgo, probes, operadores, tipos de acción, etiquetas de `platforms` y `requires`.
 - Añadir reglas, perfiles, comandos y opciones.
 - Mejorar los textos (títulos, descripciones, mensajes): no son parte del formato.
 

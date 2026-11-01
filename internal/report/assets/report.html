@@ -333,6 +333,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
     error: { label: "Error", icon: "!", color: "var(--warning)" },
     skipped: { label: "Sin evaluar", icon: "⊘", color: "var(--muted)" },
     exception: { label: "Excepción", icon: "◇", color: "var(--info)" },
+    manual: { label: "Revisión manual", icon: "?", color: "var(--accent)" },
     pass: { label: "Superado", icon: "✓", color: "var(--good)" },
     na: { label: "No aplica", icon: "–", color: "var(--info)" }
   };
@@ -440,6 +441,8 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
     "Hay " + (failed.length === 1 ? "1 brecha" : failed.length + " brechas") + " en la muralla: " +
     (auto === failed.length ? "todas se reparan con adarve harden." : auto ? auto + " se reparan con adarve harden y " +
       (failed.length - auto === 1 ? "1 necesita" : (failed.length - auto) + " necesitan") + " una decisión." : "ninguna se repara sola: todas necesitan una decisión.");
+  // Lo que solo puede juzgar una persona (op: manual): no es una brecha ni cuenta.
+  if (sc.manual) voice += " Y " + (sc.manual === 1 ? "1 control lo tienes" : sc.manual + " controles los tienes") + " que revisar tú.";
   var hero = el("div", { class: "card hero" }, [
     el("h2", { text: "Estado de la muralla" }),
     unscored ? el("div", null, [
@@ -455,7 +458,8 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
       el("p", { class: "voice", text: voice }),
       el("p", { text: "Postura " + scoreWord(sc.value).toLowerCase() + " según el perfil " + (data.profile ? data.profile.id : "") +
         ". Puntuación ponderada por severidad (crítico 10, alto 5, medio 3, bajo 1)." + (sc.partial ? " Es parcial: hay controles " + (sc.skipped ? "sin evaluar." : "con error.") : "") +
-        (sc.exceptions ? " " + (sc.exceptions === 1 ? "1 control fallido está aceptado" : sc.exceptions + " controles fallidos están aceptados") + " por excepción y no cuenta" + (sc.exceptions === 1 ? "." : "n.") : "") })
+        (sc.exceptions ? " " + (sc.exceptions === 1 ? "1 control fallido está aceptado" : sc.exceptions + " controles fallidos están aceptados") + " por excepción y no cuenta" + (sc.exceptions === 1 ? "." : "n.") : "") +
+        (sc.manual ? " " + (sc.manual === 1 ? "1 control necesita" : sc.manual + " controles necesitan") + " una revisión manual y no cuenta" + (sc.manual === 1 ? "." : "n.") : "") })
     ])
   ]);
   var kpis = el("div", { class: "kpis" });
@@ -465,8 +469,10 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
   // Tercera tarjeta: lo que no se pudo evaluar o, si todo se evaluó, las excepciones.
   var third = !unk && sc.exceptions ? ["exception", sc.exceptions, "Excepciones", "riesgo aceptado con caducidad"] :
     [sc.skipped ? "skipped" : "error", unk, "Sin evaluar", unkSub];
-  [["fail", sc.failed, "Fallidos", "requieren acción"], ["pass", sc.passed, "Superados", "conformes"],
-   third, ["na", sc.na, "No aplican", "fuera del alcance de este equipo"]]
+  // Cuarta: lo que debe revisar una persona o, si no hay nada, lo que no aplica.
+  var fourth = sc.manual ? ["manual", sc.manual, "Revisión manual", "Adarve reúne la evidencia, decides tú"] :
+    ["na", sc.na, "No aplican", "fuera del alcance de este equipo"];
+  [["fail", sc.failed, "Fallidos", "requieren acción"], ["pass", sc.passed, "Superados", "conformes"], third, fourth]
     .forEach(function (k) {
       var st = STATUS[k[0]];
       kpis.appendChild(el("div", { class: "card kpi" }, [
@@ -574,13 +580,13 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
   app.appendChild(el("section", null, [attCard]));
 
   // ---- Controles ----
-  var counts = { all: results.length, fail: 0, error: 0, skipped: 0, exception: 0, pass: 0, na: 0 };
+  var counts = { all: results.length, fail: 0, error: 0, manual: 0, skipped: 0, exception: 0, pass: 0, na: 0 };
   results.forEach(function (r) { counts[r.status]++; });
   var state = { status: counts.fail ? "fail" : "all", sev: "", cat: "", q: "" };
 
   var chips = el("div", { class: "chips", role: "group", "aria-label": "Filtrar por estado" });
-  [["all", "Todos"], ["fail", "Fallidos"], ["error", "Errores"], ["skipped", "Sin evaluar"], ["exception", "Excepciones"], ["pass", "Superados"], ["na", "No aplican"]].forEach(function (c) {
-    if ((c[0] === "error" || c[0] === "skipped" || c[0] === "exception") && !counts[c[0]]) return;
+  [["all", "Todos"], ["fail", "Fallidos"], ["error", "Errores"], ["manual", "Revisión manual"], ["skipped", "Sin evaluar"], ["exception", "Excepciones"], ["pass", "Superados"], ["na", "No aplican"]].forEach(function (c) {
+    if ((c[0] === "error" || c[0] === "manual" || c[0] === "skipped" || c[0] === "exception") && !counts[c[0]]) return;
     var b = el("button", { class: "chip", type: "button", "data-s": c[0], "aria-pressed": String(state.status === c[0]) },
       [c[1], el("span", { class: "c", text: String(counts[c[0]]) })]);
     b.addEventListener("click", function () { state.status = c[0]; render(); });
@@ -645,6 +651,7 @@ footer { color: var(--muted); font-size: 12.5px; padding: 28px 0 40px; }
     var d = el("details", { class: "res" });
     var sub = r.status === "pass" ? (l.actual ? "Actual: " + l.actual : "") :
       r.status === "fail" ? [l.label, l.actual ? "actual " + l.actual : "", l.expected ? "esperado " + l.expected : ""].filter(Boolean).join(" · ") :
+      r.status === "manual" ? (l.actual ? "Evidencia: " + l.actual : (l.message || "")) :
       r.status === "exception" ? "Excepción hasta el " + r.exception.expires + " · " + r.exception.reason :
       (l.message || "");
     d.appendChild(el("summary", null, [

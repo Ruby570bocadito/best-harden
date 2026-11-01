@@ -233,6 +233,7 @@ Si editas el fichero a mano, Adarve ignora las excepciones inválidas (sin motiv
 | ✗ **Fallido** | El valor real no cumple (o no está configurado y el valor por defecto del sistema no cumple) | Sí |
 | ! **Error** | No se pudo leer por un problema inesperado (comando que falla, formato desconocido…) | No; la puntuación se marca como **parcial** |
 | ◇ **Excepción** | Falla, pero hay una excepción vigente que lo acepta | No; se muestra aparte y con su caducidad |
+| ? **Revisión manual** | El control necesita el juicio de una persona (quién debe ser administrador, quién puede usar sudo…). Adarve reúne la evidencia y el veredicto es tuyo | No; se muestra aparte, con la evidencia |
 | ⊘ **Sin evaluar** | El dato solo se puede leer como administrador o root y el escaneo se ejecutó sin privilegios. En consola se resumen en una línea; `--all` los lista | No; la puntuación se marca como **parcial** |
 | – **No aplica** | El elemento no existe en este equipo (sin OpenSSH, sin systemd, Defender sustituido por otro antivirus…) | No |
 

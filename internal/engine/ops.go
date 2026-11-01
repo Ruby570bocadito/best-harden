@@ -258,6 +258,8 @@ func formatValue(v any) string {
 func describeExpected(op string, expected any) string {
 	v := formatValue(expected)
 	switch op {
+	case "manual":
+		return "revisión manual"
 	case "eq":
 		return v
 	case "ne":
@@ -310,31 +312,48 @@ func hexOf(v any) string {
 	return formatValue(v)
 }
 
-// lookupField resuelve "a.b.c" dentro de mapas anidados.
+// lookupField resuelve "a.b.c" dentro de mapas anidados. En una lista de
+// objetos devuelve el campo de cada uno: "members.Name" son los nombres de
+// los miembros.
 func lookupField(fields map[string]any, path string) (any, bool) {
 	if v, ok := fields[path]; ok {
 		return v, true
 	}
 	var cur any = fields
 	for _, part := range strings.Split(path, ".") {
-		m, ok := cur.(map[string]any)
-		if !ok {
-			return nil, false
-		}
-		v, ok := m[part]
-		if !ok {
-			// Las claves de PowerShell pueden variar en mayúsculas.
-			for k, x := range m {
-				if strings.EqualFold(k, part) {
-					v, ok = x, true
-					break
-				}
-			}
+		switch x := cur.(type) {
+		case map[string]any:
+			v, ok := mapKey(x, part)
 			if !ok {
 				return nil, false
 			}
+			cur = v
+		case []any:
+			out := []any{}
+			for _, it := range x {
+				if m, ok := it.(map[string]any); ok {
+					if v, ok := mapKey(m, part); ok {
+						out = append(out, v)
+					}
+				}
+			}
+			cur = out
+		default:
+			return nil, false
 		}
-		cur = v
 	}
 	return cur, cur != nil
+}
+
+// mapKey busca una clave; las de PowerShell pueden variar en mayúsculas.
+func mapKey(m map[string]any, key string) (any, bool) {
+	if v, ok := m[key]; ok {
+		return v, true
+	}
+	for k, v := range m {
+		if strings.EqualFold(k, key) {
+			return v, true
+		}
+	}
+	return nil, false
 }

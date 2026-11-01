@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"strings"
 	"testing"
@@ -80,6 +81,68 @@ func TestLookupField(t *testing.T) {
 	if _, ok := lookupField(f, "Private.Enabled"); ok {
 		t.Error("campo inexistente encontrado")
 	}
+	// En una lista de objetos, el campo de cada uno (lo que no es objeto se salta).
+	g := map[string]any{"members": []any{map[string]any{"Name": "a"}, "suelto", map[string]any{"name": "b"}}}
+	if v, ok := lookupField(g, "members.Name"); !ok || formatValue(v) != "a, b" {
+		t.Errorf("members.Name = %v, %v", v, ok)
+	}
+}
+
+func manualLeaf(key, field string) rule.Check {
+	c := leaf(key, "manual", nil)
+	c.Field = field
+	return c
+}
+
+// op manual: el probe reúne la evidencia y el veredicto queda para una
+// persona, también cuando no se puede reunir.
+func TestEvalManual(t *testing.T) {
+	old := probes.Privileged
+	t.Cleanup(func() { probes.Privileged = old })
+	probes.Privileged = func() bool { return false }
+	e := New()
+	ctx := probes.WithSession(context.Background(), probes.NewSession())
+	for _, c := range []struct {
+		key, field, actual, msg string
+		status                  Status
+	}{
+		{"admins", "members.Name", `EQUIPO\ana, EQUIPO\luis`, "", Manual},
+		{"admin1", "members.Name", `EQUIPO\ana`, "", Manual},
+		{"empty", "members.Name", "(ninguno)", "", Manual},
+		{"missing", "", "no presente", "", Manual},
+		{"priv", "", "", "sin privilegios no se ha podido reunir la evidencia: solo como administrador", Manual},
+		{"boom", "", "", "no se ha podido reunir la evidencia: fallo simulado", Manual},
+		{"na", "", "", "no aplica", NA},
+	} {
+		ev := e.evalCheck(ctx, manualLeaf(c.key, c.field))
+		if ev.Status != c.status || ev.Actual != c.actual || ev.Message != c.msg {
+			t.Errorf("%s: %s %q %q", c.key, ev.Status, ev.Actual, ev.Message)
+		}
+		if c.status == Manual && ev.Expected != "revisión manual" {
+			t.Errorf("%s: esperado %q", c.key, ev.Expected)
+		}
+	}
+}
+
+// Los controles manuales no cuentan en la puntuación ni la hacen parcial, y
+// se listan después de los fallidos y antes de los superados.
+func TestManualOutsideScore(t *testing.T) {
+	r1 := &rule.Rule{ID: "T-X-1", Severity: rule.SevHigh, Category: "A"}
+	r2 := &rule.Rule{ID: "T-X-2", Severity: rule.SevCritical, Category: "A"}
+	r3 := &rule.Rule{ID: "T-X-3", Severity: rule.SevLow, Category: "A"}
+	res := []Result{{Rule: r2, Eval: Eval{Status: Manual}}, {Rule: r1, Eval: Eval{Status: Pass}}, {Rule: r3, Eval: Eval{Status: Fail}}}
+	s := ComputeScore(res)
+	// Superado alto (5) entre alto + bajo (5 + 1): 83.
+	if s.Value != 83 || s.Manual != 1 || s.NA != 0 || s.Partial {
+		t.Errorf("puntuación: %+v", s)
+	}
+	if c := s.BySeverity["critical"]; c.Manual != 1 || c.Total != 1 {
+		t.Errorf("por severidad: %+v", c)
+	}
+	SortResults(res)
+	if res[0].Status != Fail || res[1].Status != Manual || res[2].Status != Pass {
+		t.Errorf("orden: %s, %s, %s", res[0].Status, res[1].Status, res[2].Status)
+	}
 }
 
 // fakeProbe devuelve observaciones fijas por clave.
@@ -101,6 +164,16 @@ func (fakeProbe) Collect(_ context.Context, p probes.Params) (probes.Observation
 		return probes.Observation{}, probes.NeedsPrivilege("solo como administrador")
 	case "denied":
 		return probes.Observation{}, &fs.PathError{Op: "open", Path: "/etc/shadow", Err: fs.ErrPermission}
+	case "boom":
+		return probes.Observation{}, errors.New("fallo simulado")
+	case "admins":
+		return probes.Observation{Found: true, Fields: map[string]any{"members": []any{
+			map[string]any{"Name": `EQUIPO\ana`, "Type": "User"}, map[string]any{"name": `EQUIPO\luis`}}}}, nil
+	case "admin1":
+		// PowerShell serializa una lista de un elemento como el elemento suelto.
+		return probes.Observation{Found: true, Fields: map[string]any{"members": map[string]any{"Name": `EQUIPO\ana`}}}, nil
+	case "empty":
+		return probes.Observation{Found: true, Fields: map[string]any{"members": []any{}}}, nil
 	}
 	return probes.Observation{Found: true, Fields: map[string]any{"value": p.String("key")}}, nil
 }
