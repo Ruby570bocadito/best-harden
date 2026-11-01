@@ -137,3 +137,6 @@ Check ((Run $PS64 (Join-Path $Pkg 'install.ps1') @('-Uninstall')).Code -eq 0) 'd
 Check ((Run $PS32 $det @()).Code -ne 0) 'la regla de detección ya no la encuentra'
 
 Write-Host "`nDespliegue en Windows: todo correcto" -ForegroundColor Green
+# El paso del CI termina con el código del último programa ejecutado, y es
+# la regla de detección de arriba, que debía fallar: aquí todo ha ido bien.
+exit 0
