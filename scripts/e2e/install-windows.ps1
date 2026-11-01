@@ -1,4 +1,4 @@
-<#
+﻿<#
 =============================================================================
  Prueba de punta a punta de install.ps1 y "adarve update" (CI, como administrador).
 
@@ -32,9 +32,21 @@ function Check([bool]$ok, [string]$m) { if ($ok) { Pass $m } else { Fail $m } }
 # El instalador en su propio proceso, como lo lanzaría un usuario: devuelve
 # el código de salida y la salida.
 function Install([string[]]$Arguments) {
-    $out = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Dir 'install.ps1') -ReleasesUrl $Url -NoScan -NoOpen @Arguments 2>&1 | Out-String
+    # Con 'Stop', Windows PowerShell 5.1 convierte cada línea que el
+    # instalador escribe en stderr (un aviso) en una excepción.
+    $ErrorActionPreference = 'Continue'
+    $out = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Dir 'install.ps1') -ReleasesUrl $Url -NoScan -NoOpen @Arguments 2>&1 |
+        ForEach-Object { "$_" } | Out-String
+    $code = $LASTEXITCODE
     Write-Host $out
-    return @{ Code = $LASTEXITCODE; Out = $out }
+    return @{ Code = $code; Out = $out }
+}
+# adarve con sus argumentos; devuelve el código de salida (los errores van a
+# stderr: mismo motivo que en Install).
+function Adarve([string[]]$Arguments) {
+    $ErrorActionPreference = 'Continue'
+    & $Exe @Arguments 2>&1 | ForEach-Object { "$_" } | Write-Host
+    return $LASTEXITCODE
 }
 function Version { if (Test-Path $Exe) { (& $Exe version --short | Select-Object -First 1).Trim() } else { 'ninguna' } }
 function ExpectVersion([string]$v) { $got = Version; Check ($got -eq $v) "versión $v (instalada: $got)" }
@@ -51,6 +63,8 @@ try {
     Copy-Item (Join-Path $env:SystemRoot 'System32\where.exe') (Join-Path $OldDir 'bastion.exe')
     '{"schema":"bastion.report/v1"}' | Set-Content -Encoding utf8 (Join-Path $OldData 'reports\antiguo.json')
     'profile: auto' | Set-Content -Encoding utf8 (Join-Path $OldData 'config.yaml')
+    # Como la dejaba Bastion: solo Administradores y SYSTEM (sin herencia).
+    & icacls.exe $OldData /inheritance:r /grant:r '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-18:(OI)(CI)F' /T /Q | Out-Null
     $path = [Environment]::GetEnvironmentVariable('Path', 'Machine')
     [Environment]::SetEnvironmentVariable('Path', "$path;$OldDir", 'Machine')
     $action = New-ScheduledTaskAction -Execute (Join-Path $OldDir 'bastion.exe') -Argument 'schedule run'
@@ -76,21 +90,20 @@ try {
 
     Step '2. Volver a ejecutar el instalador (ya está al día con esa versión)'
     $r = Install @('-Version', 'v9.9.8')
-    Check ($r.Code -eq 0 -and $r.Out -match 'ya está instalado') 'no reinstala'
+    # install.ps1 no lleva BOM: ejecutado como fichero, Windows PowerShell 5.1
+    # lo lee como ANSI y la «á» sale como dos caracteres.
+    Check ($r.Code -eq 0 -and $r.Out -match 'ya est.{1,2} instalado') 'no reinstala'
 
     Step '3. adarve update a la última versión firmada'
-    & $Exe update --releases-url $Url --no-color
-    Check ($LASTEXITCODE -eq 0) 'update termina bien'
+    Check ((Adarve @('update', '--releases-url', $Url, '--no-color')) -eq 0) 'update termina bien'
     ExpectVersion '9.9.9'
 
     Step '4. Releases que se deben rechazar'
     Check ((Install @('-Version', 'v9.9.7', '-Force')).Code -ne 0) 'rechaza checksums.txt manipulado'
     Check ((Install @('-Version', 'v9.9.7', '-Force', '-Insecure')).Code -ne 0) '-Insecure no acepta una firma inválida'
     Check ((Install @('-Version', 'v9.9.6', '-Force')).Code -ne 0) 'rechaza una release sin firma'
-    & $Exe update --releases-url $Url --version v9.9.7 --force --no-color
-    Check ($LASTEXITCODE -ne 0) 'update rechaza una firma inválida'
-    & $Exe update --releases-url $Url --version v9.9.6 --force --no-color
-    Check ($LASTEXITCODE -ne 0) 'update rechaza una release sin firma'
+    Check ((Adarve @('update', '--releases-url', $Url, '--version', 'v9.9.7', '--force', '--no-color')) -ne 0) 'update rechaza una firma inválida'
+    Check ((Adarve @('update', '--releases-url', $Url, '--version', 'v9.9.6', '--force', '--no-color')) -ne 0) 'update rechaza una release sin firma'
     ExpectVersion '9.9.9'
 
     Step '5. Release sin firma con -Insecure (versiones anteriores a la firma)'

@@ -321,6 +321,10 @@ function Remove-Bastion([string]$Exe) {
         & $Exe schedule enable --at $at | Out-Null
         if ($LASTEXITCODE -eq 0) { Write-Ok "Análisis diario de Bastion pasado a Adarve ($at)" }
         else { Write-Warn "No se pudo pasar el análisis diario de Bastion: ejecuta 'adarve schedule enable --at $at'" }
+        # Aunque no se haya podido programar Adarve, la tarea de Bastion se
+        # retira: ejecutaría un bastion.exe que se borra justo debajo.
+        Get-ScheduledTask -TaskPath '\Bastion\' -TaskName 'Escaneo diario' -ErrorAction SilentlyContinue |
+            Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue
     }
     Remove-Item 'HKLM:\SYSTEM\CurrentControlSet\Services\EventLog\Application\Bastion' -Recurse -ErrorAction SilentlyContinue
     $oldDir = Join-Path $env:ProgramFiles 'Bastion'

@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -39,7 +38,7 @@ func runFwPS(ctx context.Context, script string, env ...string) (string, error) 
 	defer cancel()
 	exe := probes.System32(`WindowsPowerShell\v1.0\powershell.exe`)
 	cmd := exec.CommandContext(ctx, exe, "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "$ErrorActionPreference='Stop'; "+script)
-	cmd.Env = append(os.Environ(), env...)
+	cmd.Env = probes.PSEnviron(env...)
 	b, err := cmd.CombinedOutput()
 	out := string(b)
 	if !utf8.Valid(b) {

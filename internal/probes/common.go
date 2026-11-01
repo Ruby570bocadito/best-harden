@@ -40,13 +40,31 @@ func runCmd(ctx context.Context, name string, args ...string) (cmdResult, error)
 	return runCmdEnv(ctx, nil, name, args...)
 }
 
+// PSEnviron es el entorno de este proceso sin PSModulePath, más extra.
+//
+// Windows PowerShell 5.1 lanzado desde PowerShell 7 (la terminal por defecto
+// de Windows Terminal, o «shell: pwsh» en el CI) hereda su PSModulePath, que
+// apunta primero a los módulos de PowerShell 7: entonces no puede cargar los
+// suyos y Get-AuthenticodeSignature (módulo Microsoft.PowerShell.Security)
+// falla. Sin la variable, la reconstruye con sus rutas por defecto.
+func PSEnviron(extra ...string) []string {
+	var env []string
+	for _, kv := range os.Environ() {
+		if k, _, ok := strings.Cut(kv, "="); ok && strings.EqualFold(k, "PSModulePath") {
+			continue
+		}
+		env = append(env, kv)
+	}
+	return append(env, extra...)
+}
+
 // runCmdEnv es runCmd con variables de entorno adicionales: así llegan los
 // datos a un script sin formar parte de él.
 func runCmdEnv(ctx context.Context, env []string, name string, args ...string) (cmdResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Env = append(append(os.Environ(), "LC_ALL=C", "LANG=C"), env...)
+	cmd.Env = append(PSEnviron("LC_ALL=C", "LANG=C"), env...)
 	var out, errb bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errb

@@ -318,8 +318,20 @@ retire_bastion() {
   fi
   if [ -n "$at" ]; then
     # «schedule enable» retira también el temporizador o la entrada de cron de Bastion.
-    "$BIN" schedule enable --at "$at" </dev/null >/dev/null && ok "Análisis diario de Bastion pasado a Adarve (${at})"       || warn "no se pudo pasar el análisis diario de Bastion: ejecuta «adarve schedule enable --at ${at}»"
+    if "$BIN" schedule enable --at "$at" </dev/null >/dev/null; then
+      ok "Análisis diario de Bastion pasado a Adarve (${at})"
+    else
+      warn "no se pudo pasar el análisis diario de Bastion: ejecuta «adarve schedule enable --at ${at}»"
+    fi
   fi
+  # Aunque no se haya podido programar Adarve, la ronda de Bastion se retira:
+  # ejecutaría un binario que se borra justo debajo.
+  if [ -f /etc/systemd/system/bastion-scan.timer ] || [ -f /etc/systemd/system/bastion-scan.service ]; then
+    systemctl disable --now bastion-scan.timer >/dev/null 2>&1 || true
+    rm -f /etc/systemd/system/bastion-scan.timer /etc/systemd/system/bastion-scan.service
+    systemctl daemon-reload >/dev/null 2>&1 || true
+  fi
+  rm -f /etc/cron.d/bastion
   if [ -L /usr/bin/bastion ] && [ "$(readlink /usr/bin/bastion)" = "$old" ]; then
     rm -f /usr/bin/bastion
   fi

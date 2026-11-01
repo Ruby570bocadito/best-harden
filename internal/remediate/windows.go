@@ -36,7 +36,9 @@ func init() {
 func run(ctx context.Context, exe string, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, exe, args...).CombinedOutput()
+	cmd := exec.CommandContext(ctx, exe, args...)
+	cmd.Env = probes.PSEnviron() // ver PSEnviron: también para powershell.exe
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return string(out), fmt.Errorf("%s: %v: %s", filepath.Base(exe), err, strings.TrimSpace(string(out)))
 	}
