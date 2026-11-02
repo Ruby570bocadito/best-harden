@@ -1,0 +1,110 @@
+name: Laboratorio
+
+# Golden files: el estado de cada control en un runner de GitHub sin tocar
+# se compara con scripts/lab/esperado/<imagen>.txt, y el ciclo harden →
+# rollback se comprueba control a control. Corre en cada cambio y cada
+# lunes: GitHub actualiza las imágenes por su cuenta, y un cambio de la
+# imagen también puede destapar un falso positivo.
+# Cómo revisar y aceptar cambios: docs/11-desarrollo.md#laboratorio
+on:
+  push:
+    branches: [main, feat/laboratorio]
+  pull_request:
+  schedule:
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  laboratorio:
+    name: Laboratorio (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            profiles: linux-server-l2
+            harden: linux-server-l2
+          # Windows 11 no existe como runner de GitHub: el perfil de estación
+          # de trabajo se evalúa también en Server 2025, que comparte
+          # compilación con Windows 11 24H2 (26100).
+          - os: windows-2022
+            profiles: win-server-l2 win-workstation-l2
+            harden: win-server-l2
+          - os: windows-2025
+            profiles: win-server-l2 win-workstation-l2
+            harden: win-server-l2
+    env:
+      GOLDEN: scripts/lab/esperado/${{ matrix.os }}.txt
+      PROFILES: ${{ matrix.profiles }}
+      HARDEN: ${{ matrix.harden }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - name: Compilar
+        run: |
+          go build -o bin/ ./cmd/adarve
+          go build -o bin/ ./scripts/lab
+      - name: Estado de cada control (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          for p in $PROFILES; do sudo ./bin/adarve scan --profile "$p" --format json > "antes-$p.json"; done
+          ./bin/lab check -golden "$GOLDEN" -propose propuesta.txt antes-*.json
+      - name: Estado de cada control (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          foreach ($p in $env:PROFILES -split ' ') {
+            & .\bin\adarve.exe scan --profile $p --quiet --no-color -o "antes-$p.json"
+            if ($LASTEXITCODE -ne 0) { throw "scan $p falló" }
+          }
+          & .\bin\lab.exe check -golden $env:GOLDEN -propose propuesta.txt (Get-ChildItem antes-*.json | Sort-Object Name).Name
+          exit $LASTEXITCODE
+      # Lo que harden da por reparado pasa al escanear de nuevo, no rompe lo
+      # que pasaba y el rollback deja cada control como estaba.
+      - name: Ciclo harden → rollback, control a control (Linux)
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        run: |
+          set -euo pipefail
+          b=./bin/adarve
+          sudo $b harden --profile "$HARDEN" --wave 1 --apply --yes --no-color || echo "harden terminó con el código $?"
+          sudo $b scan --profile "$HARDEN" --format json > despues.json
+          sudo $b rollback --yes --no-color
+          sudo $b scan --profile "$HARDEN" --format json > restaurado.json
+          m=$(sudo sh -c 'ls -t /var/lib/adarve/snapshots/*/manifest.json | head -n 1')
+          sudo cat "$m" > manifest.json
+          ./bin/lab cycle -golden "$GOLDEN" -before "antes-$HARDEN.json" -after despues.json -restored restaurado.json -manifest manifest.json
+      - name: Ciclo harden → rollback, control a control (Windows)
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $b = '.\bin\adarve.exe'
+          & $b harden --profile $env:HARDEN --wave 1 --apply --yes --no-color
+          "harden terminó con el código $LASTEXITCODE"
+          & $b scan --profile $env:HARDEN --quiet --no-color -o despues.json
+          if ($LASTEXITCODE -ne 0) { throw 'el escaneo tras harden falló' }
+          & $b rollback --yes --no-color
+          if ($LASTEXITCODE -ne 0) { throw 'rollback falló' }
+          & $b scan --profile $env:HARDEN --quiet --no-color -o restaurado.json
+          if ($LASTEXITCODE -ne 0) { throw 'el escaneo tras el rollback falló' }
+          $m = Get-ChildItem "$env:ProgramData\Adarve\snapshots\*\manifest.json" | Sort-Object LastWriteTime | Select-Object -Last 1
+          Copy-Item $m.FullName manifest.json
+          & .\bin\lab.exe cycle -golden $env:GOLDEN -before "antes-$($env:HARDEN).json" -after despues.json -restored restaurado.json -manifest manifest.json
+          exit $LASTEXITCODE
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: laboratorio-${{ matrix.os }}
+          path: |
+            antes-*.json
+            despues.json
+            restaurado.json
+            manifest.json
+            propuesta.txt
+          if-no-files-found: ignore
