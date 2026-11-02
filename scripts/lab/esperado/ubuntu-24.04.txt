@@ -1,0 +1,88 @@
+# Laboratorio de Adarve · ubuntu-24.04
+# Imagen: ubuntu24 20261026.354.1
+# Sistema: Ubuntu 24.04.5 LTS · 7.0.0-1017-azure
+# Perfiles: linux-server-l2
+#
+# Estado esperado de cada control en la imagen del runner de GitHub, sin
+# tocar. Cada «fail» está revisado con su evidencia: es una brecha real de
+# la imagen, no un falso positivo. Solo se compara el estado; lo que sigue
+# es la evidencia de la revisión. Un control con varios estados (pass|fail)
+# cambia con el tiempo y lleva su motivo tras «#».
+# Cómo revisar y aceptar cambios: docs/11-desarrollo.md#laboratorio
+
+LNX-AUTH-001  pass
+LNX-AUTH-002  pass
+LNX-AUTH-003  fail    actual «99999» · esperado «entre 1 y 365» · /etc/login.defs
+LNX-AUTH-004  pass
+LNX-AUTH-005  fail    actual «022» · esperado «uno de: 027, 077» · /etc/login.defs
+LNX-AUTH-006  pass
+LNX-AUTH-007  fail    actual «0» · esperado «≥ 1» · /etc/sudoers, /etc/sudoers.d/*
+LNX-AUTH-008  fail    actual «2» · esperado «0» · /etc/sudoers, /etc/sudoers.d/*
+LNX-AUTH-009  na      solo aplica a sudo-rs (con el sudo clásico lo cubre otro control)
+LNX-AUTH-010  manual
+LNX-AUTH-011  manual
+LNX-BOOT-001  pass
+LNX-FS-001    fail    actual «ausente» · esperado «presente» · montaje propio · mountinfo /tmp
+LNX-FS-002    fail    actual «rw, nosuid, nodev» · esperado «contiene: nodev, nosuid, noexec» · mountinfo /dev/shm
+LNX-FS-003    pass
+LNX-FS-004    pass
+LNX-FS-005    pass
+LNX-FS-006    fail    actual «0644» · esperado «permisos ≤ 0600» · permisos · /etc/crontab
+LNX-FS-007    fail    actual «0755» · esperado «permisos ≤ 0700» · /etc/cron.d · /etc/cron.d
+LNX-FW-001    fail    actual «no» · esperado «yes» · ufw · /etc/ufw/ufw.conf
+LNX-KRN-001   pass
+LNX-KRN-002   pass
+LNX-KRN-003   pass
+LNX-KRN-004   pass
+LNX-KRN-005   fail    actual «2» · esperado «0» · sysctl fs.suid_dumpable
+LNX-KRN-006   pass
+LNX-KRN-007   pass
+LNX-KRN-008   pass
+LNX-KRN-009   pass
+LNX-KRN-010   fail    actual «0» · esperado «1» · sysctl kernel.kexec_load_disabled
+LNX-KRN-011   pass
+LNX-KRN-012   fail    actual «0» · esperado «2» · sysctl net.core.bpf_jit_harden
+LNX-KRN-013   fail    actual «176» · esperado «0» · sysctl kernel.sysrq
+LNX-LOG-001   fail    actual «no configurado» · esperado «enabled» · habilitado · systemctl auditd.service
+LNX-LOG-002   pass
+LNX-MAC-001   pass
+LNX-MOD-001   fail    actual «true» · esperado «false» · no disponible · módulo cramfs
+LNX-MOD-002   fail    actual «true» · esperado «false» · no disponible · módulo freevxfs
+LNX-MOD-003   fail    actual «true» · esperado «false» · no disponible · módulo hfs
+LNX-MOD-004   fail    actual «true» · esperado «false» · no disponible · módulo hfsplus
+LNX-MOD-005   fail    actual «true» · esperado «false» · no disponible · módulo jffs2
+LNX-MOD-006   fail    actual «true» · esperado «false» · no disponible · módulo usb_storage
+LNX-MOD-007   pass
+LNX-MOD-008   fail    actual «true» · esperado «false» · no disponible · módulo sctp
+LNX-MOD-009   fail    actual «true» · esperado «false» · no disponible · módulo rds
+LNX-MOD-010   fail    actual «true» · esperado «false» · no disponible · módulo tipc
+LNX-NET-001   fail    actual «1» · esperado «0» · IPv4 · sysctl net.ipv4.ip_forward
+LNX-NET-002   fail    actual «1» · esperado «0» · ipv4 default · sysctl net.ipv4.conf.default.accept_redirects
+LNX-NET-003   fail    actual «1» · esperado «0» · all · sysctl net.ipv4.conf.all.send_redirects
+LNX-NET-004   fail    actual «1» · esperado «0» · ipv4 default · sysctl net.ipv4.conf.default.accept_source_route
+LNX-NET-005   fail    actual «2» · esperado «1» · all · sysctl net.ipv4.conf.all.rp_filter
+LNX-NET-006   pass
+LNX-NET-007   fail    actual «0» · esperado «1» · all · sysctl net.ipv4.conf.all.log_martians
+LNX-NET-008   pass
+LNX-NET-009   fail    actual «1» · esperado «0» · all · sysctl net.ipv6.conf.all.accept_ra
+LNX-SSH-001   fail    actual «prohibit-password (por defecto)» · esperado «no» · /etc/ssh/sshd_config → permitrootlogin
+LNX-SSH-002   pass
+LNX-SSH-003   fail    actual «6 (por defecto)» · esperado «≤ 4» · /etc/ssh/sshd_config → maxauthtries
+LNX-SSH-004   fail    actual «yes» · esperado «no» · /etc/ssh/sshd_config → x11forwarding
+LNX-SSH-005   pass
+LNX-SSH-006   fail    actual «120 (por defecto)» · esperado «entre 1 y 60» · /etc/ssh/sshd_config → logingracetime
+LNX-SSH-007   pass
+LNX-SSH-008   fail    actual «umac-64-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-…» · esperado «no coincide con /(?i)(hmac-md5|hmac-ripemd160|hmac-sha1-96|…» · /etc/ssh/sshd…
+LNX-SSH-009   pass
+LNX-SSH-010   fail    actual «0644» · esperado «permisos ≤ 0600» · permisos · /etc/ssh/sshd_config
+LNX-SSH-011   pass
+LNX-SSH-012   fail    actual «ausente» · esperado «presente» · AllowGroups · /etc/ssh/sshd_config → allowgroups
+LNX-SSH-013   fail    actual «yes» · esperado «no» · /etc/ssh/sshd_config → passwordauthentication
+LNX-SVC-001   pass
+LNX-SVC-002   pass
+LNX-SVC-003   pass
+LNX-SVC-004   pass
+LNX-SVC-005   pass
+LNX-SVC-006   pass
+LNX-SYS-001   fail    actual «1» · esperado «0» · /etc/issue · /etc/issue
+LNX-UPD-001   fail    actual «ausente» · esperado «presente» · instalado · dpkg unattended-upgrades

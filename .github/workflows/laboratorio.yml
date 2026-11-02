@@ -28,14 +28,14 @@ jobs:
           - os: ubuntu-24.04
             profiles: linux-server-l2
             harden: linux-server-l2
-          # Windows 11 no existe como runner de GitHub: el perfil de estación
-          # de trabajo se evalúa también en Server 2025, que comparte
-          # compilación con Windows 11 24H2 (26100).
+          # Windows 11 no existe como runner de GitHub. Sus reglas son las de
+          # servidor más cuatro exclusivas de cliente, que esperan a un runner
+          # propio; Server 2025 comparte compilación con Windows 11 24H2.
           - os: windows-2022
-            profiles: win-server-l2 win-workstation-l2
+            profiles: win-server-l2
             harden: win-server-l2
           - os: windows-2025
-            profiles: win-server-l2 win-workstation-l2
+            profiles: win-server-l2
             harden: win-server-l2
     env:
       GOLDEN: scripts/lab/esperado/${{ matrix.os }}.txt

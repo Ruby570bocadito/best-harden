@@ -97,10 +97,10 @@ El workflow **Laboratorio** (`.github/workflows/laboratorio.yml`) escanea runner
 | Imagen | Perfiles evaluados | Ciclo harden → rollback |
 |---|---|---|
 | `ubuntu-24.04` | `linux-server-l2` | `linux-server-l2`, ola 1 |
-| `windows-2022` | `win-server-l2` y `win-workstation-l2` | `win-server-l2`, ola 1 |
-| `windows-2025` | `win-server-l2` y `win-workstation-l2` | `win-server-l2`, ola 1 |
+| `windows-2022` | `win-server-l2` | `win-server-l2`, ola 1 |
+| `windows-2025` | `win-server-l2` | `win-server-l2`, ola 1 |
 
-GitHub no tiene runners de Windows 11. El perfil de estación de trabajo se evalúa en Windows Server 2025, que comparte compilación (26100) con Windows 11 24H2: así se prueban sus probes y sus reglas contra un sistema real, pero los controles exclusivos de cliente (`platforms: [windows-client]`) no entran en el laboratorio hasta que haya un runner propio con Windows 11.
+GitHub no tiene runners de Windows 11. Las reglas de estación de trabajo son las de servidor más cuatro exclusivas de cliente (WIN-DEF-007, WIN-DEF-008, WIN-ENC-001 y WIN-SYS-007, con `platforms: [windows-client]`), y Windows Server 2025 comparte compilación (26100) con Windows 11 24H2: el laboratorio prueba todas las reglas de Windows salvo esas cuatro y las de controlador de dominio, que esperan a un runner propio.
 
 Corre en cada PR, en cada cambio de `main` y cada lunes, porque GitHub actualiza las imágenes por su cuenta. Falla si:
 
@@ -109,7 +109,7 @@ Corre en cada PR, en cada cambio de `main` y cada lunes, porque GitHub actualiza
 - algún control da `error` o queda sin evaluar: en una imagen limpia y con privilegios es un fallo del probe o de la regla, y se corrige; no se acepta;
 - en el ciclo harden → rollback, un control que harden da por reparado no pasa al escanear de nuevo, harden no consigue reparar uno (`not-effective`), algo que pasaba deja de pasar o el rollback no deja un control exactamente como estaba.
 
-Cada línea del fichero esperado es `ID estado evidencia`. Solo se compara el estado; la evidencia (el valor que no cumple y de dónde sale) es la de la última revisión. Un control que cambia con el tiempo, como las actualizaciones publicadas después de crear la imagen, admite varios estados y lleva su motivo: `LNX-SYS-001  pass|fail  # depende de las actualizaciones publicadas desde que se creó la imagen`.
+Cada línea del fichero esperado es `ID estado evidencia`. Solo se compara el estado; la evidencia (el valor que no cumple y de dónde sale) es la de la última revisión. Un control que cambia con el tiempo admite varios estados y lleva su motivo; por ejemplo, las firmas de Defender envejecen con la imagen: `WIN-DEF-003  pass|fail  # firmas de 7 días como mucho: depende de cuándo se creó la imagen`.
 
 **Revisar una diferencia.** El resumen del job lista las diferencias y propone el fichero esperado completo, que también está en el artefacto `laboratorio-<imagen>` (`propuesta.txt`, junto a los informes JSON). Las líneas que cambian llevan `# REVISAR`. Para cada una:
 
@@ -122,7 +122,7 @@ La cabecera del fichero dice con qué imagen se revisó. Si la ejecución del lu
 La comparación también se puede hacer a mano con los informes del artefacto:
 
 ```bash
-go run ./scripts/lab check -golden scripts/lab/esperado/windows-2025.txt -propose propuesta.txt antes-win-server-l2.json antes-win-workstation-l2.json
+go run ./scripts/lab check -golden scripts/lab/esperado/windows-2025.txt -propose propuesta.txt antes-win-server-l2.json
 ```
 
 ## Publicar una release

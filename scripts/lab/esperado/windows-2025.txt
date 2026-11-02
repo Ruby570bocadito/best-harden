@@ -1,0 +1,89 @@
+# Laboratorio de Adarve · windows-2025
+# Imagen: win25-vs2026 20261021.278.1
+# Sistema: Windows Server 2025 Datacenter · 26100.33650
+# Perfiles: win-server-l2
+#
+# Estado esperado de cada control en la imagen del runner de GitHub, sin
+# tocar. Cada «fail» está revisado con su evidencia: es una brecha real de
+# la imagen, no un falso positivo. Solo se compara el estado; lo que sigue
+# es la evidencia de la revisión. Un control con varios estados (pass|fail)
+# cambia con el tiempo y lleva su motivo tras «#».
+# Cómo revisar y aceptar cambios: docs/11-desarrollo.md#laboratorio
+
+WIN-ACC-001   fail    actual «0» · esperado «≥ 14» · secedit [System Access] MinimumPasswordLength
+WIN-ACC-002   pass
+WIN-ACC-003   fail    actual «10» · esperado «entre 1 y 5» · secedit [System Access] LockoutBadCount
+WIN-ACC-004   pass
+WIN-ACC-005   pass
+WIN-ACC-006   na      solo aplica a equipos unidos a un dominio de Active Directory o a Entra ID
+WIN-ACC-007   manual
+WIN-AUD-001   pass
+WIN-AUD-002   fail    actual «0 (por defecto)» · esperado «1» · HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit\ProcessCreationIncludeCmdLine_Enabled
+WIN-AUD-003   pass
+WIN-AUD-004   pass
+WIN-AUD-005   pass
+WIN-AUD-006   pass
+WIN-AUD-007   pass
+WIN-AUD-008   pass
+WIN-AUD-009   pass
+WIN-AUD-010   fail    actual «0 (por defecto)» · esperado «1» · HKLM\SYSTEM\CurrentControlSet\Control\Lsa\SCENoApplyLegacyAuditPolicy
+WIN-AUD-011   fail    actual «no configurado» · esperado «≥ 196608» · directiva (KB) · HKLM\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security\MaxSize
+WIN-CRED-001  pass
+WIN-CRED-002  fail    actual «0 (por defecto)» · esperado «uno de: 1, 2» · HKLM\SYSTEM\CurrentControlSet\Control\Lsa\RunAsPPL
+WIN-CRED-003  fail    actual «3 (por defecto)» · esperado «5» · HKLM\SYSTEM\CurrentControlSet\Control\Lsa\LmCompatibilityLevel
+WIN-CRED-004  pass
+WIN-CRED-005  fail    actual «0» · esperado «1» · RestrictAnonymous · HKLM\SYSTEM\CurrentControlSet\Control\Lsa\RestrictAnonymous
+WIN-CRED-006  fail    actual «0» · esperado «contiene: 1» · PowerShell Win32_DeviceGuard
+WIN-CRED-007  fail    actual «10» · esperado «≤ 4» · HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\CachedLogonsCount
+WIN-CRED-008  fail    actual «1 (por defecto)» · esperado «0» · HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters\AllowEncryptionOracle
+WIN-DEF-001   fail    actual «false» · esperado «true» · PowerShell Get-MpComputerStatus
+WIN-DEF-002   fail    actual «false» · esperado «true» · PowerShell Get-MpComputerStatus
+WIN-DEF-003   pass|fail  # firmas de 7 días como mucho: depende de cuándo se creó la imagen
+WIN-DEF-004   fail    actual «0» · esperado «≥ 1» · PowerShell Get-MpPreference
+WIN-DEF-005   fail    actual «0» · esperado «1» · PowerShell Get-MpPreference
+WIN-DEF-006   fail    actual «0 (por defecto)» · esperado «1» · PowerShell Get-MpPreference (reglas ASR)
+WIN-DEF-009   fail    actual «0 (por defecto)» · esperado «1» · PowerShell Get-MpPreference (reglas ASR)
+WIN-DEF-010   fail    actual «0 (por defecto)» · esperado «1» · PowerShell Get-MpPreference (reglas ASR)
+WIN-DEF-011   fail    actual «0 (por defecto)» · esperado «1» · PowerShell Get-MpPreference (reglas ASR)
+WIN-DEF-012   fail    actual «0» · esperado «1» · PowerShell Get-MpPreference
+WIN-DEF-013   fail    actual «ruta C:\; ruta D:\» · esperado «» · PowerShell Get-MpPreference (exclusiones)
+WIN-ENC-002   pass
+WIN-KRB-001   fail    actual «no configurado» · esperado «bits desactivados: 0x7» · sin DES ni RC4 · HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Paramete…
+WIN-NET-001   pass
+WIN-NET-002   pass
+WIN-NET-003   fail    actual «false» · esperado «true» · PowerShell Get-SmbServerConfiguration
+WIN-NET-004   pass
+WIN-NET-005   pass
+WIN-NET-006   fail    actual «1 (por defecto)» · esperado «0» · HKLM\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient\EnableMulticast
+WIN-NET-007   fail    actual «0 ×6 (cumplen 0 de 6)» · esperado «2» · HKLM\SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces\Tcpip_*\NetbiosOptions
+WIN-NET-008   fail    actual «1 (por defecto)» · esperado «0» · HKLM\SYSTEM\CurrentControlSet\Services\Dnscache\Parameters\EnableMDNS
+WIN-NET-009   pass
+WIN-NET-010   pass
+WIN-NET-011   pass
+WIN-NET-012   pass
+WIN-NET-013   fail    actual «1 (por defecto)» · esperado «0» · HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\EnableICMPRedirect
+WIN-NET-014   fail    actual «1 (por defecto)» · esperado «2» · IPv4 · HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\DisableIPSourceRouting
+WIN-NET-015   manual
+WIN-PS-001    fail    actual «0 (por defecto)» · esperado «1» · HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging\EnableScriptBlockLogging
+WIN-PS-002    pass
+WIN-PS-003    fail    actual «0 (por defecto)» · esperado «1» · HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ModuleLogging\EnableModuleLogging
+WIN-PS-004    fail    actual «0 (por defecto)» · esperado «1» · HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription\EnableTranscripting
+WIN-RDP-001   pass
+WIN-RDP-002   fail    actual «no configurado» · esperado «0» · directiva · HKLM\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services\fAllowToGetHelp
+WIN-RDP-003   fail    actual «0 (por defecto)» · esperado «1» · HKLM\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services\DisablePasswordSaving
+WIN-RDP-004   fail    actual «0 (por defecto)» · esperado «1» · HKLM\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services\fPromptForPassword
+WIN-RDP-005   fail    actual «0 (por defecto)» · esperado «1» · HKLM\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services\fEncryptRPCTraffic
+WIN-RDP-006   fail    actual «no configurado» · esperado «3» · HKLM\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services\MinEncryptionLevel
+WIN-SVC-001   fail    actual «auto» · esperado «disabled» · servicio RemoteRegistry
+WIN-SYS-001   pass
+WIN-SYS-002   fail    actual «0» · esperado «uno de: 1, 2» · HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\ConsentPromptBehaviorAdmin
+WIN-SYS-003   fail    actual «0» · esperado «1» · HKLM\SYSTEM\CurrentControlSet\Control\SecureBoot\State\UEFISecureBootEnabled
+WIN-SYS-004   fail    actual «145 (por defecto)» · esperado «255» · NoDriveTypeAutoRun · HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoDriveTypeAutoRun
+WIN-SYS-005   fail    actual «0» · esperado «contiene: 2» · PowerShell Win32_DeviceGuard
+WIN-SYS-006   pass
+WIN-SYS-008   fail    actual «no configurado» · esperado «entre 1 y 900» · HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\InactivityTimeoutSecs
+WIN-SYS-009   pass
+WIN-SYS-010   fail    actual «0 (por defecto)» · esperado «1» · HKLM\SOFTWARE\Policies\Microsoft\Windows NT\Printers\DisableWebPnPDownload
+WIN-UPD-001   pass
+WIN-UPD-002   pass
+WIN-WRM-001   pass
