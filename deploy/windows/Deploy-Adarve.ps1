@@ -7,7 +7,7 @@
  local) y programa la ronda diaria. Es lo que ejecutan la GPO, Intune y
  Ansible (docs/17-guia-de-operacion.md), como SYSTEM o administrador:
 
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File Deploy-Adarve.ps1 -Version v0.5.0
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File Deploy-Adarve.ps1 -Version v1.0.0
 
  La carpeta (-Source; por defecto, la del script) lleva el instalador y los
  ficheros de la release, sin cambiar:

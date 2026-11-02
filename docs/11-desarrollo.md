@@ -127,13 +127,15 @@ go run ./scripts/lab check -golden scripts/lab/esperado/windows-2025.txt -propos
 
 ## Publicar una release
 
-1. Actualiza el changelog si procede y crea la etiqueta: `git tag v0.2.0 && git push origin v0.2.0`.
-2. El workflow `release.yml`:
-   - genera `.release/version.txt` con la etiqueta (lo usan los instaladores);
+1. Escribe las notas en `docs/releases/vX.Y.Z.md`, sin título (GitHub pone el de la etiqueta). Sin ese fichero, GoReleaser usa la lista de commits.
+2. Si la versión estrena algo del proceso (la primera release firmada, un cambio en GoReleaser, en `release.yml` o en los instaladores), publica antes una candidata desde `main`: `git tag v1.0.0-rc.1 && git push origin v1.0.0-rc.1`. Sale como pre-release, con las notas de su versión y un aviso; no la instalan ni el instalador ni `adarve update` por su cuenta, pero sí `--version v1.0.0-rc.1`.
+3. Crea la etiqueta desde `main`: `git tag v1.0.0 && git push origin v1.0.0`.
+4. El workflow `release.yml`:
+   - genera `.release/version.txt` con la etiqueta (lo usan los instaladores) y toma las notas de `docs/releases/`;
    - comprueba que el secreto `ADARVE_SIGNING_KEY` corresponde a `internal/selfupdate/release-signing.pub`;
    - ejecuta GoReleaser: tests, binarios para 4 plataformas, `adarve_<os>_<arch>.tar.gz|zip`, `checksums.txt` y su firma `checksums.txt.sig`, SBOM, y adjunta `install.sh` e `install.ps1`;
    - vuelve a verificar la firma publicada y añade la atestación de procedencia.
-3. Comprueba la instalación con el one-liner en una VM limpia de cada plataforma.
+5. Comprueba lo publicado: la [firma y la atestación](09-instalacion.md#verificar-de-dónde-viene-una-descarga) de los archivos y la instalación con el one-liner en una máquina limpia de cada plataforma.
 
 ### La clave de firma
 

@@ -2,7 +2,7 @@
 # fija, programa la ronda diaria, hace una ronda y trae el informe de cada
 # equipo al controlador.
 #
-#   ansible-playbook -i inventario deploy/ansible/adarve.yml -e adarve_version=v0.5.0
+#   ansible-playbook -i inventario deploy/ansible/adarve.yml -e adarve_version=v1.0.0
 #
 # Se puede repetir: solo instala si la versión del equipo es otra y solo
 # programa la ronda si no está a esa hora. Guía: docs/17-guia-de-operacion.md.
@@ -35,7 +35,7 @@
         that:
           - adarve_version is match('^v?[0-9]+[.][0-9]+[.][0-9]+(-[0-9A-Za-z.]+)?$')
           - adarve_schedule_at == '' or adarve_schedule_at is match('^([01][0-9]|2[0-3]):[0-5][0-9]$')
-        fail_msg: "Indica una versión concreta (-e adarve_version=v0.5.0) y la hora como HH:MM"
+        fail_msg: "Indica una versión concreta (-e adarve_version=v1.0.0) y la hora como HH:MM"
         quiet: true
 
     - name: Ver la versión instalada

@@ -2,7 +2,7 @@
 # Adarve cuenta como instalado si adarve.exe existe y es la versión que se
 # despliega. Intune no pasa parámetros a este script: cambia $Version cuando
 # actualices el paquete. Ver docs/17-guia-de-operacion.md.
-$Version = 'v0.5.0'
+$Version = 'v1.0.0'
 
 # En PowerShell de 32 bits, $env:ProgramFiles es «Program Files (x86)».
 $pf = if ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }

@@ -14,7 +14,7 @@ Con opciones (todo lo que va tras `--` son argumentos del instalador):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Ruby570bocadito/adarve/main/scripts/install.sh | sudo bash -s -- --no-scan
-curl -fsSL https://raw.githubusercontent.com/Ruby570bocadito/adarve/main/scripts/install.sh | sudo bash -s -- --version v0.2.0
+curl -fsSL https://raw.githubusercontent.com/Ruby570bocadito/adarve/main/scripts/install.sh | sudo bash -s -- --version v1.0.0
 ```
 
 | Opción | Variable | Descripción |

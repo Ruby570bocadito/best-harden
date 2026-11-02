@@ -6,7 +6,7 @@ Los ejemplos están en [`deploy/`](../deploy) y el CI los ejecuta en máquinas r
 
 ## Antes de desplegar
 
-- **Fija una versión** (`v0.5.0`), no «la última»: todos los equipos llevan la misma y actualizas cuando tú decides. Los ejemplos la exigen.
+- **Fija una versión** (`v1.0.0`), no «la última»: todos los equipos llevan la misma y actualizas cuando tú decides. Los ejemplos la exigen.
 - **Sirve la release desde dentro**: un recurso compartido (Windows) o un espejo HTTPS ([09 · Instalación](09-instalacion.md#redes-aisladas-y-espejos-internos)), con su `checksums.txt.sig`. Sin la firma no se instala, y la firma protege aunque alguien manipule la carpeta.
 - **Protege la carpeta de los scripts.** La firma cubre los archivos de la release, no `Deploy-Adarve.ps1` ni `install.ps1`, que se ejecutan como SYSTEM en todos los equipos. Quien pueda modificarlos controla la flota: lectura para los equipos y escritura solo para administradores.
 - **Empieza por un grupo piloto**: un par de equipos de cada tipo (servidor, puesto, portátil de administrador). Los despliegues solo instalan, programan la ronda diaria y auditan: no cambian la configuración del equipo. El hardening va después, por olas ([más abajo](#llevar-el-hardening-a-la-flota)).
@@ -18,7 +18,7 @@ Los ejemplos están en [`deploy/`](../deploy) y el CI los ejecuta en máquinas r
 Los tres métodos usan la misma carpeta: el instalador, los ficheros de la release sin cambiar y [`Deploy-Adarve.ps1`](../deploy/windows/Deploy-Adarve.ps1).
 
 ```
-\\fs01\software$\adarve\v0.5.0\
+\\fs01\software$\adarve\v1.0.0\
 ├── Deploy-Adarve.ps1          deploy/windows/ del repositorio
 ├── install.ps1                scripts/ del repositorio
 ├── checksums.txt              de la release
@@ -29,7 +29,7 @@ Los tres métodos usan la misma carpeta: el instalador, los ficheros de la relea
 
 Una carpeta por versión: para actualizar, se crea la nueva y se cambian la ruta y `-Version` en un solo paso, y se puede volver a la anterior igual.
 
-`Deploy-Adarve.ps1 -Version v0.5.0 [-At 09:00] [-NoSchedule]`:
+`Deploy-Adarve.ps1 -Version v1.0.0 [-At 09:00] [-NoSchedule]`:
 
 1. Si la versión instalada ya es `-Version`, no reinstala. Si no, ejecuta `install.ps1 -Local` con el `.zip` de la arquitectura del equipo, que comprueba la firma y la suma antes de instalar, y después confirma que quedó esa versión.
 2. Programa la ronda diaria a la hora `-At`, si no lo está ya.
@@ -43,7 +43,7 @@ En una GPO vinculada a la unidad organizativa de los equipos, dentro de **Config
 
 | Para | Dónde | Qué |
 |---|---|---|
-| Puestos, que se reinician a menudo | Directivas › Configuración de Windows › Scripts › **Inicio** › pestaña *Scripts* | Nombre: `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`. Parámetros: `-NoProfile -ExecutionPolicy Bypass -File "\\fs01\software$\adarve\v0.5.0\Deploy-Adarve.ps1" -Version v0.5.0` |
+| Puestos, que se reinician a menudo | Directivas › Configuración de Windows › Scripts › **Inicio** › pestaña *Scripts* | Nombre: `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`. Parámetros: `-NoProfile -ExecutionPolicy Bypass -File "\\fs01\software$\adarve\v1.0.0\Deploy-Adarve.ps1" -Version v1.0.0` |
 | Servidores, que casi no se reinician | Preferencias › Configuración del Panel de control › Tareas programadas › Nueva › **Tarea inmediata** | Usuario `NT AUTHORITY\System`, *Ejecutar con los privilegios más altos*; acción: el mismo programa con los mismos parámetros |
 
 La tarea inmediata se ejecuta en cada refresco de la directiva (cada 90 minutos o con `gpupdate /force`): un equipo al que le quiten Adarve lo recupera solo. El script de inicio, en cada arranque.
@@ -56,7 +56,7 @@ Los scripts de inicio y las tareas como SYSTEM acceden a la red con la cuenta de
 
 1. Empaqueta la carpeta de despliegue: `IntuneWinAppUtil.exe -c <carpeta> -s Deploy-Adarve.ps1 -o <salida>`.
 2. Programa:
-   - Instalar: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File Deploy-Adarve.ps1 -Version v0.5.0`
+   - Instalar: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File Deploy-Adarve.ps1 -Version v1.0.0`
    - Desinstalar: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Uninstall`
    - Comportamiento de instalación: *Sistema*. Código 0 = correcto, 1 = error.
 3. Detección: *Usar un script de detección personalizado* con [`Detect-Adarve.ps1`](../deploy/intune/Detect-Adarve.ps1), con `$Version` igual a la del paquete (Intune no le pasa parámetros). Funciona tanto en 64 como en 32 bits.
@@ -81,12 +81,12 @@ El CI no puede conectarse a un Windows por WinRM, así que esta parte no está p
       register: tmp
     - name: Copiar la carpeta de despliegue
       ansible.windows.win_copy:
-        src: adarve-v0.5.0/          # la carpeta de despliegue, en el controlador
+        src: adarve-v1.0.0/          # la carpeta de despliegue, en el controlador
         dest: "{{ tmp.path }}\\"
     - name: Instalar o actualizar y programar la ronda
       ansible.windows.win_command: >-
         powershell.exe -NoProfile -ExecutionPolicy Bypass
-        -File "{{ tmp.path }}\Deploy-Adarve.ps1" -Version v0.5.0 -At 09:00
+        -File "{{ tmp.path }}\Deploy-Adarve.ps1" -Version v1.0.0 -At 09:00
       register: adarve
       changed_when: "' instalado en ' in adarve.stdout or 'Ronda diaria programada' in adarve.stdout"
     - name: Borrar la carpeta temporal
@@ -102,8 +102,8 @@ No uses una carpeta fija en `C:\Windows\Temp` o `C:\ProgramData`: cualquier usua
 [`deploy/ansible/adarve.yml`](../deploy/ansible/adarve.yml) instala o actualiza a la versión indicada con `scripts/install.sh` desde el controlador, sin `curl | bash` en cada equipo. Después programa la ronda diaria, hace una ronda y trae el informe de cada equipo.
 
 ```bash
-ansible-playbook -i inventario deploy/ansible/adarve.yml -e adarve_version=v0.5.0
-ansible-playbook -i inventario deploy/ansible/adarve.yml -e adarve_version=v0.5.0 \
+ansible-playbook -i inventario deploy/ansible/adarve.yml -e adarve_version=v1.0.0
+ansible-playbook -i inventario deploy/ansible/adarve.yml -e adarve_version=v1.0.0 \
   -e adarve_releases_url=https://mirror.interno/adarve -e adarve_min_score=80
 ```
 

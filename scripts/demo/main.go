@@ -39,7 +39,7 @@ import (
 
 const (
 	hostname = "web-01"
-	version  = "0.5.0"
+	version  = "1.0.0"
 	profile  = "linux-server-l1"
 )
 

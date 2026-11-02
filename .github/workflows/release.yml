@@ -21,6 +21,20 @@ jobs:
           go-version-file: go.mod
       - name: version.txt para los instaladores
         run: mkdir -p .release && echo "${GITHUB_REF_NAME}" > .release/version.txt
+      # Notas escritas a mano (docs/releases/vX.Y.Z.md) en vez de la lista de
+      # commits. Una versión candidata (vX.Y.Z-rc.N) usa las de su versión.
+      - name: Notas de la release
+        run: |
+          notes="docs/releases/${GITHUB_REF_NAME%%-*}.md"
+          if [ -f "$notes" ]; then
+            {
+              case "$GITHUB_REF_NAME" in
+                *-*) printf '> **Versión candidata** de la %s, para probarla antes de publicarla: no es la que instalan el instalador ni `adarve update`.\n\n' "${GITHUB_REF_NAME%%-*}" ;;
+              esac
+              cat "$notes"
+            } > .release/notes.md
+            echo "NOTES=--release-notes=.release/notes.md" >> "$GITHUB_ENV"
+          fi
       - name: Instalar Syft (SBOM)
         uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
       # La clave privada solo existe en el secreto ADARVE_SIGNING_KEY y en un
@@ -41,7 +55,7 @@ jobs:
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --clean
+          args: release --clean ${{ env.NOTES }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Comprobar la firma publicada
