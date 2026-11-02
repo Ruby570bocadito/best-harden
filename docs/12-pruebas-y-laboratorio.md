@@ -14,6 +14,7 @@ Una herramienta de hardening solo es creíble si sus resultados son correctos. U
 | Remediadores Linux | Ciclo capturar → aplicar → restaurar en un sistema de ficheros simulado (sysctl, login.defs, permisos, modprobe, sudoers con `visudo` real) | `internal/remediate/linux_test.go` | ✅ |
 | Ciclo real en CI | `harden --apply` en Ubuntu y Windows Server de GitHub: la postura debe subir y, tras `rollback`, volver exactamente al valor inicial | `.github/workflows/ci.yml` | ✅ |
 | Escaneo real en CI | `adarve scan` en Ubuntu 24.04, Ubuntu 26.04 (sudo-rs por defecto) y Windows Server de GitHub Actions; informes como artefacto | `.github/workflows/ci.yml` | ✅ |
+| Laboratorio (*golden files*) | El estado de cada control en Ubuntu 24.04 y Windows Server 2022 y 2025 recién creados, comparado con su resultado esperado y revisado a mano; ciclo `harden` → `rollback` control a control. Ver [11 · Laboratorio](11-desarrollo.md#laboratorio) | `.github/workflows/laboratorio.yml`, `scripts/lab/` | ✅ CI, cada cambio y cada lunes |
 | Instaladores | ShellCheck, PSScriptAnalyzer | CI | ✅ |
 | Fuzzing | 14 parsers de la salida del sistema auditado: ninguna entrada debe hacer caer a Adarve | `internal/surface/fuzz_test.go`, `internal/probes/fuzz_test.go`; cada noche en `.github/workflows/fuzz.yml` | ✅ |
 | Análisis estático | `govulncheck`, `staticcheck` y `gosec` (Linux y Windows) | CI, job «Análisis de seguridad» | ✅ |
@@ -22,7 +23,7 @@ Una herramienta de hardening solo es creíble si sus resultados son correctos. U
 | Despliegue de punta a punta | El playbook de Ansible contra el propio runner (versión fija, `changed=0` al repetirlo, cambio de hora y de versión, releases manipuladas y sin firma, puntuación mínima) y `Deploy-Adarve.ps1` desde PowerShell de 64 y de 32 bits con los scripts de Intune (detección, Remediations con la ola 1 y su rollback) | `scripts/e2e/deploy-*`, job «Despliegue de ejemplo» | ✅ CI |
 | Dead-man switch de punta a punta | `harden` en una terminal simulada aplica un cambio de SSH, la sesión se corta sin confirmar y un «reinicio» mata el servicio `adarve-deadman@`: al volver a arrancar deshace el cambio y se retira; confirmar lo desarma. En Windows, la tarea de SYSTEM con arranque en el inicio y su retirada | `scripts/e2e/deadman-linux.sh` (job «Dead-man switch de punta a punta»), `internal/schedule/deadman_windows_test.go` | ✅ CI |
 | Fixtures por regla | Cada regla con un caso que pasa y otro que falla sobre un sistema simulado | `adarve rules test` | 🔜 fase 2 |
-| Laboratorio de VMs | Ciclo `scan → harden → verify → rollback → verify` + idempotencia | Packer/Vagrant | 🔜 fase 2 |
+| Laboratorio de VMs | Lo que los runners de GitHub no tienen: Windows 11, controlador de dominio, otras distribuciones, olas 2 y 3 con *health checks* e idempotencia | Packer/Vagrant | 🔜 1.x |
 | Validación cruzada | Comparar resultados con CIS-CAT Lite, OpenSCAP y HardeningKitty | Laboratorio | 🔜 |
 
 ## Ejecutar
@@ -61,7 +62,13 @@ sudo -E /tmp/bin/adarve --trust-env update   # o: update --releases-url http://1
 
 Escenarios verificados: instalación limpia con primer escaneo, reejecución sin cambios, actualización con el one-liner, auto-actualización con `adarve update`, **archivo manipulado rechazado** (en ambos caminos) y desinstalación.
 
-## Laboratorio de máquinas virtuales (🔜 fase 2)
+## Laboratorio
+
+El laboratorio de la v1.0 corre en los runners de GitHub, recién creados en cada ejecución ([11 · Laboratorio](11-desarrollo.md#laboratorio)): escaneo de la imagen limpia comparado con su resultado esperado, `harden --wave 1` con verificación de cada control y `rollback` que tiene que dejarlo todo como estaba. En su primera ronda destapó un falso positivo que fallaba en cualquier Windows (WIN-DEF-013) y dos errores de probe en Windows Server 2025.
+
+### Máquinas virtuales (🔜 1.x)
+
+Para lo que GitHub no ofrece:
 
 | Imagen | Rol |
 |---|---|
@@ -71,10 +78,8 @@ Escenarios verificados: instalación limpia con primer escaneo, reejecución sin
 | Debian 12 / 13 | Servidor |
 | Rocky / Alma 9 | Servidor con SELinux |
 
-Construidas con Packer (imágenes base) y orquestadas con Vagrant o Proxmox. Pipeline nocturno:
+Construidas con Packer (imágenes base) y orquestadas con Vagrant o Proxmox, con el mismo `scripts/lab` y además:
 
-1. Escaneo de la imagen limpia: resultado de referencia (*golden*).
-2. `harden --wave 1..3`: todas las reglas aplicables deben pasar.
-3. *Health checks*: RDP/SSH, dominio y servicios.
-4. `rollback`: el escaneo debe volver a ser idéntico al de referencia.
-5. `harden` dos veces: el segundo no debe cambiar nada (idempotencia).
+1. `harden --wave 1..3`: todas las reglas aplicables deben pasar.
+2. *Health checks*: RDP/SSH, dominio y servicios.
+3. `harden` dos veces: el segundo no debe cambiar nada (idempotencia).
