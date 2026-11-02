@@ -49,6 +49,7 @@ Ver [02-arquitectura.md](02-arquitectura.md#estructura-del-repositorio). Reglas 
 3. `make rules-lint test`.
 4. Pruébala en un equipo real: `sudo ./bin/adarve scan --rule TU-ID -a`.
 5. Regenera el catálogo: `./bin/adarve rules doc > /tmp/c.md` y actualiza la sección 1 de `docs/06-catalogo-de-controles.md`.
+6. En el PR, el [laboratorio](#laboratorio) la evalúa en Ubuntu 24.04, Windows Server 2022 y 2025 y pide su resultado esperado: revisa la propuesta y añádela a `scripts/lab/esperado/`.
 
 ## Añadir un probe
 
@@ -88,6 +89,41 @@ node scripts/demo/capturas.mjs                      # regenera docs/assets: capt
 ```
 
 `capturas.mjs` necesita Node 22 o posterior, un navegador Chromium (Chrome, Chromium o Edge; se le puede pasar la ruta) y `ffmpeg` para el GIF. Vuelve a ejecutarlo cuando cambie el diseño de la consola o del informe.
+
+## Laboratorio
+
+El workflow **Laboratorio** (`.github/workflows/laboratorio.yml`) escanea runners de GitHub recién creados y compara el estado de cada control con su resultado esperado (*golden files*), en `scripts/lab/esperado/<imagen>.txt`:
+
+| Imagen | Perfiles evaluados | Ciclo harden → rollback |
+|---|---|---|
+| `ubuntu-24.04` | `linux-server-l2` | `linux-server-l2`, ola 1 |
+| `windows-2022` | `win-server-l2` y `win-workstation-l2` | `win-server-l2`, ola 1 |
+| `windows-2025` | `win-server-l2` y `win-workstation-l2` | `win-server-l2`, ola 1 |
+
+GitHub no tiene runners de Windows 11. El perfil de estación de trabajo se evalúa en Windows Server 2025, que comparte compilación (26100) con Windows 11 24H2: así se prueban sus probes y sus reglas contra un sistema real, pero los controles exclusivos de cliente (`platforms: [windows-client]`) no entran en el laboratorio hasta que haya un runner propio con Windows 11.
+
+Corre en cada PR, en cada cambio de `main` y cada lunes, porque GitHub actualiza las imágenes por su cuenta. Falla si:
+
+- un control no tiene el estado esperado;
+- una regla nueva no tiene resultado esperado, o uno esperado ya no se evalúa;
+- algún control da `error` o queda sin evaluar: en una imagen limpia y con privilegios es un fallo del probe o de la regla, y se corrige; no se acepta;
+- en el ciclo harden → rollback, un control que harden da por reparado no pasa al escanear de nuevo, harden no consigue reparar uno (`not-effective`), algo que pasaba deja de pasar o el rollback no deja un control exactamente como estaba.
+
+Cada línea del fichero esperado es `ID estado evidencia`. Solo se compara el estado; la evidencia (el valor que no cumple y de dónde sale) es la de la última revisión. Un control que cambia con el tiempo, como las actualizaciones publicadas después de crear la imagen, admite varios estados y lleva su motivo: `LNX-SYS-001  pass|fail  # depende de las actualizaciones publicadas desde que se creó la imagen`.
+
+**Revisar una diferencia.** El resumen del job lista las diferencias y propone el fichero esperado completo, que también está en el artefacto `laboratorio-<imagen>` (`propuesta.txt`, junto a los informes JSON). Las líneas que cambian llevan `# REVISAR`. Para cada una:
+
+1. Si es un `fail`, comprueba con la evidencia que la imagen incumple de verdad el control (el valor del registro, la línea del fichero de configuración). Si no lo incumple, es un **falso positivo**: se corrige la regla o el probe, nunca el fichero esperado.
+2. Si un control que fallaba ahora pasa, comprueba que la imagen cambió ese ajuste o que la regla se corrigió a propósito.
+3. Quita la marca `# REVISAR` (el laboratorio no acepta un fichero con marcas) y guarda la propuesta en `scripts/lab/esperado/`.
+
+La cabecera del fichero dice con qué imagen se revisó. Si la ejecución del lunes falla sin cambios en el código, es la imagen: la salida dice de qué versión a qué versión ha cambiado.
+
+La comparación también se puede hacer a mano con los informes del artefacto:
+
+```bash
+go run ./scripts/lab check -golden scripts/lab/esperado/windows-2025.txt -propose propuesta.txt antes-win-server-l2.json antes-win-workstation-l2.json
+```
 
 ## Publicar una release
 

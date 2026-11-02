@@ -106,6 +106,30 @@ func TestPropose(t *testing.T) {
 	}
 }
 
+func TestAnnotate(t *testing.T) {
+	text := strings.Repeat("LNX-A-001  fail  actual «50%» · esperado «0»\n", 200)
+	parts := chunks(text, 3800)
+	if len(parts) < 3 || strings.Join(parts, "") != text {
+		t.Fatalf("%d trozos; se pierde texto: %v", len(parts), strings.Join(parts, "") != text)
+	}
+	for _, p := range parts {
+		if len(p) > 3800 || !strings.HasSuffix(p, "\n") {
+			t.Errorf("trozo de %d bytes o partido a mitad de línea", len(p))
+		}
+	}
+	var b strings.Builder
+	t.Setenv("GITHUB_ACTIONS", "true")
+	annotate(&b, "notice", "Propuesta para a: b, c", "uno\ndos 100%\n")
+	if got := b.String(); got != "::notice title=Propuesta para a%3A b%2C c::uno%0Ados 100%25%0A\n" {
+		t.Errorf("anotación %q", got)
+	}
+	b.Reset()
+	annotate(&b, "notice", "x", text)
+	if n := strings.Count(b.String(), "::notice title=x ("); n != len(parts) || !strings.Contains(b.String(), "(1/") {
+		t.Errorf("%d anotaciones para %d trozos", n, len(parts))
+	}
+}
+
 func writeReport(t *testing.T, dir, profile string, res map[string]engine.Eval) string {
 	t.Helper()
 	rep := engine.Report{Schema: engine.SchemaVersion, Profile: &rule.Profile{ID: profile}}

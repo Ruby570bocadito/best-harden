@@ -394,7 +394,59 @@ func runCheck(args []string, out io.Writer) error {
 	fmt.Fprintf(out, "\nSi el cambio es correcto, revisa cada «fail» con su evidencia y copia la propuesta en %s\n", *goldenPath)
 	fmt.Fprintf(out, "(docs/11-desarrollo.md#laboratorio):\n-----8<-----\n%s-----8<-----\n", proposal)
 	summary(name, problems, proposal)
+	title := fmt.Sprintf("Laboratorio %s: %d %s", name, len(problems), plural(len(problems), "diferencia", "diferencias"))
+	annotate(out, "error", title, strings.Join(problems, "\n"))
+	annotate(out, "notice", "Propuesta para "+filepath.ToSlash(*goldenPath), proposal)
 	return fmt.Errorf("%s: el laboratorio no coincide con el resultado esperado", name)
+}
+
+// annotate deja el texto como anotaciones del job de GitHub Actions, que se
+// ven en el PR y en la API sin abrir el registro ni descargar el artefacto.
+// GitHub admite diez anotaciones de cada tipo por paso: el texto se parte
+// por líneas en trozos de menos de 4 KB y lo que no quepa se queda en el
+// registro y en el artefacto.
+func annotate(out io.Writer, level, title, text string) {
+	if os.Getenv("GITHUB_ACTIONS") != "true" {
+		return
+	}
+	parts := chunks(text, 3800)
+	if len(parts) > 10 {
+		parts = parts[:10]
+	}
+	for i, p := range parts {
+		t := title
+		if len(parts) > 1 {
+			t = fmt.Sprintf("%s (%d/%d)", title, i+1, len(parts))
+		}
+		fmt.Fprintf(out, "::%s title=%s::%s\n", level, escapeProperty(t), escapeData(p))
+	}
+}
+
+// chunks parte el texto por líneas en trozos de como mucho n bytes (una
+// línea más larga va sola).
+func chunks(text string, n int) []string {
+	var parts []string
+	var cur strings.Builder
+	for _, line := range strings.SplitAfter(text, "\n") {
+		if cur.Len() > 0 && cur.Len()+len(line) > n {
+			parts = append(parts, cur.String())
+			cur.Reset()
+		}
+		cur.WriteString(line)
+	}
+	if strings.TrimSpace(cur.String()) != "" {
+		parts = append(parts, cur.String())
+	}
+	return parts
+}
+
+// Codificación de los comandos de flujo de trabajo de GitHub Actions.
+func escapeData(s string) string {
+	return strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A").Replace(s)
+}
+
+func escapeProperty(s string) string {
+	return strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A", ":", "%3A", ",", "%2C").Replace(s)
 }
 
 // summary deja las diferencias y la propuesta en el resumen del job de
@@ -453,10 +505,12 @@ func runCycle(args []string, out io.Writer) error {
 			verified, plural(verified, "control reparado", "controles reparados"), len(obs[0].byID))
 		return nil
 	}
-	fmt.Fprintf(out, "Ciclo harden → rollback: %d %s\n", len(problems), plural(len(problems), "problema", "problemas"))
+	title := fmt.Sprintf("Ciclo harden → rollback: %d %s", len(problems), plural(len(problems), "problema", "problemas"))
+	fmt.Fprintln(out, title)
 	for _, p := range problems {
 		fmt.Fprintln(out, "  "+p)
 	}
+	annotate(out, "error", title, strings.Join(problems, "\n"))
 	return errors.New("el ciclo harden → rollback no es limpio")
 }
 
