@@ -189,7 +189,10 @@ func readReports(paths []string) (*observation, []string, error) {
 			return nil, nil, err
 		}
 		if o.host == "" {
-			o.host = strings.TrimSpace(rep.Host.Name + " · " + rep.Host.Kernel)
+			o.host = rep.Host.Name
+			if v := firstNonEmpty(rep.Host.Kernel, rep.Host.Build, rep.Host.Version); v != "" {
+				o.host += " · " + v
+			}
 		}
 		if rep.Profile != nil {
 			o.profiles = append(o.profiles, rep.Profile.ID)
@@ -216,7 +219,7 @@ func detail(e engine.Eval) string {
 	switch e.Status {
 	case engine.Fail:
 		if l := failingLeaf(e); l != nil {
-			parts := []string{fmt.Sprintf("actual «%s» · esperado «%s»", l.Actual, l.Expected)}
+			parts := []string{fmt.Sprintf("actual «%s» · esperado «%s»", clip(l.Actual, 60), clip(l.Expected, 60))}
 			for _, p := range []string{l.Label, l.Source} {
 				if p != "" {
 					parts = append(parts, p)
@@ -230,9 +233,14 @@ func detail(e engine.Eval) string {
 	case engine.Error, engine.Skipped, engine.NA:
 		s = firstMessage(e)
 	}
+	return clip(s, 160)
+}
+
+// clip junta los espacios y corta el texto a n caracteres.
+func clip(s string, n int) string {
 	s = strings.Join(strings.Fields(s), " ")
-	if r := []rune(s); len(r) > 140 {
-		s = string(r[:139]) + "…"
+	if r := []rune(s); len(r) > n {
+		s = string(r[:n-1]) + "…"
 	}
 	return s
 }

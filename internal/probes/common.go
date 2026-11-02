@@ -58,10 +58,13 @@ func PSEnviron(extra ...string) []string {
 	return append(env, extra...)
 }
 
+// cmdTimeout es lo que puede tardar un comando del sistema.
+const cmdTimeout = 60 * time.Second
+
 // runCmdEnv es runCmd con variables de entorno adicionales: así llegan los
 // datos a un script sin formar parte de él.
 func runCmdEnv(ctx context.Context, env []string, name string, args ...string) (cmdResult, error) {
-	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, cmdTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Env = append(PSEnviron("LC_ALL=C", "LANG=C"), env...)
@@ -70,6 +73,11 @@ func runCmdEnv(ctx context.Context, env []string, name string, args ...string) (
 	cmd.Stderr = &errb
 	err := cmd.Run()
 	res := cmdResult{Stdout: out.String(), Stderr: errb.String()}
+	// Al vencer el plazo el proceso muere con un código cualquiera y sin
+	// salida: se dice que fue el plazo, no que el comando fallara.
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return res, fmt.Errorf("%s no respondió en %d s", filepath.Base(name), int(cmdTimeout/time.Second))
+	}
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
 		res.ExitCode = exitErr.ExitCode()

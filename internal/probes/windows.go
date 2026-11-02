@@ -378,7 +378,10 @@ var psQueries = map[string]struct{ desc, script string }{
 			`foreach ($x in @($p.ExclusionPath)) { if ($x -and ($x -match '^[A-Za-z]:\\?$' -or $x -match '^\*|^[A-Za-z]:\\\*' -or $x -match '\\(temp|tmp|downloads|descargas|users\\public|appdata\\local\\temp)(\\|$)' -or $x -match '\\appdata(\\(roaming|local|locallow))?\\?$' -or $x -match '^%(temp|tmp|userprofile|appdata|localappdata)%\\?$' -or $x -match '^[A-Za-z]:\\(users|windows|programdata)\\?$')) { [void]$risky.Add('ruta ' + $x) } }; ` +
 			`foreach ($x in @($p.ExclusionExtension)) { if ($x -and $x.TrimStart('.') -match '^(\*|exe|dll|ps1|bat|cmd|vbs|js|hta|scr|msi|lnk)$') { [void]$risky.Add('extensión ' + $x) } }; ` +
 			`foreach ($x in @($p.ExclusionProcess)) { if ($x -and [IO.Path]::GetFileName($x) -match '^(powershell|pwsh|cmd|wscript|cscript|mshta|rundll32|regsvr32|msiexec|certutil|bitsadmin)\.exe$') { [void]$risky.Add('proceso ' + $x) } }; ` +
-			`@{Total=$all.Count; Risky=[string]::Join('; ', $risky)} | ConvertTo-Json -Compress } catch { @{__na='defender'} | ConvertTo-Json -Compress }`},
+			// -join y no [string]::Join: en Windows PowerShell 5.1, Join recibe el
+			// ArrayList como un único objeto y devuelve «System.Collections.ArrayList»
+			// aunque no haya ninguna exclusión (lo destapó el laboratorio).
+			`@{Total=$all.Count; Risky=($risky -join '; ')} | ConvertTo-Json -Compress } catch { @{__na='defender'} | ConvertTo-Json -Compress }`},
 	"defender_prefs": {"Get-MpPreference",
 		`try { Get-MpPreference | Select-Object MAPSReporting,PUAProtection,EnableNetworkProtection,DisableRealtimeMonitoring,SubmitSamplesConsent,DisableScriptScanning | ConvertTo-Json -Compress } catch { @{__na='defender'} | ConvertTo-Json -Compress }`},
 	"defender_asr": {"Get-MpPreference (reglas ASR)",
@@ -409,8 +412,13 @@ var psQueries = map[string]struct{ desc, script string }{
 	// Windows.
 	"file_signatures": {"Get-AuthenticodeSignature",
 		`$o=@{}; foreach ($p in ($env:ADARVE_PATHS -split [char]10)) { if (-not $p) { continue }; try { $s=Get-AuthenticodeSignature -LiteralPath $p; $o[$p]=@{status=[string]$s.Status; signer=[string]$s.SignerCertificate.Subject} } catch { $o[$p]=@{status='Error'; signer=''} } }; @{files=$o} | ConvertTo-Json -Compress -Depth 4`},
+	// Solo las funciones que usan las reglas, una a una: listarlas todas tarda
+	// más de un minuto en algunos Windows Server 2025. Una función que el
+	// sistema ya no tiene (PowerShell 2.0 en Windows 11 24H2 y Server 2025)
+	// da 0x800F080C y se queda fuera del resultado; cualquier otro error se
+	// devuelve, para no dar por ausente lo que no se pudo leer.
 	"optional_features": {"Get-WindowsOptionalFeature",
-		`$want=@('SMB1Protocol','MicrosoftWindowsPowerShellV2Root','MicrosoftWindowsPowerShellV2','TelnetClient','TFTP'); $o=@{}; try { Get-WindowsOptionalFeature -Online | Where-Object { $want -contains $_.FeatureName } | ForEach-Object { $o[[string]$_.FeatureName]=[string]$_.State } } catch { $o=@{__err=$_.Exception.Message} }; $o | ConvertTo-Json -Compress`},
+		`$o=@{}; foreach ($f in @('SMB1Protocol','MicrosoftWindowsPowerShellV2Root','MicrosoftWindowsPowerShellV2','TelnetClient','TFTP')) { try { $x=Get-WindowsOptionalFeature -Online -FeatureName $f; if ($x) { $o[$f]=[string]$x.State } } catch { if ($_.Exception.HResult -ne -2146498548) { $o=@{__err=('{0} (0x{1:X8})' -f $_.Exception.Message, $_.Exception.HResult)}; break } } }; $o | ConvertTo-Json -Compress`},
 }
 
 var psNotApplicable = map[string]string{
