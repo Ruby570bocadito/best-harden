@@ -40,7 +40,7 @@ Doce tareas en cuatro bloques. Cuando estén todas marcadas, se publica la v1.0.
 
 ### Precisión
 
-- [ ] Laboratorio en CI con Windows 11, Windows Server 2022 y Ubuntu 24.04: cada informe se compara con un resultado esperado (*golden files*) y no queda ningún falso positivo conocido.
+- [x] Laboratorio en CI con Ubuntu 24.04, Windows Server 2022 y Windows Server 2025 ([11 · Laboratorio](11-desarrollo.md#laboratorio)): cada informe se compara con un resultado esperado (*golden files*, revisados uno a uno) en cada cambio y cada lunes, el ciclo harden → rollback se comprueba control a control y no queda ningún falso positivo conocido (el laboratorio destapó uno, WIN-DEF-013, y dos errores de probe en Server 2025, ya corregidos). GitHub no tiene runners de Windows 11: sus reglas son las de servidor más cuatro exclusivas de cliente, que esperan a un runner propio, y Server 2025 comparte compilación con Windows 11 24H2.
 - [x] Estado `manual` para los controles que necesitan revisión humana, fuera de la puntuación: `op: manual` reúne la evidencia (quién es administrador, quién puede usar sudo, qué carpetas se comparten…) y el veredicto es de una persona.
 - [x] sudo-rs (Ubuntu 25.10 en adelante): se detecta la implementación (ruta y `sudo --version`); LNX-AUTH-007 (`logfile`) y LNX-AUTH-006 (`use_pty` explícito) solo aplican al sudo clásico y LNX-AUTH-009 vigila que nadie desactive `use_pty` en sudo-rs; la remediación no escribe en sudoers opciones que sudo-rs no admite. El CI prueba en Ubuntu 24.04 y 26.04.
 
@@ -56,7 +56,7 @@ Mejoras que hacen Adarve más completo, pero que no hacen falta para cumplir la 
 **Más alcance**
 - `surface fix` en Linux (ufw, firewalld y nftables) con el mismo ciclo instantánea → verificación → rollback → dead-man.
 - Ampliar el catálogo hacia unas 350 reglas de Windows y 300 de Linux, priorizando CIS L1 de Windows 11, Server 2022 y Ubuntu 24.04 ([catálogo objetivo](06-catalogo-de-controles.md#2-catálogo-objetivo-)).
-- Laboratorio ampliado: Server 2022 como DC, Debian 12, RHEL 9, Alpine y Ubuntu 22.04/26.04.
+- Laboratorio ampliado: Windows 11 en un runner propio (con los controles exclusivos de cliente), Server 2022 como DC, Debian 12, RHEL 9, Alpine y Ubuntu 22.04/26.04.
 - Mapeo verificado a CIS, STIG y ENS por versión de benchmark ([14](14-marcos-y-licencias.md)).
 
 **Más precisión**

@@ -8,6 +8,7 @@ Evalúa la configuración de seguridad de tus equipos frente a perfiles de harde
 calcula una puntuación de postura, la mapea a MITRE ATT&CK y te dice qué corregir primero.
 
 [![CI](https://github.com/Ruby570bocadito/adarve/actions/workflows/ci.yml/badge.svg)](https://github.com/Ruby570bocadito/adarve/actions/workflows/ci.yml)
+[![Laboratorio](https://github.com/Ruby570bocadito/adarve/actions/workflows/laboratorio.yml/badge.svg)](docs/11-desarrollo.md#laboratorio)
 [![Release](https://img.shields.io/github/v/release/Ruby570bocadito/adarve?sort=semver)](https://github.com/Ruby570bocadito/adarve/releases/latest)
 ![Plataformas](https://img.shields.io/badge/plataformas-Windows%20%7C%20Windows%20Server%20%7C%20Linux-2a78d6)
 
@@ -115,11 +116,11 @@ adarve update                      # actualizar Adarve y sus reglas
 
 **La v1.0** es la mejor herramienta para endurecer **un equipo**: auditar Windows 11, Windows Server 2022 y Ubuntu 24.04, endurecerlos con rollback y entregar un informe defendible, sin falsos positivos conocidos y con releases firmadas.
 
-| Bloque | Qué falta |
+| Bloque | Estado |
 |---|---|
-| Identidad | Renombrado a Adarve, informes con la nueva identidad, capturas y GIF |
+| Identidad | Consola e informes con la identidad de Adarve, capturas y GIF. Falta renombrar el repositorio en GitHub |
 | Confianza | Releases firmadas, análisis de seguridad y *fuzzing* en CI, instaladores probados de punta a punta |
-| Precisión | Laboratorio con *golden files* en 3 sistemas, estado `manual` |
+| Precisión | Laboratorio con *golden files* en Ubuntu 24.04 y Windows Server 2022 y 2025, estado `manual`, sudo-rs |
 | Estabilidad | Esquemas congelados y guía de operación |
 
 Detalle y estado de cada tarea en la [hoja de ruta](docs/13-hoja-de-ruta.md). La flota, la defensa y el modo enterprise son la [visión a largo plazo](docs/15-vision-a-largo-plazo.md), después de la v1.0.

@@ -8,7 +8,7 @@ name: Laboratorio
 # Cómo revisar y aceptar cambios: docs/11-desarrollo.md#laboratorio
 on:
   push:
-    branches: [main, feat/laboratorio]
+    branches: [main]
   pull_request:
   schedule:
     - cron: '17 5 * * 1'
