@@ -40,11 +40,13 @@ Aviso de atribución recomendado en los informes:
 
 ## Licencia de Adarve
 
-🔜 **Pendiente de decidir** antes de publicar el repositorio. Opciones habituales:
+**Apache-2.0** ([LICENSE](../LICENSE)), desde la v1.0. Se eligió entre estas opciones:
 
 | Modelo | Licencia | Encaja si… |
 |---|---|---|
-| Open source permisivo | Apache-2.0 | Quieres adopción máxima y contribuciones de empresas |
+| **Open source permisivo** (la elegida) | Apache-2.0 | Quieres adopción máxima y contribuciones de empresas |
 | Open core | Apache-2.0 (agente y motor) + comercial (servidor y UI de flota) | Quieres comunidad y un producto de pago |
 | Copyleft de red | AGPL-3.0 | Quieres impedir que terceros ofrezcan Adarve como servicio cerrado |
 | Propietario | Comercial | Producto cerrado |
+
+Apache-2.0 incluye una concesión explícita de patentes y deja abierta la puerta del *open core*: si algún día existen el servidor y la UI de flota ([visión a largo plazo](15-vision-a-largo-plazo.md)), podrían llevar otra licencia sin cambiar la del agente y el motor.

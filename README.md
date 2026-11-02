@@ -11,6 +11,7 @@ calcula una puntuación de postura, la mapea a MITRE ATT&CK y te dice qué corre
 [![Laboratorio](https://github.com/Ruby570bocadito/adarve/actions/workflows/laboratorio.yml/badge.svg)](docs/11-desarrollo.md#laboratorio)
 [![Release](https://img.shields.io/github/v/release/Ruby570bocadito/adarve?sort=semver)](https://github.com/Ruby570bocadito/adarve/releases/latest)
 ![Plataformas](https://img.shields.io/badge/plataformas-Windows%20%7C%20Windows%20Server%20%7C%20Linux-2a78d6)
+[![Licencia](https://img.shields.io/badge/licencia-Apache--2.0-2a78d6)](LICENSE)
 
 [Instalación](#-instalación-en-una-línea) · [Uso](docs/10-guia-de-uso.md) · [Documentación](docs/README.md) · [Hoja de ruta](docs/13-hoja-de-ruta.md)
 
@@ -149,3 +150,7 @@ sudo make scan    # escanear este equipo
 ```
 
 Guía completa: [docs/11-desarrollo.md](docs/11-desarrollo.md).
+
+## 📄 Licencia
+
+Adarve se publica bajo la [licencia Apache 2.0](LICENSE). Las reglas tienen redacción propia y citan NIST SP 800-53 y MITRE ATT&CK por sus identificadores ([marcos y licencias](docs/14-marcos-y-licencias.md)).
